@@ -6,8 +6,8 @@
 package io.opentelemetry.instrumentation.awslambdacore.v1_0;
 
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
+import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.lambda.runtime.Context;
@@ -65,12 +65,8 @@ public abstract class AbstractAwsLambdaTest {
                     span ->
                         span.hasName("my_function")
                             .hasKind(SpanKind.SERVER)
-                            .hasAttributesSatisfying(
-                                attrs ->
-                                    assertThat(attrs)
-                                        .containsOnly(
-                                            entry(
-                                                SemanticAttributes.FAAS_EXECUTION, "1-22-333")))));
+                            .hasAttributesSatisfyingExactly(
+                                equalTo(SemanticAttributes.FAAS_INVOCATION_ID, "1-22-333"))));
   }
 
   @Test
@@ -87,12 +83,8 @@ public abstract class AbstractAwsLambdaTest {
                             .hasKind(SpanKind.SERVER)
                             .hasStatus(StatusData.error())
                             .hasException(thrown)
-                            .hasAttributesSatisfying(
-                                attrs ->
-                                    assertThat(attrs)
-                                        .containsOnly(
-                                            entry(
-                                                SemanticAttributes.FAAS_EXECUTION, "1-22-333")))));
+                            .hasAttributesSatisfyingExactly(
+                                equalTo(SemanticAttributes.FAAS_INVOCATION_ID, "1-22-333"))));
   }
 
   @Test
@@ -126,11 +118,7 @@ public abstract class AbstractAwsLambdaTest {
                                                           AttributeKey.stringKey("source"),
                                                           "x-ray-env"));
                                             }))
-                            .hasAttributesSatisfying(
-                                attrs ->
-                                    assertThat(attrs)
-                                        .containsOnly(
-                                            entry(
-                                                SemanticAttributes.FAAS_EXECUTION, "1-22-333")))));
+                            .hasAttributesSatisfyingExactly(
+                                equalTo(SemanticAttributes.FAAS_INVOCATION_ID, "1-22-333"))));
   }
 }
