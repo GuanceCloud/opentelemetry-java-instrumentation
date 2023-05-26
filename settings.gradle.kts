@@ -132,6 +132,8 @@ hideFromDependabot(":smoke-tests:images:servlet:servlet-3.0")
 hideFromDependabot(":smoke-tests:images:servlet:servlet-5.0")
 hideFromDependabot(":smoke-tests:images:spring-boot")
 
+hideFromDependabot(":instrumentation:alibaba-dubbo-2.6:javaagent")
+hideFromDependabot(":instrumentation:alibaba-dubbo-2.6:library-autoconfigure")
 hideFromDependabot("instrumentation:akka:akka-actor-2.3:javaagent")
 hideFromDependabot(":instrumentation:akka:akka-actor-fork-join-2.5:javaagent")
 hideFromDependabot(":instrumentation:akka:akka-http-10.0:javaagent")
@@ -147,6 +149,10 @@ hideFromDependabot(":instrumentation:apache-httpclient:apache-httpclient-4.0:jav
 hideFromDependabot(":instrumentation:apache-httpclient:apache-httpclient-4.3:library")
 hideFromDependabot(":instrumentation:apache-httpclient:apache-httpclient-4.3:testing")
 hideFromDependabot(":instrumentation:apache-httpclient:apache-httpclient-5.0:javaagent")
+hideFromDependabot(":instrumentation:apache-pulsar:apache-pulsar-2.8:javaagent")
+hideFromDependabot(":instrumentation:apache-pulsar:apache-pulsar-2.8:javaagent-unit-tests")
+hideFromDependabot(":instrumentation:apache-thrift:javaagent")
+hideFromDependabot(":instrumentation:apache-thrift:library-autoconfigure")
 hideFromDependabot(":instrumentation:armeria-1.3:javaagent")
 hideFromDependabot(":instrumentation:armeria-1.3:library")
 hideFromDependabot(":instrumentation:armeria-1.3:testing")
@@ -528,6 +534,8 @@ hideFromDependabot(":instrumentation:vibur-dbcp-11.0:library")
 hideFromDependabot(":instrumentation:vibur-dbcp-11.0:testing")
 hideFromDependabot(":instrumentation:wicket-8.0:javaagent")
 hideFromDependabot(":instrumentation:zio:zio-2.0:javaagent")
+hideFromDependabot("instrumentation:xxl-job:xxl-job-2.3:javaagent")
+
 
 // benchmark
 include(":benchmark-overhead-jmh")
