@@ -2,7 +2,15 @@
 
 当前为[观测云](https://www.guance.com/)团队基于 OpenTelemetry 增强的 change log。
 
+## v1.26.0-guance
 
+新增1个 instrumentation
+- 支持达梦数据库（#5）
+
+
+新增 guance-change-log
+
+merge v1.26.0
 
 ## v1.25.0-guance
 
