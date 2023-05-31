@@ -12,13 +12,16 @@ import static io.opentelemetry.javaagent.instrumentation.methods.MethodSingleton
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.namedOneOf;
 
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.api.annotation.support.async.AsyncOperationEndSupport;
 import io.opentelemetry.instrumentation.api.instrumenter.util.ClassAndMethod;
+import io.opentelemetry.javaagent.bootstrap.internal.CommonConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Set;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
@@ -58,6 +61,8 @@ public class MethodInstrumentation implements TypeInstrumentation {
     public static void onEnter(
         @Advice.Origin("#t") Class<?> declaringClass,
         @Advice.Origin("#m") String methodName,
+        @Advice.AllArguments Object[] args,
+        @Advice.Origin Method method,
         @Advice.Local("otelMethod") ClassAndMethod classAndMethod,
         @Advice.Local("otelContext") Context context,
         @Advice.Local("otelScope") Scope scope) {
@@ -69,6 +74,34 @@ public class MethodInstrumentation implements TypeInstrumentation {
 
       context = instrumenter().start(parentContext, classAndMethod);
       scope = context.makeCurrent();
+      Span span = Span.fromContext(context);
+      if (!CommonConfig.get().isMethodAttributeEnabled()) {
+        return;
+      }
+      if (args != null) {
+        Parameter[] parameters = method.getParameters();
+        StringBuffer m2 = new StringBuffer(method.getName());
+        m2.append("(");
+        int maxSize = 1024;
+        if (parameters.length > 0) {
+          for (int i = 0; i < parameters.length; i++) {
+            if (args[i] == null) {
+              span.setAttribute(parameters[i].getName(), "null");
+            } else {
+              String value = args[i].toString();
+              span.setAttribute(parameters[i].getName(), args[i].toString()
+                  .substring(0, value.length() >= maxSize ? maxSize : value.length()));
+            }
+            m2.append(parameters[i].getType().getTypeName()).append(" ")
+                .append(parameters[i].getName());
+            if (i < parameters.length - 1) {
+              m2.append(",");
+            }
+          }
+        }
+        m2.append(")");
+        span.setAttribute("method_name", m2.toString());
+      }
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
