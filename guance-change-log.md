@@ -2,6 +2,13 @@
 
 当前为[观测云](https://www.guance.com/)团队基于 OpenTelemetry 增强的 change log。
 
+## v1.26.1-guance
+
+新增 2 个 instrumentation
+- 非侵入方式支持获取特定方法的入参信息 #12
+- 阿里 HSF 框架集成 #14
+
+
 ## v1.26.0-guance
 
 新增1个 instrumentation
