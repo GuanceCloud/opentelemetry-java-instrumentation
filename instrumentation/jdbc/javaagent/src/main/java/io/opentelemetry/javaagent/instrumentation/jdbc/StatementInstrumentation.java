@@ -8,18 +8,22 @@ package io.opentelemetry.javaagent.instrumentation.jdbc;
 import static io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge.currentContext;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
+import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.statementInstrumenter;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
+import io.opentelemetry.javaagent.bootstrap.internal.InstrumentationConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
@@ -42,6 +46,10 @@ public class StatementInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         nameStartsWith("execute").and(takesArgument(0, String.class)).and(isPublic()),
         StatementInstrumentation.class.getName() + "$StatementAdvice");
+
+    transformer.applyAdviceToMethod(
+        nameStartsWith("set").and(isPublic()).and(takesArguments(2)),
+        StatementInstrumentation.class.getName() + "$SetStringAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -95,4 +103,36 @@ public class StatementInstrumentation implements TypeInstrumentation {
       }
     }
   }
+
+
+@SuppressWarnings("unused")
+public static class SetStringAdvice {
+  @Advice.OnMethodEnter(suppress = Throwable.class)
+  public static void onEnter(
+      @Advice.AllArguments  Object[] args,
+      @Advice.This  PreparedStatement statement) {
+
+    int index = 0;
+    String arg = "";
+    if (args.length != 2) {
+      return;
+    }
+
+    if (args[0] instanceof Integer) {
+      index = (Integer) args[0];
+    }
+    arg = args[1].toString();
+
+    System.out.println("index="+index);
+    System.out.println("args="+arg);
+    if( InstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation",false) ){
+      setArg(index,arg);
+    }
+  }
+
+  @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+  public static void stopSpan(
+      @Advice.Thrown Throwable throwable) {
+  }
+}
 }
