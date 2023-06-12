@@ -95,7 +95,7 @@ public class StatementInstrumentation implements TypeInstrumentation {
         @Advice.Local("otelScope") Scope scope) {
       if (callDepth.decrementAndGet() > 0) {
         return;
-      }
+      } 
 
       if (scope != null) {
         scope.close();
@@ -104,35 +104,29 @@ public class StatementInstrumentation implements TypeInstrumentation {
     }
   }
 
+  @SuppressWarnings("unused")
+  public static class SetStringAdvice {
+    @Advice.OnMethodEnter(suppress = Throwable.class)
+    public static void onEnter(
+        @Advice.AllArguments Object[] args, @Advice.This PreparedStatement statement) {
 
-@SuppressWarnings("unused")
-public static class SetStringAdvice {
-  @Advice.OnMethodEnter(suppress = Throwable.class)
-  public static void onEnter(
-      @Advice.AllArguments  Object[] args,
-      @Advice.This  PreparedStatement statement) {
+      int index = 0;
+      String arg = "";
+      if (args.length != 2) {
+        return;
+      }
 
-    int index = 0;
-    String arg = "";
-    if (args.length != 2) {
-      return;
+      if (args[0] instanceof Integer) {
+        index = (Integer) args[0];
+      }
+      arg = args[1].toString();
+
+      if (InstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation", false)) {
+        setArg(index, arg);
+      }
     }
 
-    if (args[0] instanceof Integer) {
-      index = (Integer) args[0];
-    }
-    arg = args[1].toString();
-
-    System.out.println("index="+index);
-    System.out.println("args="+arg);
-    if( InstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation",false) ){
-      setArg(index,arg);
-    }
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    public static void stopSpan(@Advice.Thrown Throwable throwable) {}
   }
-
-  @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
-  public static void stopSpan(
-      @Advice.Thrown Throwable throwable) {
-  }
-}
 }

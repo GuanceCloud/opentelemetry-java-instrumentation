@@ -16,13 +16,13 @@ import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributes
 import io.opentelemetry.instrumentation.api.instrumenter.net.PeerServiceAttributesExtractor;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.instrumentation.jdbc.internal.DbSetArgs;
-import io.opentelemetry.instrumentation.jdbc.internal.JdbcAttributesGetter;
 import io.opentelemetry.instrumentation.jdbc.internal.JDBCAttributes;
+import io.opentelemetry.instrumentation.jdbc.internal.JdbcAttributesGetter;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcNetAttributesGetter;
 import io.opentelemetry.javaagent.bootstrap.internal.CommonConfig;
 import io.opentelemetry.javaagent.bootstrap.internal.InstrumentationConfig;
-import javax.sql.DataSource;
 import java.util.HashMap;
+import javax.sql.DataSource;
 
 public final class JdbcSingletons {
   private static final String INSTRUMENTATION_NAME = "io.opentelemetry.jdbc";

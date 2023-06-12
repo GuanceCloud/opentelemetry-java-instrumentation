@@ -5,7 +5,6 @@
 
 package io.opentelemetry.instrumentation.jdbc.internal;
 
-
 import java.util.HashMap;
 
 /**
@@ -13,13 +12,13 @@ import java.util.HashMap;
  * any time.
  */
 public final class DbSetArgs {
-  private HashMap<Integer,String> args;
+  private HashMap<Integer, String> args;
 
-  public DbSetArgs(HashMap<Integer,String> map){
+  public DbSetArgs(HashMap<Integer, String> map) {
     this.args = map;
   }
 
-  public HashMap<Integer,String> getArgs(){
+  public HashMap<Integer, String> getArgs() {
     return this.args;
   }
 
@@ -27,7 +26,7 @@ public final class DbSetArgs {
     this.args = args;
   }
 
-public void setArg(Integer index,String arg){
-     this.args.put(index,arg);
-}
+  public void setArg(Integer index, String arg) {
+    this.args.put(index, arg);
+  }
 }

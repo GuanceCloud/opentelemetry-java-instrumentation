@@ -5,14 +5,14 @@
 
 package io.opentelemetry.instrumentation.jdbc.internal;
 
+import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
-import javax.annotation.Nullable;
 import java.util.Map;
-
-import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
+import javax.annotation.Nullable;
 
 /**
  * This class is internal and is hence not for public use. Its APIs are unstable and can change at
@@ -34,7 +34,7 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
   private void setArgs(DbSetArgs args) {
     this.args = args;
   }
-
+ 
   @Override
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
     if (this.args == null){
@@ -44,7 +44,7 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
      internalSet(attributes, AttributeKey.stringKey("origin_sql_"+entry.getKey()),entry.getValue());
    }
   }
-
+  
   @Override
   public void onEnd(AttributesBuilder attributes, Context context, REQUEST request,
       @Nullable RESPONSE response, @Nullable Throwable error) {
