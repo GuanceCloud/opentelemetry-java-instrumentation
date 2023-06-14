@@ -40,11 +40,14 @@ public final class JdbcSingletons {
     setArgs.setArg(index,arg);
   }
 
+  public static void resetArgs(){
+    setArgs.resetArgs();
+  }
+
   static {
     JdbcAttributesGetter dbAttributesGetter = new JdbcAttributesGetter();
     JdbcNetAttributesGetter netAttributesGetter = new JdbcNetAttributesGetter();
     setArgs = new DbSetArgs(new HashMap<>());
-
 
     STATEMENT_INSTRUMENTER =
         Instrumenter.<DbRequest, Void>builder(

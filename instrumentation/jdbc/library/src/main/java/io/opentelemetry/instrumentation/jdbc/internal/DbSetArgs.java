@@ -29,4 +29,8 @@ public final class DbSetArgs {
   public void setArg(Integer index, String arg) {
     this.args.put(index, arg);
   }
+
+  public void resetArgs() {
+    this.args = new HashMap<Integer, String>();
+  }
 }

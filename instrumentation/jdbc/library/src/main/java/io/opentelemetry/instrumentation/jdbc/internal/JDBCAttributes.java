@@ -37,7 +37,7 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
  
   @Override
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
-    if (this.args == null){
+    if (this.args == null || this.args.getArgs()==null){
       return;
     }
    for (Map.Entry<Integer,String> entry : args.getArgs().entrySet()) {
@@ -48,6 +48,5 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
   @Override
   public void onEnd(AttributesBuilder attributes, Context context, REQUEST request,
       @Nullable RESPONSE response, @Nullable Throwable error) {
-
   }
 }
