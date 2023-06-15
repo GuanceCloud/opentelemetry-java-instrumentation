@@ -15,10 +15,13 @@ import io.opentelemetry.instrumentation.api.instrumenter.db.SqlClientAttributesE
 import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.net.PeerServiceAttributesExtractor;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
+import io.opentelemetry.instrumentation.jdbc.internal.DbSetArgs;
+import io.opentelemetry.instrumentation.jdbc.internal.JDBCAttributes;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcAttributesGetter;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcNetAttributesGetter;
 import io.opentelemetry.javaagent.bootstrap.internal.CommonConfig;
 import io.opentelemetry.javaagent.bootstrap.internal.InstrumentationConfig;
+import java.util.HashMap;
 import javax.sql.DataSource;
 
 public final class JdbcSingletons {
@@ -28,9 +31,23 @@ public final class JdbcSingletons {
   public static final Instrumenter<DataSource, Void> DATASOURCE_INSTRUMENTER =
       createDataSourceInstrumenter(GlobalOpenTelemetry.get());
 
+  public static final DbSetArgs setArgs;
+
+  public static void setArg(Integer index,String arg){
+    if (setArgs == null){
+      return;
+    }
+    setArgs.setArg(index,arg);
+  }
+
+  public static void resetArgs(){
+    setArgs.resetArgs();
+  }
+
   static {
     JdbcAttributesGetter dbAttributesGetter = new JdbcAttributesGetter();
     JdbcNetAttributesGetter netAttributesGetter = new JdbcNetAttributesGetter();
+    setArgs = new DbSetArgs(new HashMap<>());
 
     STATEMENT_INSTRUMENTER =
         Instrumenter.<DbRequest, Void>builder(
@@ -49,6 +66,7 @@ public final class JdbcSingletons {
             .addAttributesExtractor(
                 PeerServiceAttributesExtractor.create(
                     netAttributesGetter, CommonConfig.get().getPeerServiceMapping()))
+            .addAttributesExtractor(JDBCAttributes.create(setArgs))
             .buildInstrumenter(SpanKindExtractor.alwaysClient());
   }
 
