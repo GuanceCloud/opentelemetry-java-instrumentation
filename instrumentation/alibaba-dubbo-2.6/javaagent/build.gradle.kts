@@ -14,5 +14,5 @@ muzzle {
 
 dependencies {
   implementation(project(":instrumentation:alibaba-dubbo-2.6:library-autoconfigure"))
-  library("com.alibaba:dubbo:2.8.4")
+  library("com.alibaba:dubbo:2.6.12")
 }
