@@ -33,6 +33,7 @@ dependencies {
   implementation("io.opentelemetry:opentelemetry-exporter-otlp")
   implementation("io.opentelemetry:opentelemetry-exporter-otlp-logs")
   implementation("io.opentelemetry:opentelemetry-exporter-logging-otlp")
+  implementation("com.guance:guance-exporter:1.4.0")
 
   implementation("io.opentelemetry:opentelemetry-exporter-prometheus")
   implementation("io.opentelemetry:opentelemetry-exporter-zipkin")
