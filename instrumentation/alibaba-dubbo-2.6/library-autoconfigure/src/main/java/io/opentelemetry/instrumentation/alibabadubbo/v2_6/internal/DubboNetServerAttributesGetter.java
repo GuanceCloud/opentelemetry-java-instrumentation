@@ -18,62 +18,29 @@ import javax.annotation.Nullable;
 public final class DubboNetServerAttributesGetter
     implements NetServerAttributesGetter<DubboRequest,Result> {
 
-/*  @Nullable
+  @Nullable
   @Override
   public String getServerAddress(DubboRequest request) {
-    if (request.remoteAddress()!= null){
-      return request.remoteAddress().getHostName();
-    }
-   return "";
-  }*/
+    return null;
+  }
 
+  @Nullable
+  @Override
+  public Integer getServerPort(DubboRequest request) {
+    return null;
+  }
 
   @Override
   @Nullable
   public InetSocketAddress getClientInetSocketAddress(
-      DubboRequest request, @Nullable Result status) {
-    return request.localAddress();
+      DubboRequest request, @Nullable Result result) {
+    return request.remoteAddress();
   }
 
   @Nullable
   @Override
   public InetSocketAddress getServerInetSocketAddress(
-      DubboRequest request, @Nullable Result status) {
-    // TODO: later version introduces TRANSPORT_ATTR_LOCAL_ADDR, might be a good idea to use it
-    return request.remoteAddress();
-  }
-
-/*
-  @Override
-  @Nullable
-  public String getTransport(DubboRequest request) {
-    return null;
-  }
-*/
-
-/*
-  @Nullable
-  @Override
-  public String getHostName(DubboRequest request) {
-    return null;
-  }
-*/
-
-/*  @Nullable
-  @Override
-  public Integer getHostPort(DubboRequest request) {
-    return null;
-  }
-
-  @Override
-  @Nullable
-  public InetSocketAddress getPeerSocketAddress(DubboRequest request) {
-    return request.remoteAddress();
-  }
-
-  @Nullable
-  @Override
-  public InetSocketAddress getHostSocketAddress(DubboRequest request) {
+      DubboRequest request, @Nullable Result result) {
     return request.localAddress();
-  }*/
+  }
 }

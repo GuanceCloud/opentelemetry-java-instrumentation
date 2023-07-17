@@ -17,25 +17,11 @@ import javax.annotation.Nullable;
 public final class DubboNetClientAttributesGetter
     implements NetClientAttributesGetter<DubboRequest, Result> {
 
-/*
-  @Override
-  @Nullable
-  public String getTransport(DubboRequest request, @Nullable Result response) {
-    return null;
-  }
-*/
-
   @Nullable
   @Override
   public String getServerAddress(DubboRequest request) {
     return  request.url().getHost();
   }
-
-/*  @Nullable
-  @Override
-  public String getPeerName(DubboRequest request) {
-    return request.url().getHost();
-  }*/
 
   @Nullable
   @Override
