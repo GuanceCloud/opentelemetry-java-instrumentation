@@ -39,29 +39,29 @@ class HttpClientAttributesExtractorTest {
       implements HttpClientAttributesGetter<Map<String, String>, Map<String, String>> {
 
     @Override
-    public String getMethod(Map<String, String> request) {
-      return request.get("method");
-    }
-
-    @Override
-    public String getUrl(Map<String, String> request) {
+    public String getUrlFull(Map<String, String> request) {
       return request.get("url");
     }
 
     @Override
-    public List<String> getRequestHeader(Map<String, String> request, String name) {
+    public String getHttpRequestMethod(Map<String, String> request) {
+      return request.get("method");
+    }
+
+    @Override
+    public List<String> getHttpRequestHeader(Map<String, String> request, String name) {
       String value = request.get("header." + name);
       return value == null ? emptyList() : asList(value.split(","));
     }
 
     @Override
-    public Integer getStatusCode(
+    public Integer getHttpResponseStatusCode(
         Map<String, String> request, Map<String, String> response, @Nullable Throwable error) {
       return Integer.parseInt(response.get("statusCode"));
     }
 
     @Override
-    public List<String> getResponseHeader(
+    public List<String> getHttpResponseHeader(
         Map<String, String> request, Map<String, String> response, String name) {
       String value = response.get("header." + name);
       return value == null ? emptyList() : asList(value.split(","));
@@ -73,27 +73,41 @@ class HttpClientAttributesExtractorTest {
 
     @Nullable
     @Override
-    public String getProtocolName(
+    public String getNetworkTransport(
+        Map<String, String> request, @Nullable Map<String, String> response) {
+      return request.get("transport");
+    }
+
+    @Nullable
+    @Override
+    public String getNetworkType(
+        Map<String, String> request, @Nullable Map<String, String> response) {
+      return request.get("type");
+    }
+
+    @Nullable
+    @Override
+    public String getNetworkProtocolName(
         Map<String, String> request, @Nullable Map<String, String> response) {
       return request.get("protocolName");
     }
 
     @Nullable
     @Override
-    public String getProtocolVersion(
+    public String getNetworkProtocolVersion(
         Map<String, String> request, @Nullable Map<String, String> response) {
       return request.get("protocolVersion");
     }
 
     @Nullable
     @Override
-    public String getPeerName(Map<String, String> request) {
+    public String getServerAddress(Map<String, String> request) {
       return request.get("peerName");
     }
 
     @Nullable
     @Override
-    public Integer getPeerPort(Map<String, String> request) {
+    public Integer getServerPort(Map<String, String> request) {
       String statusCode = request.get("peerPort");
       return statusCode == null ? null : Integer.parseInt(statusCode);
     }
@@ -107,6 +121,8 @@ class HttpClientAttributesExtractorTest {
     request.put("header.content-length", "10");
     request.put("header.user-agent", "okhttp 3.x");
     request.put("header.custom-request-header", "123,456");
+    request.put("transport", "tcp");
+    request.put("type", "ipv4");
     request.put("protocolName", "http");
     request.put("protocolVersion", "1.1");
     request.put("peerName", "github.com");
@@ -177,12 +193,19 @@ class HttpClientAttributesExtractorTest {
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
       return Stream.of(
-          arguments("https://user1:secret@github.com", "https://github.com"),
-          arguments("https://user1:secret@github.com/path/", "https://github.com/path/"),
-          arguments("https://user1:secret@github.com#test.html", "https://github.com#test.html"),
-          arguments("https://user1:secret@github.com?foo=b@r", "https://github.com?foo=b@r"),
+          arguments("https://user1:secret@github.com", "https://REDACTED:REDACTED@github.com"),
           arguments(
-              "https://user1:secret@github.com/p@th?foo=b@r", "https://github.com/p@th?foo=b@r"),
+              "https://user1:secret@github.com/path/",
+              "https://REDACTED:REDACTED@github.com/path/"),
+          arguments(
+              "https://user1:secret@github.com#test.html",
+              "https://REDACTED:REDACTED@github.com#test.html"),
+          arguments(
+              "https://user1:secret@github.com?foo=b@r",
+              "https://REDACTED:REDACTED@github.com?foo=b@r"),
+          arguments(
+              "https://user1:secret@github.com/p@th?foo=b@r",
+              "https://REDACTED:REDACTED@github.com/p@th?foo=b@r"),
           arguments("https://github.com/p@th?foo=b@r", "https://github.com/p@th?foo=b@r"),
           arguments("https://github.com#t@st.html", "https://github.com#t@st.html"),
           arguments("user1:secret@github.com", "user1:secret@github.com"),

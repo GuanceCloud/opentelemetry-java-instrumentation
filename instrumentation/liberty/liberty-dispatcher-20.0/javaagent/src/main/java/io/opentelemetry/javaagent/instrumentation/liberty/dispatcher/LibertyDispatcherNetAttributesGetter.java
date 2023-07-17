@@ -9,11 +9,12 @@ import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributes
 import javax.annotation.Nullable;
 
 public class LibertyDispatcherNetAttributesGetter
-    implements NetServerAttributesGetter<LibertyRequest> {
+    implements NetServerAttributesGetter<LibertyRequest, LibertyResponse> {
 
   @Nullable
   @Override
-  public String getProtocolName(LibertyRequest request) {
+  public String getNetworkProtocolName(
+      LibertyRequest request, @Nullable LibertyResponse libertyResponse) {
     String protocol = request.getProtocol();
     if (protocol != null && protocol.startsWith("HTTP/")) {
       return "http";
@@ -23,7 +24,8 @@ public class LibertyDispatcherNetAttributesGetter
 
   @Nullable
   @Override
-  public String getProtocolVersion(LibertyRequest request) {
+  public String getNetworkProtocolVersion(
+      LibertyRequest request, @Nullable LibertyResponse libertyResponse) {
     String protocol = request.getProtocol();
     if (protocol != null && protocol.startsWith("HTTP/")) {
       return protocol.substring("HTTP/".length());
@@ -33,35 +35,35 @@ public class LibertyDispatcherNetAttributesGetter
 
   @Nullable
   @Override
-  public String getHostName(LibertyRequest request) {
+  public String getServerAddress(LibertyRequest request) {
     return request.request().getURLHost();
   }
 
   @Override
-  public Integer getHostPort(LibertyRequest request) {
+  public Integer getServerPort(LibertyRequest request) {
     return request.request().getURLPort();
   }
 
   @Override
   @Nullable
-  public String getSockPeerAddr(LibertyRequest request) {
-    return request.dispatcher().getRemoteHostAddress();
+  public String getClientSocketAddress(LibertyRequest request, @Nullable LibertyResponse response) {
+    return request.getClientSocketAddress();
   }
 
   @Override
-  public Integer getSockPeerPort(LibertyRequest request) {
-    return request.dispatcher().getRemotePort();
-  }
-
-  @Nullable
-  @Override
-  public String getSockHostAddr(LibertyRequest request) {
-    return request.dispatcher().getLocalHostAddress();
+  public Integer getClientSocketPort(LibertyRequest request, @Nullable LibertyResponse response) {
+    return request.getClientSocketPort();
   }
 
   @Nullable
   @Override
-  public Integer getSockHostPort(LibertyRequest request) {
-    return request.dispatcher().getLocalPort();
+  public String getServerSocketAddress(LibertyRequest request, @Nullable LibertyResponse response) {
+    return request.getServerSocketAddress();
+  }
+
+  @Nullable
+  @Override
+  public Integer getServerSocketPort(LibertyRequest request, @Nullable LibertyResponse response) {
+    return request.getServerSocketPort();
   }
 }

@@ -88,13 +88,12 @@ class KafkaStreamsSuppressReceiveSpansTest extends KafkaStreamsBaseTest {
       trace(0, 4) {
         // kafka-clients PRODUCER
         span(0) {
-          name STREAM_PENDING + " send"
+          name STREAM_PENDING + " publish"
           kind PRODUCER
           hasNoParent()
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PENDING
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" "producer-1"
             "$SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION" { it >= 0 }
             "$SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET" 0
@@ -109,7 +108,6 @@ class KafkaStreamsSuppressReceiveSpansTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PENDING
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "process"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.endsWith("consumer") }
             "$SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES" Long
@@ -129,13 +127,12 @@ class KafkaStreamsSuppressReceiveSpansTest extends KafkaStreamsBaseTest {
 
         // kafka-clients PRODUCER
         span(2) {
-          name STREAM_PROCESSED + " send"
+          name STREAM_PROCESSED + " publish"
           kind PRODUCER
           childOf span(1)
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PROCESSED
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" String
             "$SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION" { it >= 0 }
             "$SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET" 0
@@ -149,7 +146,6 @@ class KafkaStreamsSuppressReceiveSpansTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PROCESSED
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "process"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.startsWith("consumer") }
             "$SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES" Long

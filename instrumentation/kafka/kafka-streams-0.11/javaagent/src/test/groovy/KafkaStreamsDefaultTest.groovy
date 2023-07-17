@@ -84,7 +84,7 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
 
     assertTraces(3) {
       traces.sort(orderByRootSpanName(
-        STREAM_PENDING + " send",
+        STREAM_PENDING + " publish",
         STREAM_PENDING + " receive",
         STREAM_PROCESSED + " receive"))
 
@@ -93,13 +93,12 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
       trace(0, 1) {
         // kafka-clients PRODUCER
         span(0) {
-          name STREAM_PENDING + " send"
+          name STREAM_PENDING + " publish"
           kind PRODUCER
           hasNoParent()
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PENDING
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.startsWith("producer") }
             "$SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION" { it >= 0 }
             "$SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET" 0
@@ -118,7 +117,6 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PENDING
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "receive"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.endsWith("consumer") }
             if (Boolean.getBoolean("testLatestDeps")) {
@@ -136,7 +134,6 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PENDING
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "process"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.endsWith("consumer") }
             "$SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES" Long
@@ -153,13 +150,12 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
         }
         // kafka-clients PRODUCER
         span(2) {
-          name STREAM_PROCESSED + " send"
+          name STREAM_PROCESSED + " publish"
           kind PRODUCER
           childOf span(1)
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PROCESSED
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.endsWith("producer") }
             "$SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION" { it >= 0 }
             "$SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET" 0
@@ -177,7 +173,6 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PROCESSED
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "receive"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.startsWith("consumer") }
             if (Boolean.getBoolean("testLatestDeps")) {
@@ -195,7 +190,6 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
           attributes {
             "$SemanticAttributes.MESSAGING_SYSTEM" "kafka"
             "$SemanticAttributes.MESSAGING_DESTINATION_NAME" STREAM_PROCESSED
-            "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
             "$SemanticAttributes.MESSAGING_OPERATION" "process"
             "$SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID" { it.startsWith("consumer") }
             "$SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES" Long

@@ -34,8 +34,10 @@ val javaagentLibs by configurations.creating {
 listOf(baseJavaagentLibs, javaagentLibs).forEach {
   it.run {
     exclude("io.opentelemetry", "opentelemetry-api")
-    exclude("io.opentelemetry", "opentelemetry-api-logs")
+    exclude("io.opentelemetry", "opentelemetry-api-events")
     exclude("io.opentelemetry", "opentelemetry-semconv")
+    // metrics advice API
+    exclude("io.opentelemetry", "opentelemetry-extension-incubator")
   }
 }
 
@@ -45,8 +47,8 @@ val licenseReportDependencies by configurations.creating {
 
 dependencies {
   bootstrapLibs(project(":instrumentation-api"))
-  // opentelemetry-api is an api dependency of :instrumentation-api, but opentelemetry-api-logs is not
-  bootstrapLibs("io.opentelemetry:opentelemetry-api-logs")
+  // opentelemetry-api is an api dependency of :instrumentation-api, but opentelemetry-api-events is not
+  bootstrapLibs("io.opentelemetry:opentelemetry-api-events")
   bootstrapLibs(project(":instrumentation-api-semconv"))
   bootstrapLibs(project(":instrumentation-annotations-support"))
   bootstrapLibs(project(":javaagent-bootstrap"))

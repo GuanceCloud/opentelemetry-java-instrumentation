@@ -40,7 +40,7 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                 trace.hasSpansSatisfyingExactly(
                     span -> span.hasName("producer"),
                     span ->
-                        span.hasName("testSingleTopic send")
+                        span.hasName("testSingleTopic publish")
                             .hasKind(SpanKind.PRODUCER)
                             .hasParent(trace.getSpan(0))
                             .hasAttributesSatisfyingExactly(
@@ -48,7 +48,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testSingleTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 satisfies(
                                     SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                     stringAssert -> stringAssert.startsWith("producer")),
@@ -68,7 +67,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testSingleTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                                 satisfies(
                                     SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES,
@@ -112,7 +110,7 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                 trace.hasSpansSatisfyingExactly(
                     span -> span.hasName("producer"),
                     span ->
-                        span.hasName("testSingleTopic send")
+                        span.hasName("testSingleTopic publish")
                             .hasKind(SpanKind.PRODUCER)
                             .hasParent(trace.getSpan(0))
                             .hasAttributesSatisfyingExactly(
@@ -120,7 +118,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testSingleTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 satisfies(
                                     SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                     stringAssert -> stringAssert.startsWith("producer")),
@@ -142,7 +139,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testSingleTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                                 satisfies(
                                     SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES,
@@ -184,14 +180,13 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
               trace.hasSpansSatisfyingExactlyInAnyOrder(
                   span -> span.hasName("producer"),
                   span ->
-                      span.hasName("testBatchTopic send")
+                      span.hasName("testBatchTopic publish")
                           .hasKind(SpanKind.PRODUCER)
                           .hasParent(trace.getSpan(0))
                           .hasAttributesSatisfyingExactly(
                               equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                               equalTo(
                                   SemanticAttributes.MESSAGING_DESTINATION_NAME, "testBatchTopic"),
-                              equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                               satisfies(
                                   SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                   stringAssert -> stringAssert.startsWith("producer")),
@@ -203,14 +198,13 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                   AbstractLongAssert::isNotNegative),
                               equalTo(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_KEY, "10")),
                   span ->
-                      span.hasName("testBatchTopic send")
+                      span.hasName("testBatchTopic publish")
                           .hasKind(SpanKind.PRODUCER)
                           .hasParent(trace.getSpan(0))
                           .hasAttributesSatisfyingExactly(
                               equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                               equalTo(
                                   SemanticAttributes.MESSAGING_DESTINATION_NAME, "testBatchTopic"),
-                              equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                               satisfies(
                                   SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                   stringAssert -> stringAssert.startsWith("producer")),
@@ -240,7 +234,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testBatchTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                                 equalTo(
                                     SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP,
@@ -277,14 +270,13 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
               trace.hasSpansSatisfyingExactly(
                   span -> span.hasName("producer"),
                   span ->
-                      span.hasName("testBatchTopic send")
+                      span.hasName("testBatchTopic publish")
                           .hasKind(SpanKind.PRODUCER)
                           .hasParent(trace.getSpan(0))
                           .hasAttributesSatisfyingExactly(
                               equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                               equalTo(
                                   SemanticAttributes.MESSAGING_DESTINATION_NAME, "testBatchTopic"),
-                              equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                               satisfies(
                                   SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                   stringAssert -> stringAssert.startsWith("producer")),
@@ -312,7 +304,6 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                                 equalTo(
                                     SemanticAttributes.MESSAGING_DESTINATION_NAME,
                                     "testBatchTopic"),
-                                equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                                 equalTo(
                                     SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP,

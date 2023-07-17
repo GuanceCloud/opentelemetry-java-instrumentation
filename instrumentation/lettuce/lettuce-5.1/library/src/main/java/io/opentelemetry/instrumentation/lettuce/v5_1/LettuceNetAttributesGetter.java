@@ -5,29 +5,29 @@
 
 package io.opentelemetry.instrumentation.lettuce.v5_1;
 
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import io.opentelemetry.instrumentation.lettuce.v5_1.OpenTelemetryTracing.OpenTelemetryEndpoint;
 import java.net.InetSocketAddress;
 import javax.annotation.Nullable;
 
 final class LettuceNetAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<OpenTelemetryEndpoint, Void> {
+    implements NetClientAttributesGetter<OpenTelemetryEndpoint, Void> {
 
   @Nullable
   @Override
-  public String getPeerName(OpenTelemetryEndpoint openTelemetryEndpoint) {
+  public String getServerAddress(OpenTelemetryEndpoint openTelemetryEndpoint) {
     return null;
   }
 
   @Nullable
   @Override
-  public Integer getPeerPort(OpenTelemetryEndpoint openTelemetryEndpoint) {
+  public Integer getServerPort(OpenTelemetryEndpoint openTelemetryEndpoint) {
     return null;
   }
 
   @Nullable
   @Override
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       OpenTelemetryEndpoint openTelemetryEndpoint, @Nullable Void unused) {
     return openTelemetryEndpoint.address;
   }

@@ -5,6 +5,10 @@
 
 package io.opentelemetry.instrumentation.api.instrumenter.net;
 
+import io.opentelemetry.instrumentation.api.instrumenter.net.internal.InetSocketAddressUtil;
+import io.opentelemetry.instrumentation.api.instrumenter.network.NetworkAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesGetter;
+import java.net.InetSocketAddress;
 import javax.annotation.Nullable;
 
 /**
@@ -15,7 +19,8 @@ import javax.annotation.Nullable;
  * library/framework. It will be used by the NetClientAttributesExtractor to obtain the various
  * network attributes in a type-generic way.
  */
-public interface NetClientAttributesGetter<REQUEST, RESPONSE> {
+public interface NetClientAttributesGetter<REQUEST, RESPONSE>
+    extends NetworkAttributesGetter<REQUEST, RESPONSE>, ServerAttributesGetter<REQUEST, RESPONSE> {
 
   @Nullable
   default String getTransport(REQUEST request, @Nullable RESPONSE response) {
@@ -23,48 +28,28 @@ public interface NetClientAttributesGetter<REQUEST, RESPONSE> {
   }
 
   /**
-   * Returns the application protocol used.
+   * Returns the protocol <a
+   * href="https://man7.org/linux/man-pages/man7/address_families.7.html">address family</a> which
+   * is used for communication.
    *
-   * <p>Examples: `amqp`, `http`, `mqtt`.
-   */
-  @Nullable
-  default String getProtocolName(REQUEST request, @Nullable RESPONSE response) {
-    return null;
-  }
-
-  /**
-   * Returns the version of the application protocol used.
+   * <p>Examples: {@code inet}, {@code inet6}
    *
-   * <p>Examples: `3.1.1`.
+   * <p>By default, this method attempts to retrieve the address family using the {@link
+   * #getServerInetSocketAddress(Object, Object)} method. If it is not implemented, it will simply
+   * return {@code null}. If the instrumented library does not expose {@link InetSocketAddress} in
+   * its API, you might want to implement this method instead of {@link
+   * #getServerSocketAddress(Object, Object)}.
    */
-  @Nullable
-  default String getProtocolVersion(REQUEST request, @Nullable RESPONSE response) {
-    return null;
-  }
-
-  @Nullable
-  String getPeerName(REQUEST request);
-
-  @Nullable
-  Integer getPeerPort(REQUEST request);
-
   @Nullable
   default String getSockFamily(REQUEST request, @Nullable RESPONSE response) {
-    return null;
+    return InetSocketAddressUtil.getSockFamily(getServerInetSocketAddress(request, response), null);
   }
 
+  /** {@inheritDoc} */
   @Nullable
-  default String getSockPeerAddr(REQUEST request, @Nullable RESPONSE response) {
-    return null;
-  }
-
-  @Nullable
-  default String getSockPeerName(REQUEST request, @Nullable RESPONSE response) {
-    return null;
-  }
-
-  @Nullable
-  default Integer getSockPeerPort(REQUEST request, @Nullable RESPONSE response) {
-    return null;
+  @Override
+  default String getNetworkType(REQUEST request, @Nullable RESPONSE response) {
+    return InetSocketAddressUtil.getNetworkType(
+        getServerInetSocketAddress(request, response), null);
   }
 }

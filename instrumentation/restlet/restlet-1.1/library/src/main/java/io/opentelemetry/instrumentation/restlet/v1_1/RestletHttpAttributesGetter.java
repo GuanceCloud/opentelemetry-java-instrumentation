@@ -14,7 +14,6 @@ import java.util.List;
 import javax.annotation.Nullable;
 import org.restlet.data.Form;
 import org.restlet.data.Parameter;
-import org.restlet.data.Reference;
 import org.restlet.data.Request;
 import org.restlet.data.Response;
 import org.restlet.util.Series;
@@ -23,26 +22,30 @@ enum RestletHttpAttributesGetter implements HttpServerAttributesGetter<Request, 
   INSTANCE;
 
   @Override
-  public String getMethod(Request request) {
+  public String getHttpRequestMethod(Request request) {
     return request.getMethod().toString();
   }
 
   @Override
   @Nullable
-  public String getTarget(Request request) {
-    Reference ref = request.getOriginalRef();
-    String path = ref.getPath();
-    return ref.hasQuery() ? path + "?" + ref.getQuery() : path;
-  }
-
-  @Override
-  @Nullable
-  public String getScheme(Request request) {
+  public String getUrlScheme(Request request) {
     return request.getOriginalRef().getScheme();
   }
 
+  @Nullable
   @Override
-  public List<String> getRequestHeader(Request request, String name) {
+  public String getUrlPath(Request request) {
+    return request.getOriginalRef().getPath();
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(Request request) {
+    return request.getOriginalRef().getQuery();
+  }
+
+  @Override
+  public List<String> getHttpRequestHeader(Request request, String name) {
     Form headers = getHeaders(request);
     if (headers == null) {
       return Collections.emptyList();
@@ -51,12 +54,13 @@ enum RestletHttpAttributesGetter implements HttpServerAttributesGetter<Request, 
   }
 
   @Override
-  public Integer getStatusCode(Request request, Response response, @Nullable Throwable error) {
+  public Integer getHttpResponseStatusCode(
+      Request request, Response response, @Nullable Throwable error) {
     return response.getStatus().getCode();
   }
 
   @Override
-  public List<String> getResponseHeader(Request request, Response response, String name) {
+  public List<String> getHttpResponseHeader(Request request, Response response, String name) {
     Form headers = getHeaders(response);
     if (headers == null) {
       return Collections.emptyList();

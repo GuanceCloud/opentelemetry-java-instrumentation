@@ -7,15 +7,16 @@ package io.opentelemetry.instrumentation.awssdk.v2_2;
 
 import static io.opentelemetry.instrumentation.awssdk.v2_2.AwsSdkRequestType.DYNAMODB;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.contrib.awsxray.propagator.AwsXrayPropagator;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+import javax.annotation.Nullable;
 import software.amazon.awssdk.awscore.AwsResponse;
 import software.amazon.awssdk.core.ClientType;
 import software.amazon.awssdk.core.SdkRequest;
@@ -47,29 +48,52 @@ final class TracingExecutionInterceptor implements ExecutionInterceptor {
   private final Instrumenter<ExecutionAttributes, SdkHttpResponse> requestInstrumenter;
   private final Instrumenter<ExecutionAttributes, SdkHttpResponse> consumerInstrumenter;
   private final boolean captureExperimentalSpanAttributes;
+
+  Instrumenter<ExecutionAttributes, SdkHttpResponse> getConsumerInstrumenter() {
+    return consumerInstrumenter;
+  }
+
+  @Nullable
+  TextMapPropagator getMessagingPropagator() {
+    return messagingPropagator;
+  }
+
+  boolean shouldUseXrayPropagator() {
+    return useXrayPropagator;
+  }
+
+  @Nullable private final TextMapPropagator messagingPropagator;
+  private final boolean useXrayPropagator;
   private final FieldMapper fieldMapper;
 
   TracingExecutionInterceptor(
       Instrumenter<ExecutionAttributes, SdkHttpResponse> requestInstrumenter,
       Instrumenter<ExecutionAttributes, SdkHttpResponse> consumerInstrumenter,
-      boolean captureExperimentalSpanAttributes) {
+      boolean captureExperimentalSpanAttributes,
+      TextMapPropagator messagingPropagator,
+      boolean useXrayPropagator) {
     this.requestInstrumenter = requestInstrumenter;
     this.consumerInstrumenter = consumerInstrumenter;
     this.captureExperimentalSpanAttributes = captureExperimentalSpanAttributes;
+    this.messagingPropagator = messagingPropagator;
+    this.useXrayPropagator = useXrayPropagator;
     this.fieldMapper = new FieldMapper();
   }
 
   @Override
-  public void afterMarshalling(
-      Context.AfterMarshalling context, ExecutionAttributes executionAttributes) {
+  public SdkRequest modifyRequest(
+      Context.ModifyRequest context, ExecutionAttributes executionAttributes) {
+
+    // This is the latest point where we can start the span, since we might need to inject
+    // it into the request payload. This means that HTTP attributes need to be captured later.
 
     io.opentelemetry.context.Context parentOtelContext = io.opentelemetry.context.Context.current();
-    executionAttributes.putAttribute(SDK_REQUEST_ATTRIBUTE, context.request());
-    SdkHttpRequest httpRequest = context.httpRequest();
-    executionAttributes.putAttribute(SDK_HTTP_REQUEST_ATTRIBUTE, httpRequest);
+    SdkRequest request = context.request();
+    executionAttributes.putAttribute(SDK_REQUEST_ATTRIBUTE, request);
 
     if (!requestInstrumenter.shouldStart(parentOtelContext, executionAttributes)) {
-      return;
+      // NB: We also skip injection in case we don't start.
+      return request;
     }
 
     io.opentelemetry.context.Context otelContext =
@@ -96,37 +120,88 @@ final class TracingExecutionInterceptor implements ExecutionInterceptor {
       clearAttributes(executionAttributes);
       throw throwable;
     }
-  }
 
-  @Override
-  public SdkRequest modifyRequest(
-      Context.ModifyRequest context, ExecutionAttributes executionAttributes) {
-    SdkRequest request = context.request();
-    if (SqsReceiveMessageRequestAccess.isInstance(request)) {
-      List<String> existingAttributeNames = getAttributeNames(request);
-      if (!existingAttributeNames.contains(SqsParentContext.AWS_TRACE_SYSTEM_ATTRIBUTE)) {
-        List<String> attributeNames = new ArrayList<>();
-        attributeNames.addAll(existingAttributeNames);
-        attributeNames.add(SqsParentContext.AWS_TRACE_SYSTEM_ATTRIBUTE);
-        SdkRequest.Builder builder = request.toBuilder();
-        SqsReceiveMessageRequestAccess.attributeNamesWithStrings(builder, attributeNames);
-        return builder.build();
-      }
+    SdkRequest modifiedRequest =
+        SqsAccess.modifyRequest(request, otelContext, useXrayPropagator, messagingPropagator);
+    if (modifiedRequest != null) {
+      return modifiedRequest;
     }
+    modifiedRequest = SnsAccess.modifyRequest(request, otelContext, messagingPropagator);
+    if (modifiedRequest != null) {
+      return modifiedRequest;
+    }
+
+    // Insert other special handling here, following the same pattern as SQS and SNS.
+
     return request;
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  private static List<String> getAttributeNames(SdkRequest request) {
-    Optional<List> optional = request.getValueForField("AttributeNames", List.class);
-    return optional.isPresent() ? (List<String>) optional.get() : Collections.emptyList();
+  @Override
+  public void beforeTransmission(
+      Context.BeforeTransmission context, ExecutionAttributes executionAttributes) {
+    // In beforeTransmission we get access to the finalized http request, including modifications
+    // performed by other interceptors and the message signature.
+    // It is unlikely that further modifications are performed by the http client performing the
+    // request given that this would require the signature to be regenerated.
+    //
+    // Since we merge the HTTP attributes into an already started span instead of creating a
+    // full child span, we have to do some dirty work here.
+    //
+    // As per HTTP conventions, we should actually only create spans for the "physical" requests but
+    // not for the encompassing logical request, see
+    // https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/http.md#http-request-retries-and-redirects
+    // Specific AWS SDK conventions also don't mention this peculiar hybrid span convention, see
+    // https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/instrumentation/aws-sdk.md
+    //
+    // TODO: Consider removing net+http conventions & relying on lower-level client instrumentation
+
+    io.opentelemetry.context.Context otelContext = getContext(executionAttributes);
+    if (otelContext == null) {
+      // No context, no sense in doing anything else (but this is not expected)
+      return;
+    }
+
+    SdkHttpRequest httpRequest = context.httpRequest();
+    executionAttributes.putAttribute(SDK_HTTP_REQUEST_ATTRIBUTE, httpRequest);
+
+    // We ought to pass the parent of otelContext here, but we didn't store it, and it shouldn't
+    // make a difference (unless we start supporting the http.resend_count attribute in this
+    // instrumentation, which, logically, we can't on this level of abstraction)
+    onHttpRequestAvailable(executionAttributes, otelContext, Span.fromContext(otelContext));
+  }
+
+  private static void onHttpResponseAvailable(
+      ExecutionAttributes executionAttributes,
+      io.opentelemetry.context.Context otelContext,
+      Span span,
+      SdkHttpResponse httpResponse) {
+    // For the httpAttributesExtractor dance, see afterMarshalling
+    AttributesBuilder builder = Attributes.builder(); // NB: UnsafeAttributes are package-private
+    AwsSdkInstrumenterFactory.httpAttributesExtractor.onEnd(
+        builder, otelContext, executionAttributes, httpResponse, null);
+    span.setAllAttributes(builder.build());
+  }
+
+  private static void onHttpRequestAvailable(
+      ExecutionAttributes executionAttributes,
+      io.opentelemetry.context.Context parentContext,
+      Span span) {
+    AttributesBuilder builder = Attributes.builder(); // NB: UnsafeAttributes are package-private
+    AwsSdkInstrumenterFactory.httpAttributesExtractor.onStart(
+        builder, parentContext, executionAttributes);
+    span.setAllAttributes(builder.build());
   }
 
   @Override
   @SuppressWarnings("deprecation") // deprecated class to be updated once published in new location
   public SdkHttpRequest modifyHttpRequest(
       Context.ModifyHttpRequest context, ExecutionAttributes executionAttributes) {
+
     SdkHttpRequest httpRequest = context.httpRequest();
+
+    if (!useXrayPropagator) {
+      return httpRequest;
+    }
 
     io.opentelemetry.context.Context otelContext = getContext(executionAttributes);
     if (otelContext == null) {
@@ -158,8 +233,11 @@ final class TracingExecutionInterceptor implements ExecutionInterceptor {
   @Override
   public void afterExecution(
       Context.AfterExecution context, ExecutionAttributes executionAttributes) {
-    if (SqsReceiveMessageRequestAccess.isInstance(context.request())) {
-      afterConsumerResponse(executionAttributes, context.response(), context.httpResponse());
+
+    if (executionAttributes.getAttribute(SDK_HTTP_REQUEST_ATTRIBUTE) != null) {
+      // Other special handling could be shortcut-&&ed after this (false is returned if not
+      // handled).
+      SqsAccess.afterReceiveMessageExecution(context, executionAttributes, this);
     }
 
     io.opentelemetry.context.Context otelContext = getContext(executionAttributes);
@@ -170,41 +248,20 @@ final class TracingExecutionInterceptor implements ExecutionInterceptor {
       Span span = Span.fromContext(otelContext);
       onUserAgentHeaderAvailable(span, executionAttributes);
       onSdkResponse(span, context.response(), executionAttributes);
-      requestInstrumenter.end(otelContext, executionAttributes, context.httpResponse(), null);
+
+      SdkHttpResponse httpResponse = context.httpResponse();
+
+      onHttpResponseAvailable(
+          executionAttributes, otelContext, Span.fromContext(otelContext), httpResponse);
+      requestInstrumenter.end(otelContext, executionAttributes, httpResponse, null);
     }
     clearAttributes(executionAttributes);
-  }
-
-  /** Create and close CONSUMER span for each message consumed. */
-  private void afterConsumerResponse(
-      ExecutionAttributes executionAttributes, SdkResponse response, SdkHttpResponse httpResponse) {
-    List<Object> messages = getMessages(response);
-    for (Object message : messages) {
-      createConsumerSpan(message, executionAttributes, httpResponse);
-    }
-  }
-
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  private static List<Object> getMessages(SdkResponse response) {
-    Optional<List> optional = response.getValueForField("Messages", List.class);
-    return optional.isPresent() ? optional.get() : Collections.emptyList();
-  }
-
-  private void createConsumerSpan(
-      Object message, ExecutionAttributes executionAttributes, SdkHttpResponse httpResponse) {
-    io.opentelemetry.context.Context parentContext =
-        SqsParentContext.ofSystemAttributes(SqsMessageAccess.getAttributes(message));
-    if (consumerInstrumenter.shouldStart(parentContext, executionAttributes)) {
-      io.opentelemetry.context.Context context =
-          consumerInstrumenter.start(parentContext, executionAttributes);
-      consumerInstrumenter.end(context, executionAttributes, httpResponse, null);
-    }
   }
 
   // Certain headers in the request like User-Agent are only available after execution.
   private static void onUserAgentHeaderAvailable(Span span, ExecutionAttributes request) {
     List<String> userAgent =
-        AwsSdkInstrumenterFactory.httpAttributesGetter.getRequestHeader(request, "User-Agent");
+        AwsSdkInstrumenterFactory.httpAttributesGetter.getHttpRequestHeader(request, "User-Agent");
     if (!userAgent.isEmpty()) {
       span.setAttribute(SemanticAttributes.USER_AGENT_ORIGINAL, userAgent.get(0));
     }

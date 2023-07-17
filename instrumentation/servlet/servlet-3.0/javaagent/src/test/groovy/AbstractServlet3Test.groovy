@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.instrumentation.test.AgentTestTrait
 import io.opentelemetry.instrumentation.test.asserts.TraceAssert
 import io.opentelemetry.instrumentation.test.base.HttpServerTest
@@ -132,7 +133,7 @@ abstract class AbstractServlet3Test<SERVER, CONTEXT> extends HttpServerTest<SERV
 
   def "snippet injection with ServletOutputStream"() {
     setup:
-    ExperimentalSnippetHolder.setSnippet("\n  <script type=\"text/javascript\"> Test </script>")
+    ExperimentalSnippetHolder.setSnippet("\n  <script type=\"text/javascript\"> Test Test</script>")
     def request = request(HTML_SERVLET_OUTPUT_STREAM, "GET")
     def response = client.execute(request).aggregate().join()
 
@@ -141,7 +142,7 @@ abstract class AbstractServlet3Test<SERVER, CONTEXT> extends HttpServerTest<SERV
     String result = "<!DOCTYPE html>\n" +
       "<html lang=\"en\">\n" +
       "<head>\n" +
-      "  <script type=\"text/javascript\"> Test </script>\n" +
+      "  <script type=\"text/javascript\"> Test Test</script>\n" +
       "  <meta charset=\"UTF-8\">\n" +
       "  <title>Title</title>\n" +
       "</head>\n" +
@@ -151,6 +152,25 @@ abstract class AbstractServlet3Test<SERVER, CONTEXT> extends HttpServerTest<SERV
       "</html>"
     response.contentUtf8() == result
     response.headers().contentLength() == result.length()
+
+    cleanup:
+    ExperimentalSnippetHolder.setSnippet("")
+
+    def expectedRoute = expectedHttpRoute(HTML_SERVLET_OUTPUT_STREAM)
+    assertTraces(1) {
+      trace(0, 2) {
+        span(0) {
+          name "GET" + (expectedRoute != null ? " " + expectedRoute : "")
+          kind SpanKind.SERVER
+          hasNoParent()
+        }
+        span(1) {
+          name "controller"
+          kind SpanKind.INTERNAL
+          childOf span(0)
+        }
+      }
+    }
   }
 
   def "snippet injection with PrintWriter"() {
@@ -175,5 +195,24 @@ abstract class AbstractServlet3Test<SERVER, CONTEXT> extends HttpServerTest<SERV
 
     response.contentUtf8() == result
     response.headers().contentLength() == result.length()
+
+    cleanup:
+    ExperimentalSnippetHolder.setSnippet("")
+
+    def expectedRoute = expectedHttpRoute(HTML_PRINT_WRITER)
+    assertTraces(1) {
+      trace(0, 2) {
+        span(0) {
+          name "GET" + (expectedRoute != null ? " " + expectedRoute : "")
+          kind SpanKind.SERVER
+          hasNoParent()
+        }
+        span(1) {
+          name "controller"
+          kind SpanKind.INTERNAL
+          childOf span(0)
+        }
+      }
+    }
   }
 }

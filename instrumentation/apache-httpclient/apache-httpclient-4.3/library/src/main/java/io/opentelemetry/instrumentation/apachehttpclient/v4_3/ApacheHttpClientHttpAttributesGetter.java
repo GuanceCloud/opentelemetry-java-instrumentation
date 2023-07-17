@@ -17,29 +17,29 @@ enum ApacheHttpClientHttpAttributesGetter
   INSTANCE;
 
   @Override
-  public String getMethod(ApacheHttpClientRequest request) {
+  public String getHttpRequestMethod(ApacheHttpClientRequest request) {
     return request.getMethod();
   }
 
   @Override
   @Nullable
-  public String getUrl(ApacheHttpClientRequest request) {
+  public String getUrlFull(ApacheHttpClientRequest request) {
     return request.getUrl();
   }
 
   @Override
-  public List<String> getRequestHeader(ApacheHttpClientRequest request, String name) {
+  public List<String> getHttpRequestHeader(ApacheHttpClientRequest request, String name) {
     return request.getHeader(name);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       ApacheHttpClientRequest request, HttpResponse response, @Nullable Throwable error) {
     return response.getStatusLine().getStatusCode();
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       ApacheHttpClientRequest request, HttpResponse response, String name) {
     return headersToList(response.getHeaders(name));
   }

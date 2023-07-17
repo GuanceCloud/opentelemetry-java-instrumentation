@@ -79,13 +79,12 @@ class InterceptorsTest extends KafkaClientBaseTest {
                 span.hasName("parent").hasKind(SpanKind.INTERNAL).hasNoParent();
               },
               span -> {
-                span.hasName(SHARED_TOPIC + " send")
+                span.hasName(SHARED_TOPIC + " publish")
                     .hasKind(SpanKind.PRODUCER)
                     .hasParent(trace.getSpan(0))
                     .hasAttributesSatisfyingExactly(
                         equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                         equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, SHARED_TOPIC),
-                        equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                         satisfies(
                             SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                             stringAssert -> stringAssert.startsWith("producer")));
@@ -97,7 +96,6 @@ class InterceptorsTest extends KafkaClientBaseTest {
                     .hasAttributesSatisfyingExactly(
                         equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                         equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, SHARED_TOPIC),
-                        equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                         equalTo(SemanticAttributes.MESSAGING_OPERATION, "receive"),
                         equalTo(
                             SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES,

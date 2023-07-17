@@ -7,29 +7,29 @@ package io.opentelemetry.javaagent.instrumentation.cassandra.v4_0;
 
 import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.metadata.Node;
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import javax.annotation.Nullable;
 
 final class CassandraNetAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<CassandraRequest, ExecutionInfo> {
+    implements NetClientAttributesGetter<CassandraRequest, ExecutionInfo> {
 
   @Nullable
   @Override
-  public String getPeerName(CassandraRequest request) {
+  public String getServerAddress(CassandraRequest request) {
     return null;
   }
 
   @Nullable
   @Override
-  public Integer getPeerPort(CassandraRequest request) {
+  public Integer getServerPort(CassandraRequest request) {
     return null;
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       CassandraRequest request, @Nullable ExecutionInfo executionInfo) {
     if (executionInfo == null) {
       return null;

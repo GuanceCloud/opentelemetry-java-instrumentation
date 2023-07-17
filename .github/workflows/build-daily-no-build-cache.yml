@@ -1,4 +1,4 @@
-name: Build (daily, --no-build-cache)
+name: Build (daily --no-build-cache)
 
 on:
   schedule:
@@ -34,7 +34,7 @@ jobs:
     if: always()
     uses: ./.github/workflows/reusable-workflow-notification.yml
     with:
-      success: |
+      success: >-
         ${{
           needs.common.result == 'success' &&
           needs.test-latest-deps.result == 'success'

@@ -14,42 +14,43 @@ public class LibertyDispatcherHttpAttributesGetter
 
   @Override
   @Nullable
-  public String getMethod(LibertyRequest libertyRequest) {
+  public String getHttpRequestMethod(LibertyRequest libertyRequest) {
     return libertyRequest.getMethod();
   }
 
   @Override
-  public List<String> getRequestHeader(LibertyRequest libertyRequest, String name) {
+  public List<String> getHttpRequestHeader(LibertyRequest libertyRequest, String name) {
     return libertyRequest.getHeaderValues(name);
   }
 
   @Override
   @Nullable
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       LibertyRequest libertyRequest, LibertyResponse libertyResponse, @Nullable Throwable error) {
     return libertyResponse.getStatus();
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       LibertyRequest libertyRequest, LibertyResponse libertyResponse, String name) {
     return libertyResponse.getHeaderValues(name);
   }
 
   @Override
   @Nullable
-  public String getTarget(LibertyRequest libertyRequest) {
-    String requestUri = libertyRequest.getRequestUri();
-    String queryString = libertyRequest.getQueryString();
-    if (queryString != null && !queryString.isEmpty()) {
-      return requestUri + "?" + queryString;
-    }
-    return requestUri;
+  public String getUrlScheme(LibertyRequest libertyRequest) {
+    return libertyRequest.getScheme();
   }
 
-  @Override
   @Nullable
-  public String getScheme(LibertyRequest libertyRequest) {
-    return libertyRequest.getScheme();
+  @Override
+  public String getUrlPath(LibertyRequest request) {
+    return request.getRequestUri();
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(LibertyRequest request) {
+    return request.getQueryString();
   }
 }

@@ -17,39 +17,41 @@ class AkkaHttpServerAttributesGetter
     implements HttpServerAttributesGetter<HttpRequest, HttpResponse> {
 
   @Override
-  public String getMethod(HttpRequest request) {
+  public String getHttpRequestMethod(HttpRequest request) {
     return request.method().value();
   }
 
   @Override
-  public List<String> getRequestHeader(HttpRequest request, String name) {
+  public List<String> getHttpRequestHeader(HttpRequest request, String name) {
     return AkkaHttpUtil.requestHeader(request, name);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       HttpRequest request, HttpResponse httpResponse, @Nullable Throwable error) {
     return httpResponse.status().intValue();
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       HttpRequest request, HttpResponse httpResponse, String name) {
     return AkkaHttpUtil.responseHeader(httpResponse, name);
   }
 
   @Override
-  public String getTarget(HttpRequest request) {
-    String target = request.uri().path().toString();
-    Option<String> queryString = request.uri().rawQueryString();
-    if (queryString.isDefined()) {
-      target += "?" + queryString.get();
-    }
-    return target;
+  public String getUrlScheme(HttpRequest request) {
+    return request.uri().scheme();
   }
 
   @Override
-  public String getScheme(HttpRequest request) {
-    return request.uri().scheme();
+  public String getUrlPath(HttpRequest request) {
+    return request.uri().path().toString();
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(HttpRequest request) {
+    Option<String> queryString = request.uri().rawQueryString();
+    return queryString.isDefined() ? queryString.get() : null;
   }
 }

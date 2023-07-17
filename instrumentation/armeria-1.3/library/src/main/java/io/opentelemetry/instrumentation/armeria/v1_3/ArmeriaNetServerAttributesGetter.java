@@ -7,54 +7,49 @@ package io.opentelemetry.instrumentation.armeria.v1_3;
 
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.common.SessionProtocol;
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetServerAttributesGetter;
+import com.linecorp.armeria.common.logging.RequestLog;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributesGetter;
+import io.opentelemetry.instrumentation.armeria.v1_3.internal.RequestContextAccess;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import javax.annotation.Nullable;
 
 final class ArmeriaNetServerAttributesGetter
-    extends InetSocketAddressNetServerAttributesGetter<RequestContext> {
+    implements NetServerAttributesGetter<RequestContext, RequestLog> {
 
   @Override
-  public String getProtocolName(RequestContext ctx) {
+  public String getNetworkProtocolName(RequestContext ctx, @Nullable RequestLog requestLog) {
     return "http";
   }
 
   @Override
-  public String getProtocolVersion(RequestContext ctx) {
+  public String getNetworkProtocolVersion(RequestContext ctx, @Nullable RequestLog requestLog) {
     SessionProtocol protocol = ctx.sessionProtocol();
     return protocol.isMultiplex() ? "2.0" : "1.1";
   }
 
   @Nullable
   @Override
-  public String getHostName(RequestContext ctx) {
+  public String getServerAddress(RequestContext ctx) {
     return null;
   }
 
   @Nullable
   @Override
-  public Integer getHostPort(RequestContext ctx) {
+  public Integer getServerPort(RequestContext ctx) {
     return null;
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(RequestContext ctx) {
-    SocketAddress address = ctx.remoteAddress();
-    if (address instanceof InetSocketAddress) {
-      return (InetSocketAddress) address;
-    }
-    return null;
+  public InetSocketAddress getClientInetSocketAddress(
+      RequestContext ctx, @Nullable RequestLog requestLog) {
+    return RequestContextAccess.remoteAddress(ctx);
   }
 
   @Nullable
   @Override
-  protected InetSocketAddress getHostSocketAddress(RequestContext ctx) {
-    SocketAddress address = ctx.localAddress();
-    if (address instanceof InetSocketAddress) {
-      return (InetSocketAddress) address;
-    }
-    return null;
+  public InetSocketAddress getServerInetSocketAddress(
+      RequestContext ctx, @Nullable RequestLog log) {
+    return RequestContextAccess.localAddress(ctx);
   }
 }

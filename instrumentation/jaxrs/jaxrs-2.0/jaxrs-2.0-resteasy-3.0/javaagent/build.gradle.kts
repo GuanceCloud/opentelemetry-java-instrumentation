@@ -47,6 +47,11 @@ dependencies {
   testInstrumentation(project(":instrumentation:servlet:servlet-3.0:javaagent"))
   testInstrumentation(project(":instrumentation:servlet:servlet-javax-common:javaagent"))
   testInstrumentation(project(":instrumentation:undertow-1.4:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxrs:jaxrs-2.0:jaxrs-2.0-cxf-3.2:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxrs:jaxrs-2.0:jaxrs-2.0-jersey-2.0:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxrs:jaxrs-2.0:jaxrs-2.0-resteasy-3.1:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxrs:jaxrs-3.0:jaxrs-3.0-jersey-3.0:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxrs:jaxrs-3.0:jaxrs-3.0-resteasy-6.0:javaagent"))
 
   testImplementation(project(":instrumentation:jaxrs:jaxrs-2.0:jaxrs-2.0-common:testing"))
   testImplementation("org.eclipse.jetty:jetty-webapp:9.4.6.v20170531")
@@ -54,7 +59,7 @@ dependencies {
   testLibrary("org.jboss.resteasy:resteasy-undertow:3.0.4.Final") {
     exclude("org.jboss.resteasy", "resteasy-client")
   }
-  testLibrary("io.undertow:undertow-servlet:1.4.28.Final")
+  testImplementation("io.undertow:undertow-servlet:1.4.28.Final")
   testLibrary("org.jboss.resteasy:resteasy-servlet-initializer:3.0.4.Final")
 
   latestDepTestLibrary("org.jboss.resteasy:resteasy-servlet-initializer:3.0.+") // see jaxrs-3.0-resteasy-3.1 module
@@ -62,7 +67,7 @@ dependencies {
   latestDepTestLibrary("org.jboss.resteasy:resteasy-undertow:3.0.+") { // see jaxrs-3.0-resteasy-3.1 module
     exclude("org.jboss.resteasy", "resteasy-client")
   }
-  latestDepTestLibrary("io.undertow:undertow-servlet:2.2.+") // 2.3 switches to Servlet 5 / Jakarta namespace
+  latestDepTestLibrary("io.undertow:undertow-servlet:2.2.24.Final") // 2.3 switches to Servlet 5 / Jakarta namespace
 }
 
 tasks {

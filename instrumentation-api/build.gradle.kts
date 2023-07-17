@@ -13,12 +13,12 @@ group = "io.opentelemetry.instrumentation"
 
 dependencies {
   api("io.opentelemetry:opentelemetry-api")
+  implementation("io.opentelemetry:opentelemetry-extension-incubator")
 
   compileOnly("com.google.auto.value:auto-value-annotations")
   annotationProcessor("com.google.auto.value:auto-value")
 
   testImplementation(project(":testing-common"))
-  testImplementation("io.opentelemetry:opentelemetry-sdk-metrics")
   testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
   testImplementation("org.junit-pioneer:junit-pioneer")
 

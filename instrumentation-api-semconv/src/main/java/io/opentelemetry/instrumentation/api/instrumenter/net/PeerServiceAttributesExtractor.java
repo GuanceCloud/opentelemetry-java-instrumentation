@@ -8,6 +8,7 @@ package io.opentelemetry.instrumentation.api.instrumenter.net;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesGetter;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -20,12 +21,12 @@ import javax.annotation.Nullable;
 public final class PeerServiceAttributesExtractor<REQUEST, RESPONSE>
     implements AttributesExtractor<REQUEST, RESPONSE> {
 
-  private final NetClientAttributesGetter<REQUEST, RESPONSE> attributesGetter;
+  private final ServerAttributesGetter<REQUEST, RESPONSE> attributesGetter;
   private final Map<String, String> peerServiceMapping;
 
   // visible for tests
   PeerServiceAttributesExtractor(
-      NetClientAttributesGetter<REQUEST, RESPONSE> attributesGetter,
+      ServerAttributesGetter<REQUEST, RESPONSE> attributesGetter,
       Map<String, String> peerServiceMapping) {
     this.attributesGetter = attributesGetter;
     this.peerServiceMapping = peerServiceMapping;
@@ -36,7 +37,7 @@ public final class PeerServiceAttributesExtractor<REQUEST, RESPONSE>
    * netAttributesExtractor} instance to determine the value of the {@code peer.service} attribute.
    */
   public static <REQUEST, RESPONSE> AttributesExtractor<REQUEST, RESPONSE> create(
-      NetClientAttributesGetter<REQUEST, RESPONSE> attributesGetter,
+      ServerAttributesGetter<REQUEST, RESPONSE> attributesGetter,
       Map<String, String> peerServiceMapping) {
     return new PeerServiceAttributesExtractor<>(attributesGetter, peerServiceMapping);
   }
@@ -57,11 +58,11 @@ public final class PeerServiceAttributesExtractor<REQUEST, RESPONSE>
       return;
     }
 
-    String peerName = attributesGetter.getPeerName(request);
-    String peerService = mapToPeerService(peerName);
+    String serverAddress = attributesGetter.getServerAddress(request);
+    String peerService = mapToPeerService(serverAddress);
     if (peerService == null) {
-      String sockPeerName = attributesGetter.getSockPeerName(request, response);
-      peerService = mapToPeerService(sockPeerName);
+      String serverSocketDomain = attributesGetter.getServerSocketDomain(request, response);
+      peerService = mapToPeerService(serverSocketDomain);
     }
     if (peerService != null) {
       attributes.put(SemanticAttributes.PEER_SERVICE, peerService);
@@ -69,7 +70,7 @@ public final class PeerServiceAttributesExtractor<REQUEST, RESPONSE>
   }
 
   @Nullable
-  private String mapToPeerService(String endpoint) {
+  private String mapToPeerService(@Nullable String endpoint) {
     if (endpoint == null) {
       return null;
     }

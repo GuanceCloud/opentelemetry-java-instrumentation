@@ -18,29 +18,29 @@ enum WebClientHttpAttributesGetter
   INSTANCE;
 
   @Override
-  public String getUrl(ClientRequest request) {
+  public String getUrlFull(ClientRequest request) {
     return request.url().toString();
   }
 
   @Override
-  public String getMethod(ClientRequest request) {
+  public String getHttpRequestMethod(ClientRequest request) {
     return request.method().name();
   }
 
   @Override
-  public List<String> getRequestHeader(ClientRequest request, String name) {
+  public List<String> getHttpRequestHeader(ClientRequest request, String name) {
     return request.headers().getOrDefault(name, emptyList());
   }
 
   @Override
   @Nullable
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       ClientRequest request, ClientResponse response, @Nullable Throwable error) {
     return StatusCodes.get(response);
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       ClientRequest request, ClientResponse response, String name) {
     return response.headers().header(name);
   }

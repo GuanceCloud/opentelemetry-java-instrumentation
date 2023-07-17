@@ -14,6 +14,7 @@ release](https://search.maven.org/search?q=g:io.opentelemetry.instrumentation%20
 For Maven, add to your `pom.xml` dependencies:
 
 ```xml
+
 <dependencies>
   <dependency>
     <groupId>io.opentelemetry.instrumentation</groupId>
@@ -53,17 +54,25 @@ The following demonstrates how you might configure the appender in your `log4j.x
 </Configuration>
 ```
 
-Next, configure `GlobalLoggerProvider` with an `SdkLoggerProvider` in your application.
-
-```
-SdkLoggerProvider sdkLoggerProvider =
-  SdkLoggerProvider.builder()
-    .setResource(Resource.create(...))
-    .addLogProcessor(...)
-    .build();
-GlobalLoggerProvider.set(sdkLoggerProvider);
-```
-
 In this example Log4j2 log events will be sent to both the console appender and
-the `OpenTelemetryAppender`, which will drop the logs until `GlobalLoggerProvider.set(..)` is
-called. Once initialized, logs will be emitted to a `Logger` obtained from the `SdkLoggerProvider`.
+the `OpenTelemetryAppender`.
+
+In order to function, `OpenTelemetryAppender` needs access to an `OpenTelemetry` instance. This must
+be set programmatically during application startup as follows:
+
+```java
+import io.opentelemetry.instrumentation.log4j.appender.v2_17.OpenTelemetryAppender;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+
+public class Application {
+
+  public static void main(String[] args) {
+    OpenTelemetrySdk openTelemetrySdk = // Configure OpenTelemetrySdk
+
+    // Find OpenTelemetryAppender in log4j configuration and install openTelemetrySdk
+    OpenTelemetryAppender.install(openTelemetrySdk);
+
+    // ... proceed with application
+  }
+}
+```

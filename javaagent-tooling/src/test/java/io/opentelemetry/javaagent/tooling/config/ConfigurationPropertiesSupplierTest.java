@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.events.GlobalEventEmitterProvider;
-import io.opentelemetry.api.logs.GlobalLoggerProvider;
 import io.opentelemetry.javaagent.tooling.OpenTelemetryInstaller;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.internal.AutoConfigureUtil;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizer;
 import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvider;
 import java.io.IOException;
@@ -33,7 +33,6 @@ class ConfigurationPropertiesSupplierTest {
   @AfterAll
   static void cleanUp() {
     GlobalOpenTelemetry.resetForTest();
-    GlobalLoggerProvider.resetForTest();
     GlobalEventEmitterProvider.resetForTest();
   }
 
@@ -51,7 +50,8 @@ class ConfigurationPropertiesSupplierTest {
         OpenTelemetryInstaller.installOpenTelemetrySdk(this.getClass().getClassLoader());
 
     // then
-    assertThat(autoConfiguredSdk.getConfig().getString("custom.key")).isEqualTo("42");
+    assertThat(AutoConfigureUtil.getConfig(autoConfiguredSdk).getString("custom.key"))
+        .isEqualTo("42");
   }
 
   // SPI used in test

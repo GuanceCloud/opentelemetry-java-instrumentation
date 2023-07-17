@@ -6,7 +6,7 @@
 package io.opentelemetry.instrumentation.apachedubbo.v2_7.internal;
 
 import io.opentelemetry.instrumentation.apachedubbo.v2_7.DubboRequest;
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import java.net.InetSocketAddress;
 import javax.annotation.Nullable;
 import org.apache.dubbo.rpc.Result;
@@ -16,22 +16,22 @@ import org.apache.dubbo.rpc.Result;
  * any time.
  */
 public final class DubboNetClientAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<DubboRequest, Result> {
+    implements NetClientAttributesGetter<DubboRequest, Result> {
 
   @Nullable
   @Override
-  public String getPeerName(DubboRequest request) {
+  public String getServerAddress(DubboRequest request) {
     return request.url().getHost();
   }
 
   @Override
-  public Integer getPeerPort(DubboRequest request) {
+  public Integer getServerPort(DubboRequest request) {
     return request.url().getPort();
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       DubboRequest request, @Nullable Result response) {
     return request.remoteAddress();
   }

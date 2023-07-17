@@ -9,9 +9,8 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.RequestContext;
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.common.logging.RequestLog;
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import javax.annotation.Nullable;
 
 /**
@@ -19,22 +18,22 @@ import javax.annotation.Nullable;
  * any time.
  */
 public final class ArmeriaNetClientAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<RequestContext, RequestLog> {
+    implements NetClientAttributesGetter<RequestContext, RequestLog> {
 
   @Override
-  public String getProtocolName(RequestContext ctx, @Nullable RequestLog requestLog) {
+  public String getNetworkProtocolName(RequestContext ctx, @Nullable RequestLog requestLog) {
     return "http";
   }
 
   @Override
-  public String getProtocolVersion(RequestContext ctx, @Nullable RequestLog requestLog) {
+  public String getNetworkProtocolVersion(RequestContext ctx, @Nullable RequestLog requestLog) {
     SessionProtocol protocol = ctx.sessionProtocol();
     return protocol.isMultiplex() ? "2.0" : "1.1";
   }
 
   @Nullable
   @Override
-  public String getPeerName(RequestContext ctx) {
+  public String getServerAddress(RequestContext ctx) {
     HttpRequest request = request(ctx);
     String authority = request.authority();
     if (authority == null) {
@@ -46,7 +45,7 @@ public final class ArmeriaNetClientAttributesGetter
 
   @Nullable
   @Override
-  public Integer getPeerPort(RequestContext ctx) {
+  public Integer getServerPort(RequestContext ctx) {
     HttpRequest request = request(ctx);
     String authority = request.authority();
     if (authority == null) {
@@ -65,13 +64,9 @@ public final class ArmeriaNetClientAttributesGetter
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       RequestContext ctx, @Nullable RequestLog requestLog) {
-    SocketAddress address = ctx.remoteAddress();
-    if (address instanceof InetSocketAddress) {
-      return (InetSocketAddress) address;
-    }
-    return null;
+    return RequestContextAccess.remoteAddress(ctx);
   }
 
   private static HttpRequest request(RequestContext ctx) {

@@ -21,18 +21,18 @@ enum SpringWebMvcHttpAttributesGetter
 
   @Override
   @Nullable
-  public String getMethod(HttpServletRequest request) {
+  public String getHttpRequestMethod(HttpServletRequest request) {
     return request.getMethod();
   }
 
   @Override
-  public List<String> getRequestHeader(HttpServletRequest request, String name) {
+  public List<String> getHttpRequestHeader(HttpServletRequest request, String name) {
     Enumeration<String> headers = request.getHeaders(name);
     return headers == null ? Collections.emptyList() : Collections.list(headers);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       HttpServletRequest request, HttpServletResponse response, @Nullable Throwable error) {
 
     int statusCode;
@@ -51,7 +51,7 @@ enum SpringWebMvcHttpAttributesGetter
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       HttpServletRequest request, HttpServletResponse response, String name) {
     Collection<String> headers = response.getHeaders(name);
     if (headers == null) {
@@ -65,18 +65,19 @@ enum SpringWebMvcHttpAttributesGetter
 
   @Override
   @Nullable
-  public String getTarget(HttpServletRequest request) {
-    String target = request.getRequestURI();
-    String queryString = request.getQueryString();
-    if (queryString != null) {
-      target += "?" + queryString;
-    }
-    return target;
+  public String getUrlScheme(HttpServletRequest request) {
+    return request.getScheme();
   }
 
-  @Override
   @Nullable
-  public String getScheme(HttpServletRequest request) {
-    return request.getScheme();
+  @Override
+  public String getUrlPath(HttpServletRequest request) {
+    return request.getRequestURI();
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(HttpServletRequest request) {
+    return request.getQueryString();
   }
 }

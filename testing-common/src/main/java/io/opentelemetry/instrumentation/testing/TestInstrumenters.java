@@ -142,57 +142,58 @@ final class TestInstrumenters {
     INSTANCE;
 
     @Override
-    public String getMethod(String unused) {
+    public String getHttpRequestMethod(String unused) {
       return "GET";
     }
 
     @Override
-    public List<String> getRequestHeader(String unused, String name) {
+    public List<String> getHttpRequestHeader(String unused, String name) {
       return emptyList();
     }
 
     @Nullable
     @Override
-    public Integer getStatusCode(String unused, Void unused2, @Nullable Throwable error) {
+    public Integer getHttpResponseStatusCode(
+        String unused, Void unused2, @Nullable Throwable error) {
       return null;
     }
 
     @Override
-    public List<String> getResponseHeader(String unused, Void unused2, String name) {
+    public List<String> getHttpResponseHeader(String unused, Void unused2, String name) {
       return emptyList();
     }
 
     @Nullable
     @Override
-    public String getTarget(String unused) {
+    public String getUrlScheme(String unused) {
       return null;
     }
 
     @Nullable
     @Override
-    public String getRoute(String unused) {
+    public String getUrlPath(String s) {
       return null;
     }
 
     @Nullable
     @Override
-    public String getScheme(String unused) {
+    public String getUrlQuery(String s) {
       return null;
     }
   }
 
-  private enum NetServerGetter implements NetServerAttributesGetter<String> {
+  private enum NetServerGetter implements NetServerAttributesGetter<String, Void> {
     INSTANCE;
 
     @Nullable
     @Override
-    public String getHostName(String unused) {
+    public String getServerAddress(String unused) {
       return null;
     }
 
     @Nullable
     @Override
-    public Integer getHostPort(String unused) {
+    public Integer getServerPort(String unused) {
       return null;
     }
   }

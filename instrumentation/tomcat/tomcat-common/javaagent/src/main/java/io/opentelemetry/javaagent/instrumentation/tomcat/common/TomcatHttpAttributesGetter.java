@@ -18,41 +18,43 @@ import org.apache.tomcat.util.buf.MessageBytes;
 public class TomcatHttpAttributesGetter implements HttpServerAttributesGetter<Request, Response> {
 
   @Override
-  public String getMethod(Request request) {
+  public String getHttpRequestMethod(Request request) {
     return messageBytesToString(request.method());
   }
 
   @Override
   @Nullable
-  public String getTarget(Request request) {
-    String target = messageBytesToString(request.requestURI());
-    String queryString = messageBytesToString(request.queryString());
-    if (queryString != null) {
-      target += "?" + queryString;
-    }
-    return target;
-  }
-
-  @Override
-  @Nullable
-  public String getScheme(Request request) {
+  public String getUrlScheme(Request request) {
     MessageBytes schemeMessageBytes = request.scheme();
     return schemeMessageBytes.isNull() ? "http" : messageBytesToString(schemeMessageBytes);
   }
 
+  @Nullable
   @Override
-  public List<String> getRequestHeader(Request request, String name) {
+  public String getUrlPath(Request request) {
+    return messageBytesToString(request.requestURI());
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(Request request) {
+    return messageBytesToString(request.queryString());
+  }
+
+  @Override
+  public List<String> getHttpRequestHeader(Request request, String name) {
     return Collections.list(request.getMimeHeaders().values(name));
   }
 
   @Override
   @Nullable
-  public Integer getStatusCode(Request request, Response response, @Nullable Throwable error) {
+  public Integer getHttpResponseStatusCode(
+      Request request, Response response, @Nullable Throwable error) {
     return response.getStatus();
   }
 
   @Override
-  public List<String> getResponseHeader(Request request, Response response, String name) {
+  public List<String> getHttpResponseHeader(Request request, Response response, String name) {
     return Collections.list(response.getMimeHeaders().values(name));
   }
 }

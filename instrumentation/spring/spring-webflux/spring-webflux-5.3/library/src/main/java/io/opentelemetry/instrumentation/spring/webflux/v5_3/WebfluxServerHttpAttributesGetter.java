@@ -18,42 +18,49 @@ enum WebfluxServerHttpAttributesGetter
   INSTANCE;
 
   @Override
-  public String getMethod(ServerWebExchange request) {
+  public String getHttpRequestMethod(ServerWebExchange request) {
     return request.getRequest().getMethodValue();
   }
 
   @Override
-  public List<String> getRequestHeader(ServerWebExchange request, String name) {
+  public List<String> getHttpRequestHeader(ServerWebExchange request, String name) {
     return request.getRequest().getHeaders().getOrDefault(name, Collections.emptyList());
   }
 
   @Nullable
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       ServerWebExchange request, ServerWebExchange response, @Nullable Throwable error) {
     return response.getResponse().getRawStatusCode();
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       ServerWebExchange request, ServerWebExchange response, String name) {
     return response.getResponse().getHeaders().getOrDefault(name, Collections.emptyList());
   }
 
   @Nullable
   @Override
-  public String getTarget(ServerWebExchange request) {
-    String path = request.getRequest().getURI().getPath();
-    String query = request.getRequest().getURI().getQuery();
-    if (path == null && query == null) {
-      return null;
-    }
-    return (path == null ? "" : path) + (query == null ? "" : "?" + query);
+  public String getUrlScheme(ServerWebExchange request) {
+    return request.getRequest().getURI().getScheme();
   }
 
   @Nullable
   @Override
-  public String getRoute(ServerWebExchange request) {
+  public String getUrlPath(ServerWebExchange request) {
+    return request.getRequest().getURI().getPath();
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(ServerWebExchange request) {
+    return request.getRequest().getURI().getQuery();
+  }
+
+  @Nullable
+  @Override
+  public String getHttpRoute(ServerWebExchange request) {
     Object bestPatternObj = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
     if (bestPatternObj == null) {
       return null;
@@ -69,11 +76,5 @@ enum WebfluxServerHttpAttributesGetter
     }
     String contextPath = request.getRequest().getPath().contextPath().value();
     return contextPath + (route.startsWith("/") ? route : ("/" + route));
-  }
-
-  @Nullable
-  @Override
-  public String getScheme(ServerWebExchange request) {
-    return request.getRequest().getURI().getScheme();
   }
 }

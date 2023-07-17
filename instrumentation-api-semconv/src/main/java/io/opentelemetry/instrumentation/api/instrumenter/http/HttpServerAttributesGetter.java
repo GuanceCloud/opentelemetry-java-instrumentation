@@ -5,7 +5,7 @@
 
 package io.opentelemetry.instrumentation.api.instrumenter.http;
 
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.url.UrlAttributesGetter;
 import javax.annotation.Nullable;
 
 /**
@@ -16,30 +16,31 @@ import javax.annotation.Nullable;
  * various HTTP server attributes in a type-generic way.
  */
 public interface HttpServerAttributesGetter<REQUEST, RESPONSE>
-    extends HttpCommonAttributesGetter<REQUEST, RESPONSE> {
+    extends HttpCommonAttributesGetter<REQUEST, RESPONSE>, UrlAttributesGetter<REQUEST> {
 
-  // Attributes that always exist in a request
+  /** {@inheritDoc} */
+  @Nullable
+  @Override
+  String getUrlScheme(REQUEST request);
+
+  /** {@inheritDoc} */
+  @Nullable
+  @Override
+  String getUrlPath(REQUEST request);
+
+  /** {@inheritDoc} */
+  @Nullable
+  @Override
+  String getUrlQuery(REQUEST request);
 
   /**
-   * Extracts the {@code http.flavor} span attribute.
+   * Returns the matched route (path template in the format used by the respective server
+   * framework).
    *
-   * @deprecated Use {@link NetServerAttributesGetter#getProtocolName(Object)} and {@link
-   *     NetServerAttributesGetter#getProtocolVersion(Object)} instead.
+   * <p>Examples: {@code /users/:userID?}, {@code {controller}/{action}/{id?}}
    */
-  @Deprecated
   @Nullable
-  default String getFlavor(REQUEST request) {
+  default String getHttpRoute(REQUEST request) {
     return null;
   }
-
-  @Nullable
-  String getTarget(REQUEST request);
-
-  @Nullable
-  default String getRoute(REQUEST request) {
-    return null;
-  }
-
-  @Nullable
-  String getScheme(REQUEST request);
 }

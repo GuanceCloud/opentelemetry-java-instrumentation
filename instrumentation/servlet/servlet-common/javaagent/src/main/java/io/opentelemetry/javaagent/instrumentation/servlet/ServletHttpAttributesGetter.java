@@ -21,36 +21,37 @@ public class ServletHttpAttributesGetter<REQUEST, RESPONSE>
 
   @Override
   @Nullable
-  public String getMethod(ServletRequestContext<REQUEST> requestContext) {
+  public String getHttpRequestMethod(ServletRequestContext<REQUEST> requestContext) {
     return accessor.getRequestMethod(requestContext.request());
   }
 
   @Override
   @Nullable
-  public String getTarget(ServletRequestContext<REQUEST> requestContext) {
-    REQUEST request = requestContext.request();
-    String target = accessor.getRequestUri(request);
-    String queryString = accessor.getRequestQueryString(request);
-    if (queryString != null) {
-      target += "?" + queryString;
-    }
-    return target;
-  }
-
-  @Override
-  @Nullable
-  public String getScheme(ServletRequestContext<REQUEST> requestContext) {
+  public String getUrlScheme(ServletRequestContext<REQUEST> requestContext) {
     return accessor.getRequestScheme(requestContext.request());
   }
 
+  @Nullable
   @Override
-  public List<String> getRequestHeader(ServletRequestContext<REQUEST> requestContext, String name) {
+  public String getUrlPath(ServletRequestContext<REQUEST> requestContext) {
+    return accessor.getRequestUri(requestContext.request());
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(ServletRequestContext<REQUEST> requestContext) {
+    return accessor.getRequestQueryString(requestContext.request());
+  }
+
+  @Override
+  public List<String> getHttpRequestHeader(
+      ServletRequestContext<REQUEST> requestContext, String name) {
     return accessor.getRequestHeaderValues(requestContext.request(), name);
   }
 
   @Override
   @Nullable
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       ServletRequestContext<REQUEST> requestContext,
       ServletResponseContext<RESPONSE> responseContext,
       @Nullable Throwable error) {
@@ -74,7 +75,7 @@ public class ServletHttpAttributesGetter<REQUEST, RESPONSE>
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       ServletRequestContext<REQUEST> requestContext,
       ServletResponseContext<RESPONSE> responseContext,
       String name) {

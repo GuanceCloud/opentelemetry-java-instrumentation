@@ -103,13 +103,12 @@ class KafkaIntegrationTest {
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("producer"),
                 span ->
-                    span.hasName("testTopic send")
+                    span.hasName("testTopic publish")
                         .hasKind(SpanKind.PRODUCER)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
                             equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                             equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, "testTopic"),
-                            equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                             satisfies(
                                 SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
                                 stringAssert -> stringAssert.startsWith("producer")),
@@ -127,7 +126,6 @@ class KafkaIntegrationTest {
                         .hasAttributesSatisfyingExactly(
                             equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                             equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, "testTopic"),
-                            equalTo(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic"),
                             equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                             satisfies(
                                 SemanticAttributes.MESSAGING_MESSAGE_PAYLOAD_SIZE_BYTES,

@@ -458,7 +458,7 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
           kind INTERNAL
           hasNoParent()
         }
-        producerSpan(it, 1, span(0), topic, ~/${topic}-partition-.*send/, { it.startsWith(topic) }, msgId)
+        producerSpan(it, 1, span(0), topic, ~/${topic}-partition-.*publish/, { it.startsWith(topic) }, msgId)
       }
     }
   }
@@ -503,7 +503,7 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
           kind INTERNAL
           hasNoParent()
         }
-        producerSpan(it, 1, span(0), topic, ~/${topic}-partition-.*send/, { it.startsWith(topic) }, msgId)
+        producerSpan(it, 1, span(0), topic, ~/${topic}-partition-.*publish/, { it.startsWith(topic) }, msgId)
         receiveSpan(it, 2, span(1), topic,  ~/${topic}-partition-.*receive/, { it.startsWith(topic) }, msgId)
         processSpan(it, 3, span(2), topic, ~/${topic}-partition-.*process/, { it.startsWith(topic) }, msgId)
       }
@@ -578,7 +578,7 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
       if (namePattern != null) {
         name namePattern
       } else {
-        name "$topic send"
+        name "$topic publish"
       }
       kind PRODUCER
       childOf parentSpan
@@ -586,7 +586,6 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
         "$SemanticAttributes.MESSAGING_SYSTEM" "pulsar"
         "$SemanticAttributes.NET_PEER_NAME" brokerHost
         "$SemanticAttributes.NET_PEER_PORT" brokerPort
-        "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
         "$SemanticAttributes.MESSAGING_DESTINATION_NAME" destination
         if (msgId == String) {
           "$SemanticAttributes.MESSAGING_MESSAGE_ID" String
@@ -622,7 +621,6 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
       }
       attributes {
         "$SemanticAttributes.MESSAGING_SYSTEM" "pulsar"
-        "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
         "$SemanticAttributes.NET_PEER_NAME" brokerHost
         "$SemanticAttributes.NET_PEER_PORT" brokerPort
         "$SemanticAttributes.MESSAGING_DESTINATION_NAME" destination
@@ -655,7 +653,6 @@ class PulsarClientTest extends AgentInstrumentationSpecification {
       childOf parentSpan
       attributes {
         "$SemanticAttributes.MESSAGING_SYSTEM" "pulsar"
-        "$SemanticAttributes.MESSAGING_DESTINATION_KIND" "topic"
         "$SemanticAttributes.MESSAGING_DESTINATION_NAME" destination
         if (msgId == String) {
           "$SemanticAttributes.MESSAGING_MESSAGE_ID" String

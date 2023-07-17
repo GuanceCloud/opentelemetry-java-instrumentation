@@ -12,6 +12,10 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import io.opentelemetry.instrumentation.api.instrumenter.net.internal.InternalNetClientAttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.network.internal.InternalNetworkAttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.network.internal.InternalServerAttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.url.internal.UrlAttributes;
+import io.opentelemetry.instrumentation.api.internal.SemconvStability;
 import io.opentelemetry.instrumentation.api.internal.SpanKey;
 import io.opentelemetry.instrumentation.api.internal.SpanKeyProvider;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
@@ -51,6 +55,8 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
   }
 
   private final InternalNetClientAttributesExtractor<REQUEST, RESPONSE> internalNetExtractor;
+  private final InternalNetworkAttributesExtractor<REQUEST, RESPONSE> internalNetworkExtractor;
+  private final InternalServerAttributesExtractor<REQUEST, RESPONSE> internalServerExtractor;
   private final ToIntFunction<Context> resendCountIncrementer;
 
   HttpClientAttributesExtractor(
@@ -74,11 +80,25 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
       List<String> capturedResponseHeaders,
       ToIntFunction<Context> resendCountIncrementer) {
     super(httpAttributesGetter, capturedRequestHeaders, capturedResponseHeaders);
+    HttpNetAddressPortExtractor<REQUEST> addressPortExtractor =
+        new HttpNetAddressPortExtractor<>(httpAttributesGetter);
     internalNetExtractor =
         new InternalNetClientAttributesExtractor<>(
+            netAttributesGetter, addressPortExtractor, SemconvStability.emitOldHttpSemconv());
+    internalNetworkExtractor =
+        new InternalNetworkAttributesExtractor<>(
             netAttributesGetter,
-            this::shouldCapturePeerPort,
-            new HttpNetNamePortGetter<>(httpAttributesGetter));
+            HttpNetworkTransportFilter.INSTANCE,
+            SemconvStability.emitStableHttpSemconv(),
+            SemconvStability.emitOldHttpSemconv());
+    internalServerExtractor =
+        new InternalServerAttributesExtractor<>(
+            netAttributesGetter,
+            this::shouldCaptureServerPort,
+            addressPortExtractor,
+            SemconvStability.emitStableHttpSemconv(),
+            SemconvStability.emitOldHttpSemconv(),
+            InternalServerAttributesExtractor.Mode.PEER);
     this.resendCountIncrementer = resendCountIncrementer;
   }
 
@@ -86,14 +106,19 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
     super.onStart(attributes, parentContext, request);
 
-    internalSet(
-        attributes, SemanticAttributes.HTTP_URL, stripSensitiveData(getter.getUrl(request)));
+    internalServerExtractor.onStart(attributes, request);
 
-    internalNetExtractor.onStart(attributes, request);
+    String fullUrl = stripSensitiveData(getter.getUrlFull(request));
+    if (SemconvStability.emitStableHttpSemconv()) {
+      internalSet(attributes, UrlAttributes.URL_FULL, fullUrl);
+    }
+    if (SemconvStability.emitOldHttpSemconv()) {
+      internalSet(attributes, SemanticAttributes.HTTP_URL, fullUrl);
+    }
   }
 
-  private boolean shouldCapturePeerPort(int port, REQUEST request) {
-    String url = getter.getUrl(request);
+  private boolean shouldCaptureServerPort(int port, REQUEST request) {
+    String url = getter.getUrlFull(request);
     if (url == null) {
       return true;
     }
@@ -102,6 +127,34 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
       return false;
     }
     return true;
+  }
+
+  @Override
+  public void onEnd(
+      AttributesBuilder attributes,
+      Context context,
+      REQUEST request,
+      @Nullable RESPONSE response,
+      @Nullable Throwable error) {
+    super.onEnd(attributes, context, request, response, error);
+
+    internalNetExtractor.onEnd(attributes, request, response);
+    internalNetworkExtractor.onEnd(attributes, request, response);
+    internalServerExtractor.onEnd(attributes, request, response);
+
+    int resendCount = resendCountIncrementer.applyAsInt(context);
+    if (resendCount > 0) {
+      attributes.put(SemanticAttributes.HTTP_RESEND_COUNT, resendCount);
+    }
+  }
+
+  /**
+   * This method is internal and is hence not for public use. Its API is unstable and can change at
+   * any time.
+   */
+  @Override
+  public SpanKey internalGetSpanKey() {
+    return SpanKey.HTTP_CLIENT;
   }
 
   @Nullable
@@ -144,32 +197,6 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
     if (atIndex == -1 || atIndex == len - 1) {
       return url;
     }
-    return url.substring(0, schemeEndIndex + 3) + url.substring(atIndex + 1);
-  }
-
-  @Override
-  public void onEnd(
-      AttributesBuilder attributes,
-      Context context,
-      REQUEST request,
-      @Nullable RESPONSE response,
-      @Nullable Throwable error) {
-    super.onEnd(attributes, context, request, response, error);
-
-    internalNetExtractor.onEnd(attributes, request, response);
-
-    int resendCount = resendCountIncrementer.applyAsInt(context);
-    if (resendCount > 0) {
-      attributes.put(SemanticAttributes.HTTP_RESEND_COUNT, resendCount);
-    }
-  }
-
-  /**
-   * This method is internal and is hence not for public use. Its API is unstable and can change at
-   * any time.
-   */
-  @Override
-  public SpanKey internalGetSpanKey() {
-    return SpanKey.HTTP_CLIENT;
+    return url.substring(0, schemeEndIndex + 3) + "REDACTED:REDACTED" + url.substring(atIndex);
   }
 }

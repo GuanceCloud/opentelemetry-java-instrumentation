@@ -5,7 +5,8 @@
 
 package io.opentelemetry.instrumentation.grpc.v1_6.internal;
 
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetServerAttributesGetter;
+import io.grpc.Status;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributesGetter;
 import io.opentelemetry.instrumentation.grpc.v1_6.GrpcRequest;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -16,22 +17,23 @@ import javax.annotation.Nullable;
  * any time.
  */
 public final class GrpcNetServerAttributesGetter
-    extends InetSocketAddressNetServerAttributesGetter<GrpcRequest> {
+    implements NetServerAttributesGetter<GrpcRequest, Status> {
 
   @Nullable
   @Override
-  public String getHostName(GrpcRequest grpcRequest) {
+  public String getServerAddress(GrpcRequest grpcRequest) {
     return grpcRequest.getLogicalHost();
   }
 
   @Override
-  public Integer getHostPort(GrpcRequest grpcRequest) {
+  public Integer getServerPort(GrpcRequest grpcRequest) {
     return grpcRequest.getLogicalPort();
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(GrpcRequest request) {
+  public InetSocketAddress getClientInetSocketAddress(
+      GrpcRequest request, @Nullable Status status) {
     SocketAddress address = request.getPeerSocketAddress();
     if (address instanceof InetSocketAddress) {
       return (InetSocketAddress) address;
@@ -41,7 +43,8 @@ public final class GrpcNetServerAttributesGetter
 
   @Nullable
   @Override
-  protected InetSocketAddress getHostSocketAddress(GrpcRequest grpcRequest) {
+  public InetSocketAddress getServerInetSocketAddress(
+      GrpcRequest grpcRequest, @Nullable Status status) {
     // TODO: later version introduces TRANSPORT_ATTR_LOCAL_ADDR, might be a good idea to use it
     return null;
   }

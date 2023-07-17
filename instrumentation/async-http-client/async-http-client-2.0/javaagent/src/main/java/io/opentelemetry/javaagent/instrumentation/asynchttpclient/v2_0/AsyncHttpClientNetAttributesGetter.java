@@ -7,18 +7,18 @@ package io.opentelemetry.javaagent.instrumentation.asynchttpclient.v2_0;
 
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpVersion;
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import java.net.InetSocketAddress;
 import javax.annotation.Nullable;
 import org.asynchttpclient.Response;
 import org.asynchttpclient.netty.request.NettyRequest;
 
 final class AsyncHttpClientNetAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<RequestContext, Response> {
+    implements NetClientAttributesGetter<RequestContext, Response> {
 
   @Nullable
   @Override
-  public String getProtocolName(RequestContext request, @Nullable Response response) {
+  public String getNetworkProtocolName(RequestContext request, @Nullable Response response) {
     HttpVersion httpVersion = getHttpVersion(request);
     if (httpVersion == null) {
       return null;
@@ -28,7 +28,7 @@ final class AsyncHttpClientNetAttributesGetter
 
   @Nullable
   @Override
-  public String getProtocolVersion(RequestContext request, @Nullable Response response) {
+  public String getNetworkProtocolVersion(RequestContext request, @Nullable Response response) {
     HttpVersion httpVersion = getHttpVersion(request);
     if (httpVersion == null) {
       return null;
@@ -51,18 +51,18 @@ final class AsyncHttpClientNetAttributesGetter
 
   @Nullable
   @Override
-  public String getPeerName(RequestContext request) {
+  public String getServerAddress(RequestContext request) {
     return request.getRequest().getUri().getHost();
   }
 
   @Override
-  public Integer getPeerPort(RequestContext request) {
+  public Integer getServerPort(RequestContext request) {
     return request.getRequest().getUri().getPort();
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       RequestContext request, @Nullable Response response) {
     if (response != null && response.getRemoteAddress() instanceof InetSocketAddress) {
       return (InetSocketAddress) response.getRemoteAddress();

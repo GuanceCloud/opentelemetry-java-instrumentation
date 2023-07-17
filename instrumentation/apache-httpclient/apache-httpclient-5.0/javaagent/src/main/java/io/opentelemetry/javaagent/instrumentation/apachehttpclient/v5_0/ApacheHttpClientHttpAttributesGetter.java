@@ -20,12 +20,12 @@ final class ApacheHttpClientHttpAttributesGetter
     implements HttpClientAttributesGetter<HttpRequest, HttpResponse> {
 
   @Override
-  public String getMethod(HttpRequest request) {
+  public String getHttpRequestMethod(HttpRequest request) {
     return request.getMethod();
   }
 
   @Override
-  public String getUrl(HttpRequest request) {
+  public String getUrlFull(HttpRequest request) {
     // similar to org.apache.hc.core5.http.message.BasicHttpRequest.getUri()
     // not calling getUri() to avoid unnecessary conversion
     StringBuilder url = new StringBuilder();
@@ -58,18 +58,19 @@ final class ApacheHttpClientHttpAttributesGetter
   }
 
   @Override
-  public List<String> getRequestHeader(HttpRequest request, String name) {
+  public List<String> getHttpRequestHeader(HttpRequest request, String name) {
     return getHeader(request, name);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       HttpRequest request, HttpResponse response, @Nullable Throwable error) {
     return response.getCode();
   }
 
   @Override
-  public List<String> getResponseHeader(HttpRequest request, HttpResponse response, String name) {
+  public List<String> getHttpResponseHeader(
+      HttpRequest request, HttpResponse response, String name) {
     return getHeader(response, name);
   }
 

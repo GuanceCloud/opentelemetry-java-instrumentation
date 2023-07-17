@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       - name: Spotless
         uses: gradle/gradle-build-action@v2
@@ -63,7 +63,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       - name: Generate license report
         uses: gradle/gradle-build-action@v2
@@ -105,7 +105,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       - name: Increase gradle daemon heap size
         run: |
@@ -162,6 +162,14 @@ jobs:
             vm: openj9
       fail-fast: false
     steps:
+      # tests may fail without freeing up more disk space on the runner
+      - name: Free disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          df -h
+
       - uses: actions/checkout@v3
 
       - id: setup-test-java
@@ -176,7 +184,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       # vaadin 14 tests fail with node 18
       - name: Set up Node
@@ -285,13 +293,22 @@ jobs:
         run: git config --system core.longpaths true
         if: matrix.os == 'windows-latest'
 
+      # downloading the liberty image (a bit over 10gb) fails without freeing up more disk space on the runner
+      - name: Free disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          df -h
+        if: matrix.os == 'ubuntu-latest'
+
       - uses: actions/checkout@v3
 
       - name: Set up JDK for running Gradle
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       - name: Set up Gradle cache
         uses: gradle/gradle-build-action@v2
@@ -341,11 +358,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up JDK 11 for running Gradle
+      - name: Set up JDK for running Gradle
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 11
+          java-version: 17.0.6
 
       - name: Build
         uses: gradle/gradle-build-action@v2
@@ -363,7 +380,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17.0.6
 
       - name: Set up Gradle cache
         uses: gradle/gradle-build-action@v2

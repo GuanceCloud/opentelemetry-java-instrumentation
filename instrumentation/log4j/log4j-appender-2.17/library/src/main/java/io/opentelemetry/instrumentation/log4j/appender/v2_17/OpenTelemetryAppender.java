@@ -8,7 +8,7 @@ package io.opentelemetry.instrumentation.log4j.appender.v2_17;
 import static java.util.Collections.emptyList;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import io.opentelemetry.api.logs.GlobalLoggerProvider;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.logs.LogRecordBuilder;
 import io.opentelemetry.instrumentation.log4j.appender.v2_17.internal.ContextDataAccessor;
 import io.opentelemetry.instrumentation.log4j.appender.v2_17.internal.LogEventMapper;
@@ -19,13 +19,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
@@ -43,6 +46,29 @@ public class OpenTelemetryAppender extends AbstractAppender {
   static final String PLUGIN_NAME = "OpenTelemetry";
 
   private final LogEventMapper<ReadOnlyStringMap> mapper;
+  private OpenTelemetry openTelemetry;
+
+  /**
+   * Installs the {@code openTelemetry} instance on any {@link OpenTelemetryAppender}s identified in
+   * the {@link LoggerContext}.
+   */
+  public static void install(OpenTelemetry openTelemetry) {
+    org.apache.logging.log4j.spi.LoggerContext loggerContextSpi = LogManager.getContext(false);
+    if (!(loggerContextSpi instanceof LoggerContext)) {
+      return;
+    }
+    LoggerContext loggerContext = (LoggerContext) loggerContextSpi;
+    Configuration config = loggerContext.getConfiguration();
+    config
+        .getAppenders()
+        .values()
+        .forEach(
+            appender -> {
+              if (appender instanceof OpenTelemetryAppender) {
+                ((OpenTelemetryAppender) appender).setOpenTelemetry(openTelemetry);
+              }
+            });
+  }
 
   @PluginBuilderFactory
   public static <B extends Builder<B>> B builder() {
@@ -56,6 +82,8 @@ public class OpenTelemetryAppender extends AbstractAppender {
     @PluginBuilderAttribute private boolean captureMapMessageAttributes;
     @PluginBuilderAttribute private boolean captureMarkerAttribute;
     @PluginBuilderAttribute private String captureContextDataAttributes;
+
+    @Nullable private OpenTelemetry openTelemetry;
 
     /**
      * Sets whether experimental attributes should be set to logs. These attributes may be changed
@@ -93,8 +121,19 @@ public class OpenTelemetryAppender extends AbstractAppender {
       return asBuilder();
     }
 
+    /** Configures the {@link OpenTelemetry} used to append logs. */
+    @CanIgnoreReturnValue
+    public B setOpenTelemetry(OpenTelemetry openTelemetry) {
+      this.openTelemetry = openTelemetry;
+      return asBuilder();
+    }
+
     @Override
     public OpenTelemetryAppender build() {
+      OpenTelemetry openTelemetry = this.openTelemetry;
+      if (openTelemetry == null) {
+        openTelemetry = OpenTelemetry.noop();
+      }
       return new OpenTelemetryAppender(
           getName(),
           getLayout(),
@@ -104,7 +143,8 @@ public class OpenTelemetryAppender extends AbstractAppender {
           captureExperimentalAttributes,
           captureMapMessageAttributes,
           captureMarkerAttribute,
-          captureContextDataAttributes);
+          captureContextDataAttributes,
+          openTelemetry);
     }
   }
 
@@ -117,7 +157,8 @@ public class OpenTelemetryAppender extends AbstractAppender {
       boolean captureExperimentalAttributes,
       boolean captureMapMessageAttributes,
       boolean captureMarkerAttribute,
-      String captureContextDataAttributes) {
+      String captureContextDataAttributes,
+      OpenTelemetry openTelemetry) {
 
     super(name, filter, layout, ignoreExceptions, properties);
     this.mapper =
@@ -127,6 +168,7 @@ public class OpenTelemetryAppender extends AbstractAppender {
             captureMapMessageAttributes,
             captureMarkerAttribute,
             splitAndFilterBlanksAndNulls(captureContextDataAttributes));
+    this.openTelemetry = openTelemetry;
   }
 
   private static List<String> splitAndFilterBlanksAndNulls(String value) {
@@ -139,14 +181,27 @@ public class OpenTelemetryAppender extends AbstractAppender {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Configures the {@link OpenTelemetry} used to append logs. This MUST be called for the appender
+   * to function. See {@link #install(OpenTelemetry)} for simple installation option.
+   */
+  public void setOpenTelemetry(OpenTelemetry openTelemetry) {
+    this.openTelemetry = openTelemetry;
+  }
+
   @Override
   public void append(LogEvent event) {
     String instrumentationName = event.getLoggerName();
     if (instrumentationName == null || instrumentationName.isEmpty()) {
       instrumentationName = "ROOT";
     }
+
     LogRecordBuilder builder =
-        GlobalLoggerProvider.get().loggerBuilder(instrumentationName).build().logRecordBuilder();
+        this.openTelemetry
+            .getLogsBridge()
+            .loggerBuilder(instrumentationName)
+            .build()
+            .logRecordBuilder();
     ReadOnlyStringMap contextData = event.getContextData();
     mapper.mapLogEvent(
         builder,

@@ -5,6 +5,11 @@
 
 package io.opentelemetry.instrumentation.api.instrumenter.net;
 
+import io.opentelemetry.instrumentation.api.instrumenter.net.internal.InetSocketAddressUtil;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.network.NetworkAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesGetter;
+import java.net.InetSocketAddress;
 import javax.annotation.Nullable;
 
 /**
@@ -15,7 +20,10 @@ import javax.annotation.Nullable;
  * server library/framework. It will be used by the {@link NetServerAttributesExtractor} to obtain
  * the various network attributes in a type-generic way.
  */
-public interface NetServerAttributesGetter<REQUEST> {
+public interface NetServerAttributesGetter<REQUEST, RESPONSE>
+    extends NetworkAttributesGetter<REQUEST, RESPONSE>,
+    ServerAttributesGetter<REQUEST, RESPONSE>,
+    ClientAttributesGetter<REQUEST, RESPONSE> {
 
   @Nullable
   default String getTransport(REQUEST request) {
@@ -23,53 +31,31 @@ public interface NetServerAttributesGetter<REQUEST> {
   }
 
   /**
-   * Returns the application protocol used.
+   * Returns the protocol <a
+   * href="https://man7.org/linux/man-pages/man7/address_families.7.html">address family</a> which
+   * is used for communication.
    *
-   * <p>Examples: `amqp`, `http`, `mqtt`.
-   */
-  @Nullable
-  default String getProtocolName(REQUEST request) {
-    return null;
-  }
-
-  /**
-   * Returns the version of the application protocol used.
+   * <p>Examples: `inet`, `inet6`.
    *
-   * <p>Examples: `3.1.1`.
+   * <p>By default, this method attempts to retrieve the address family using one of the {@link
+   * #getClientInetSocketAddress(Object, Object)} and {@link #getServerInetSocketAddress(Object,
+   * Object)} methods. If neither of these methods is implemented, it will simply return {@code
+   * null}. If the instrumented library does not expose {@link InetSocketAddress} in its API, you
+   * might want to implement this method instead of {@link #getClientInetSocketAddress(Object,
+   * Object)} and {@link #getServerInetSocketAddress(Object, Object)}.
    */
-  @Nullable
-  default String getProtocolVersion(REQUEST request) {
-    return null;
-  }
-
-  @Nullable
-  String getHostName(REQUEST request);
-
-  @Nullable
-  Integer getHostPort(REQUEST request);
-
   @Nullable
   default String getSockFamily(REQUEST request) {
-    return null;
+    return InetSocketAddressUtil.getSockFamily(
+        getClientInetSocketAddress(request, null), getServerInetSocketAddress(request, null));
   }
 
+  /** {@inheritDoc} */
   @Nullable
-  default String getSockPeerAddr(REQUEST request) {
-    return null;
-  }
-
-  @Nullable
-  default Integer getSockPeerPort(REQUEST request) {
-    return null;
-  }
-
-  @Nullable
-  default String getSockHostAddr(REQUEST request) {
-    return null;
-  }
-
-  @Nullable
-  default Integer getSockHostPort(REQUEST request) {
-    return null;
+  @Override
+  default String getNetworkType(REQUEST request, @Nullable RESPONSE response) {
+    return InetSocketAddressUtil.getNetworkType(
+        getClientInetSocketAddress(request, response),
+        getServerInetSocketAddress(request, response));
   }
 }

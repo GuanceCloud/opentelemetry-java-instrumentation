@@ -5,28 +5,27 @@
 
 package io.opentelemetry.javaagent.instrumentation.jedis.v3_0;
 
-import io.opentelemetry.instrumentation.api.instrumenter.net.InetSocketAddressNetClientAttributesGetter;
+import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import javax.annotation.Nullable;
 
-final class JedisNetAttributesGetter
-    extends InetSocketAddressNetClientAttributesGetter<JedisRequest, Void> {
+final class JedisNetAttributesGetter implements NetClientAttributesGetter<JedisRequest, Void> {
 
   @Nullable
   @Override
-  public String getPeerName(JedisRequest jedisRequest) {
+  public String getServerAddress(JedisRequest jedisRequest) {
     return jedisRequest.getConnection().getHost();
   }
 
   @Override
-  public Integer getPeerPort(JedisRequest jedisRequest) {
+  public Integer getServerPort(JedisRequest jedisRequest) {
     return jedisRequest.getConnection().getPort();
   }
 
   @Override
   @Nullable
-  protected InetSocketAddress getPeerSocketAddress(
+  public InetSocketAddress getServerInetSocketAddress(
       JedisRequest jedisRequest, @Nullable Void unused) {
     Socket socket = jedisRequest.getConnection().getSocket();
     if (socket != null && socket.getRemoteSocketAddress() instanceof InetSocketAddress) {

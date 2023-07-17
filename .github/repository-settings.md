@@ -10,11 +10,6 @@ settings](https://github.com/open-telemetry/community/blob/main/docs/how-to-conf
 
 * Allow auto-merge
 
-## Collaborators and teams
-
-* [@opentelemetrybot](https://github.com/opentelemetrybot) has write permission in order to
-  enable [comment-driven PR automation](workflows/comment-driven-pr-automation.yml).
-
 ## Actions > General
 
 * Fork pull request workflows from outside collaborators:
@@ -40,9 +35,10 @@ settings](https://github.com/open-telemetry/community/blob/main/docs/how-to-conf
 
 Same settings as above for [`main`](#main).
 
-### `opentelemetrybot/**/**`
+### `opentelemetrybot/**/**` and `gradlew-update-*`
 
-Same settings as for [`dependabot/**/**`](https://github.com/open-telemetry/community/blob/main/docs/how-to-configure-new-repository.md#branch-protection-rule-dependabot)
+Same settings as
+for [`dependabot/**/**`](https://github.com/open-telemetry/community/blob/main/docs/how-to-configure-new-repository.md#branch-protection-rule-dependabot)
 
 ### `gh-pages`
 
@@ -51,3 +47,23 @@ Same settings as for [`dependabot/**/**`](https://github.com/open-telemetry/comm
   (This branch is currently only used for directly pushing benchmarking results from the
   [Nightly overhead benchmark](https://github.com/open-telemetry/opentelemetry-java-instrumentation/actions/workflows/nightly-benchmark-overhead.yml)
   job)
+
+## Code security and analysis
+
+* Secret scanning: Enabled
+
+## Secrets and variables > Actions
+
+* `GE_CACHE_PASSWORD`
+* `GE_CACHE_USERNAME`
+* `GPG_PASSWORD` - stored in OpenTelemetry-Java 1Password
+* `GPG_PRIVATE_KEY` - stored in OpenTelemetry-Java 1Password
+* `GRADLE_ENTERPRISE_ACCESS_KEY` - owned by [@trask](https://github.com/trask)
+  * Generated at https://ge.opentelemetry.io > My settings > Access keys
+  * format of env var is `ge.opentelemetry.io=<access key>`,
+    see [docs](https://docs.gradle.com/enterprise/gradle-plugin/#via_environment_variable)
+* `GRADLE_PUBLISH_KEY`
+* `GRADLE_PUBLISH_SECRET`
+* `OPENTELEMETRYBOT_GITHUB_TOKEN` - owned by [@trask](https://github.com/trask)
+* `SONATYPE_KEY` - owned by [@trask](https://github.com/trask)
+* `SONATYPE_USER` - owned by [@trask](https://github.com/trask)

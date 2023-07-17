@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration;
 import jakarta.servlet.Filter;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -25,8 +25,8 @@ class WebMvcFilterAutoConfigurationSpring6Test {
                   OpenTelemetryAutoConfiguration.class,
                   WebMvcFilterAutoConfigurationSpring6.class));
 
-  @BeforeAll
-  static void setUp() {
+  @BeforeEach
+  void setUp() {
     assumeTrue(Boolean.getBoolean("testLatestDeps"));
   }
 

@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.api.instrumenter.net;
 
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -21,33 +22,34 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class InetSocketAddressNetServerAttributesGetterTest {
 
-  final InetSocketAddressNetServerAttributesGetter<Addresses> getter =
-      new InetSocketAddressNetServerAttributesGetter<Addresses>() {
+  static class TestNetServerAttributesGetter
+      implements NetServerAttributesGetter<Addresses, Addresses> {
 
-        @Override
-        public String getHostName(Addresses request) {
-          // net.host.name and net.host.port are tested in NetClientAttributesExtractorTest
-          return null;
-        }
+    @Override
+    public String getServerAddress(Addresses request) {
+      // net.host.name and net.host.port are tested in NetClientAttributesExtractorTest
+      return null;
+    }
 
-        @Override
-        public Integer getHostPort(Addresses request) {
-          // net.host.name and net.host.port are tested in NetClientAttributesExtractorTest
-          return null;
-        }
+    @Override
+    public Integer getServerPort(Addresses request) {
+      // net.host.name and net.host.port are tested in NetClientAttributesExtractorTest
+      return null;
+    }
 
-        @Override
-        protected InetSocketAddress getPeerSocketAddress(Addresses request) {
-          return request.peer;
-        }
+    @Override
+    public InetSocketAddress getClientInetSocketAddress(Addresses request, Addresses response) {
+      return request.peer;
+    }
 
-        @Override
-        protected InetSocketAddress getHostSocketAddress(Addresses request) {
-          return request.host;
-        }
-      };
+    @Override
+    public InetSocketAddress getServerInetSocketAddress(Addresses request, Addresses response) {
+      return request.host;
+    }
+  }
+
   private final AttributesExtractor<Addresses, Addresses> extractor =
-      NetServerAttributesExtractor.create(getter);
+      NetServerAttributesExtractor.create(new TestNetServerAttributesGetter());
 
   @Test
   void noInetSocketAddress() {
@@ -75,18 +77,21 @@ class InetSocketAddressNetServerAttributesGetterTest {
     extractor.onEnd(endAttributes, context, request, request, null);
 
     // then
-    AttributesBuilder builder = Attributes.builder();
     if (!request.isIpv4()) {
-      builder.put(SemanticAttributes.NET_SOCK_FAMILY, "inet6");
+      assertThat(startAttributes.build())
+          .isEqualTo(Attributes.of(SemanticAttributes.NET_SOCK_FAMILY, "inet6"));
+    } else {
+      assertThat(startAttributes.build()).isEmpty();
     }
-    builder.put(SemanticAttributes.NET_SOCK_PEER_ADDR, request.peer.getAddress().getHostAddress());
-    builder.put(SemanticAttributes.NET_SOCK_PEER_PORT, 123L);
-    builder.put(SemanticAttributes.NET_SOCK_HOST_ADDR, request.host.getAddress().getHostAddress());
-    builder.put(SemanticAttributes.NET_SOCK_HOST_PORT, 456L);
 
-    assertThat(startAttributes.build()).isEqualTo(builder.build());
-
-    assertThat(endAttributes.build()).isEmpty();
+    assertThat(endAttributes.build())
+        .containsOnly(
+            entry(
+                SemanticAttributes.NET_SOCK_HOST_ADDR, request.host.getAddress().getHostAddress()),
+            entry(SemanticAttributes.NET_SOCK_HOST_PORT, 456L),
+            entry(
+                SemanticAttributes.NET_SOCK_PEER_ADDR, request.peer.getAddress().getHostAddress()),
+            entry(SemanticAttributes.NET_SOCK_PEER_PORT, 123L));
   }
 
   @Test
@@ -111,7 +116,10 @@ class InetSocketAddressNetServerAttributesGetterTest {
     // then
     assertThat(startAttributes.build()).isEmpty();
 
-    assertThat(endAttributes.build()).isEmpty();
+    assertThat(endAttributes.build())
+        .containsOnly(
+            entry(SemanticAttributes.NET_SOCK_PEER_PORT, 123L),
+            entry(SemanticAttributes.NET_SOCK_HOST_PORT, 456L));
   }
 
   static final class Addresses {

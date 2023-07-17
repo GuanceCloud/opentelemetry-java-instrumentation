@@ -9,6 +9,7 @@ import static io.opentelemetry.javaagent.tooling.OpenTelemetryInstaller.installO
 import static io.opentelemetry.javaagent.tooling.SafeServiceLoader.load;
 import static io.opentelemetry.javaagent.tooling.SafeServiceLoader.loadOrdered;
 import static io.opentelemetry.javaagent.tooling.Utils.getResourceName;
+import static java.util.Arrays.asList;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 import static net.bytebuddy.matcher.ElementMatchers.any;
@@ -40,6 +41,7 @@ import io.opentelemetry.javaagent.tooling.ignore.IgnoredTypesMatcher;
 import io.opentelemetry.javaagent.tooling.muzzle.AgentTooling;
 import io.opentelemetry.javaagent.tooling.util.Trie;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.internal.AutoConfigureUtil;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import java.lang.instrument.Instrumentation;
 import java.util.ArrayList;
@@ -54,6 +56,7 @@ import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
+import net.bytebuddy.agent.builder.AgentBuilderUtil;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.description.type.TypeDefinition;
 import net.bytebuddy.description.type.TypeDescription;
@@ -117,7 +120,7 @@ public class AgentInstaller {
     AutoConfiguredOpenTelemetrySdk autoConfiguredSdk =
         installOpenTelemetrySdk(extensionClassLoader);
 
-    ConfigProperties sdkConfig = autoConfiguredSdk.getConfig();
+    ConfigProperties sdkConfig = AutoConfigureUtil.getConfig(autoConfiguredSdk);
     InstrumentationConfig.internalInitializeConfig(new ConfigPropertiesBridge(sdkConfig));
     copyNecessaryConfigToSystemProperties(sdkConfig);
 
@@ -184,6 +187,7 @@ public class AgentInstaller {
     }
     logger.log(FINE, "Installed {0} extension(s)", numberOfLoadedExtensions);
 
+    agentBuilder = AgentBuilderUtil.optimize(agentBuilder);
     ResettableClassFileTransformer resettableClassFileTransformer = agentBuilder.installOn(inst);
     ClassFileTransformerHolder.setClassFileTransformer(resettableClassFileTransformer);
 
@@ -193,9 +197,15 @@ public class AgentInstaller {
   }
 
   private static void copyNecessaryConfigToSystemProperties(ConfigProperties config) {
-    String value = config.getString("otel.instrumentation.experimental.span-suppression-strategy");
-    if (value != null) {
-      System.setProperty("otel.instrumentation.experimental.span-suppression-strategy", value);
+    for (String property :
+        asList(
+            "otel.instrumentation.experimental.span-suppression-strategy",
+            "otel.instrumentation.http.prefer-forwarded-url-scheme",
+            "otel.semconv-stability.opt-in")) {
+      String value = config.getString(property);
+      if (value != null) {
+        System.setProperty(property, value);
+      }
     }
   }
 
@@ -277,7 +287,8 @@ public class AgentInstaller {
     // the application is already setting the global LogManager and AgentListener won't be able
     // to touch it due to class loader locking.
     boolean shouldForceSynchronousAgentListenersCalls =
-        autoConfiguredSdk.getConfig().getBoolean(FORCE_SYNCHRONOUS_AGENT_LISTENERS_CONFIG, false);
+        AutoConfigureUtil.getConfig(autoConfiguredSdk)
+            .getBoolean(FORCE_SYNCHRONOUS_AGENT_LISTENERS_CONFIG, false);
     boolean javaBefore9 = isJavaBefore9();
     if (!shouldForceSynchronousAgentListenersCalls && javaBefore9 && isAppUsingCustomLogManager()) {
       logger.fine("Custom JUL LogManager detected: delaying AgentListener#afterAgent() calls");

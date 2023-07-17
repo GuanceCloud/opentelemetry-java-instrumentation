@@ -18,12 +18,18 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.OperationListener;
 import io.opentelemetry.instrumentation.api.instrumenter.net.internal.NetAttributes;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.internal.aggregator.ExplicitBucketHistogramUtils;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 class HttpServerMetricsTest {
+
+  static final double[] DEFAULT_BUCKETS =
+      ExplicitBucketHistogramUtils.DEFAULT_HISTOGRAM_BUCKET_BOUNDARIES.stream()
+          .mapToDouble(d -> d)
+          .toArray();
 
   @Test
   void collectsMetrics() {
@@ -168,7 +174,8 @@ class HttpServerMetricsTest {
                                             exemplar ->
                                                 exemplar
                                                     .hasTraceId(spanContext1.getTraceId())
-                                                    .hasSpanId(spanContext1.getSpanId())))),
+                                                    .hasSpanId(spanContext1.getSpanId()))
+                                        .hasBucketBoundaries(DEFAULT_BUCKETS))),
             metric ->
                 assertThat(metric)
                     .hasName("http.server.request.size")

@@ -17,29 +17,29 @@ class HttpUrlHttpAttributesGetter
     implements HttpClientAttributesGetter<HttpURLConnection, Integer> {
 
   @Override
-  public String getMethod(HttpURLConnection connection) {
+  public String getHttpRequestMethod(HttpURLConnection connection) {
     return connection.getRequestMethod();
   }
 
   @Override
-  public String getUrl(HttpURLConnection connection) {
+  public String getUrlFull(HttpURLConnection connection) {
     return connection.getURL().toExternalForm();
   }
 
   @Override
-  public List<String> getRequestHeader(HttpURLConnection connection, String name) {
+  public List<String> getHttpRequestHeader(HttpURLConnection connection, String name) {
     String value = connection.getRequestProperty(name);
     return value == null ? emptyList() : singletonList(value);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       HttpURLConnection connection, Integer statusCode, @Nullable Throwable error) {
     return statusCode;
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       HttpURLConnection connection, Integer statusCode, String name) {
     String value = connection.getHeaderField(name);
     return value == null ? emptyList() : singletonList(value);

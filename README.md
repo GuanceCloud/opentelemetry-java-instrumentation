@@ -61,7 +61,7 @@ if you are looking for documentation on using those.
 ## Getting Started
 
 Download
-the [latest version](https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.26.0/opentelemetry-javaagent.jar).
+the [latest version](https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.28.0/opentelemetry-javaagent.jar).
 
 This package includes the instrumentation agent as well as
 instrumentations for all supported libraries and all available data exporters.
@@ -148,6 +148,10 @@ Debug logging negatively impacts the performance of your application.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Triagers ([@open-telemetry/java-instrumentation-triagers](https://github.com/orgs/open-telemetry/teams/java-instrumentation-triagers)):
+
+- [Gregor Zeitlinger](https://github.com/zeitlinger), Grafana Labs
 
 Approvers ([@open-telemetry/java-instrumentation-approvers](https://github.com/orgs/open-telemetry/teams/java-instrumentation-approvers)):
 

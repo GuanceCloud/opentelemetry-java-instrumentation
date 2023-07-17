@@ -20,28 +20,28 @@ enum JavaHttpClientAttributesGetter
   INSTANCE;
 
   @Override
-  public String getMethod(HttpRequest httpRequest) {
+  public String getHttpRequestMethod(HttpRequest httpRequest) {
     return httpRequest.method();
   }
 
   @Override
-  public String getUrl(HttpRequest httpRequest) {
+  public String getUrlFull(HttpRequest httpRequest) {
     return httpRequest.uri().toString();
   }
 
   @Override
-  public List<String> getRequestHeader(HttpRequest httpRequest, String name) {
+  public List<String> getHttpRequestHeader(HttpRequest httpRequest, String name) {
     return httpRequest.headers().allValues(name);
   }
 
   @Override
-  public Integer getStatusCode(
+  public Integer getHttpResponseStatusCode(
       HttpRequest httpRequest, HttpResponse<?> httpResponse, @Nullable Throwable error) {
     return httpResponse.statusCode();
   }
 
   @Override
-  public List<String> getResponseHeader(
+  public List<String> getHttpResponseHeader(
       HttpRequest httpRequest, HttpResponse<?> httpResponse, String name) {
     return httpResponse.headers().allValues(name);
   }

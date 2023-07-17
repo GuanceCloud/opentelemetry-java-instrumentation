@@ -12,6 +12,10 @@ import io.opentelemetry.instrumentation.spring.autoconfigure.resources.SpringRes
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ResourceProvider;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.SdkLoggerProviderBuilder;
+import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
+import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.SdkMeterProviderBuilder;
 import io.opentelemetry.sdk.metrics.export.MetricExporter;
@@ -27,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,7 +53,8 @@ public class OpenTelemetryAutoConfiguration {
 
   @Configuration
   @ConditionalOnMissingBean(OpenTelemetry.class)
-  public static class OpenTelemetryBeanConfig {
+  @ConditionalOnProperty(name = "otel.sdk.disabled", havingValue = "false", matchIfMissing = true)
+  public static class OpenTelemetrySdkConfig {
 
     @Bean
     @ConditionalOnMissingBean
@@ -66,6 +72,24 @@ public class OpenTelemetryAutoConfiguration {
           .setResource(otelResource)
           .setSampler(Sampler.traceIdRatioBased(samplerProperties.getProbability()))
           .build();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SdkLoggerProvider sdkLoggerProvider(
+        ObjectProvider<List<LogRecordExporter>> loggerExportersProvider, Resource otelResource) {
+
+      SdkLoggerProviderBuilder loggerProviderBuilder = SdkLoggerProvider.builder();
+      loggerProviderBuilder.setResource(otelResource);
+
+      loggerExportersProvider
+          .getIfAvailable(Collections::emptyList)
+          .forEach(
+              loggerExporter ->
+                  loggerProviderBuilder.addLogRecordProcessor(
+                      BatchLogRecordProcessor.builder(loggerExporter).build()));
+
+      return loggerProviderBuilder.build();
     }
 
     @Bean
@@ -111,15 +135,28 @@ public class OpenTelemetryAutoConfiguration {
     public OpenTelemetry openTelemetry(
         ObjectProvider<ContextPropagators> propagatorsProvider,
         SdkTracerProvider tracerProvider,
-        SdkMeterProvider meterProvider) {
+        SdkMeterProvider meterProvider,
+        SdkLoggerProvider loggerProvider) {
 
       ContextPropagators propagators = propagatorsProvider.getIfAvailable(ContextPropagators::noop);
 
       return OpenTelemetrySdk.builder()
           .setTracerProvider(tracerProvider)
           .setMeterProvider(meterProvider)
+          .setLoggerProvider(loggerProvider)
           .setPropagators(propagators)
           .build();
+    }
+  }
+
+  @Configuration
+  @ConditionalOnMissingBean(OpenTelemetry.class)
+  @ConditionalOnProperty(name = "otel.sdk.disabled", havingValue = "true")
+  public static class DisabledOpenTelemetrySdkConfig {
+
+    @Bean
+    public OpenTelemetry openTelemetry() {
+      return OpenTelemetry.noop();
     }
   }
 }

@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesGetter;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PeerServiceAttributesExtractorTest {
-  @Mock NetClientAttributesGetter<String, String> netAttributesExtractor;
+  @Mock ServerAttributesGetter<String, String> netAttributesExtractor;
 
   @Test
   void shouldNotSetAnyValueIfNetExtractorReturnsNulls() {
@@ -56,7 +57,7 @@ class PeerServiceAttributesExtractorTest {
     PeerServiceAttributesExtractor<String, String> underTest =
         new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
 
-    when(netAttributesExtractor.getPeerName(any())).thenReturn("example2.com");
+    when(netAttributesExtractor.getServerAddress(any())).thenReturn("example2.com");
 
     Context context = Context.root();
 
@@ -81,7 +82,7 @@ class PeerServiceAttributesExtractorTest {
     PeerServiceAttributesExtractor<String, String> underTest =
         new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
 
-    when(netAttributesExtractor.getPeerName(any())).thenReturn("example.com");
+    when(netAttributesExtractor.getServerAddress(any())).thenReturn("example.com");
 
     Context context = Context.root();
 
@@ -95,7 +96,7 @@ class PeerServiceAttributesExtractorTest {
     assertThat(startAttributes.build()).isEmpty();
     assertThat(endAttributes.build())
         .containsOnly(entry(SemanticAttributes.PEER_SERVICE, "myService"));
-    verify(netAttributesExtractor, never()).getSockPeerName(any(), any());
+    verify(netAttributesExtractor, never()).getServerSocketDomain(any(), any());
   }
 
   @Test
@@ -108,7 +109,7 @@ class PeerServiceAttributesExtractorTest {
     PeerServiceAttributesExtractor<String, String> underTest =
         new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
 
-    when(netAttributesExtractor.getSockPeerName(any(), any())).thenReturn("example.com");
+    when(netAttributesExtractor.getServerSocketDomain(any(), any())).thenReturn("example.com");
 
     Context context = Context.root();
 

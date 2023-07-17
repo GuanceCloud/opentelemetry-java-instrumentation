@@ -14,12 +14,12 @@ import okhttp3.Response;
  * This class is internal and is hence not for public use. Its APIs are unstable and can change at
  * any time.
  */
-public final class OkHttpNetAttributesGetter
-    implements NetClientAttributesGetter<Request, Response> {
+public enum OkHttpNetAttributesGetter implements NetClientAttributesGetter<Request, Response> {
+  INSTANCE;
 
   @Nullable
   @Override
-  public String getProtocolName(Request request, @Nullable Response response) {
+  public String getNetworkProtocolName(Request request, @Nullable Response response) {
     if (response == null) {
       return null;
     }
@@ -36,7 +36,7 @@ public final class OkHttpNetAttributesGetter
 
   @Nullable
   @Override
-  public String getProtocolVersion(Request request, @Nullable Response response) {
+  public String getNetworkProtocolVersion(Request request, @Nullable Response response) {
     if (response == null) {
       return null;
     }
@@ -55,12 +55,12 @@ public final class OkHttpNetAttributesGetter
 
   @Override
   @Nullable
-  public String getPeerName(Request request) {
+  public String getServerAddress(Request request) {
     return request.url().host();
   }
 
   @Override
-  public Integer getPeerPort(Request request) {
+  public Integer getServerPort(Request request) {
     return request.url().port();
   }
 }

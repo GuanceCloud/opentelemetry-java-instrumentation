@@ -17,19 +17,13 @@ enum RatpackHttpAttributesGetter implements HttpServerAttributesGetter<Request, 
   INSTANCE;
 
   @Override
-  public String getMethod(Request request) {
+  public String getHttpRequestMethod(Request request) {
     return request.getMethod().getName();
   }
 
   @Override
-  public String getTarget(Request request) {
-    // Uri is the path + query string, not a full URL
-    return request.getUri();
-  }
-
-  @Override
   @Nullable
-  public String getScheme(Request request) {
+  public String getUrlScheme(Request request) {
     Context ratpackContext = request.get(Context.class);
     if (ratpackContext == null) {
       return null;
@@ -42,17 +36,30 @@ enum RatpackHttpAttributesGetter implements HttpServerAttributesGetter<Request, 
   }
 
   @Override
-  public List<String> getRequestHeader(Request request, String name) {
+  public String getUrlPath(Request request) {
+    String path = request.getPath();
+    return path.startsWith("/") ? path : "/" + path;
+  }
+
+  @Nullable
+  @Override
+  public String getUrlQuery(Request request) {
+    return request.getQuery();
+  }
+
+  @Override
+  public List<String> getHttpRequestHeader(Request request, String name) {
     return request.getHeaders().getAll(name);
   }
 
   @Override
-  public Integer getStatusCode(Request request, Response response, @Nullable Throwable error) {
+  public Integer getHttpResponseStatusCode(
+      Request request, Response response, @Nullable Throwable error) {
     return response.getStatus().getCode();
   }
 
   @Override
-  public List<String> getResponseHeader(Request request, Response response, String name) {
+  public List<String> getHttpResponseHeader(Request request, Response response, String name) {
     return response.getHeaders().getAll(name);
   }
 }
