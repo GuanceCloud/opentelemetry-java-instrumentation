@@ -28,4 +28,3 @@ merge v1.26.0
 - Thrift([#3](https://github.com/GuanceCloud/opentelemetry-java-instrumentation/issues/3))
 
 merge v1.25.0
-

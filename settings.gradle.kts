@@ -548,7 +548,6 @@ hideFromDependabot(":instrumentation:wicket-8.0:javaagent")
 hideFromDependabot(":instrumentation:zio:zio-2.0:javaagent")
 hideFromDependabot("instrumentation:xxl-job:xxl-job-2.3:javaagent")
 
-
 // benchmark
 include(":benchmark-overhead-jmh")
 include(":benchmark-jfr-analyzer")
