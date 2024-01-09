@@ -40,9 +40,11 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
     if (this.args == null || this.args.getArgs()==null){
       return;
     }
+    StringBuilder sb = new StringBuilder();
    for (Map.Entry<Integer,String> entry : args.getArgs().entrySet()) {
-     internalSet(attributes, AttributeKey.stringKey("origin_sql_"+entry.getKey()),entry.getValue());
+     sb.append(entry.getKey()).append(":").append(entry.getValue()).append(" ");
    }
+    internalSet(attributes, AttributeKey.stringKey("origin_sql_args"),sb.toString());
   }
   
   @Override
