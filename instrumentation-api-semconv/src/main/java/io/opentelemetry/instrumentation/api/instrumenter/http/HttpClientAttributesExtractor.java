@@ -10,22 +10,19 @@ import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorU
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
 import io.opentelemetry.instrumentation.api.instrumenter.net.internal.InternalNetClientAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.network.internal.InternalNetworkAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.network.internal.InternalServerAttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.url.internal.UrlAttributes;
 import io.opentelemetry.instrumentation.api.internal.SemconvStability;
 import io.opentelemetry.instrumentation.api.internal.SpanKey;
 import io.opentelemetry.instrumentation.api.internal.SpanKeyProvider;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
-import java.util.List;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 
 /**
  * Extractor of <a
- * href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-client">HTTP
+ * href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-client">HTTP
  * client attributes</a>. Instrumentation of HTTP client frameworks should extend this class,
  * defining {@link REQUEST} and {@link RESPONSE} with the actual request / response types of the
  * instrumented library. If an attribute is not available in this library, it is appropriate to
@@ -39,8 +36,23 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
 
   /** Creates the HTTP client attributes extractor with default configuration. */
   public static <REQUEST, RESPONSE> AttributesExtractor<REQUEST, RESPONSE> create(
+      HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter) {
+    return builder(httpAttributesGetter).build();
+  }
+
+  /**
+   * Creates the HTTP client attributes extractor with default configuration.
+   *
+   * @deprecated Make sure that your {@linkplain HttpClientAttributesGetter getter} implements all
+   *     the network-related methods and use {@link #create(HttpClientAttributesGetter)} instead.
+   *     This method will be removed in the 2.0 release.
+   */
+  @Deprecated
+  public static <REQUEST, RESPONSE> AttributesExtractor<REQUEST, RESPONSE> create(
       HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter,
-      NetClientAttributesGetter<REQUEST, RESPONSE> netAttributesGetter) {
+      io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter<
+              REQUEST, RESPONSE>
+          netAttributesGetter) {
     return builder(httpAttributesGetter, netAttributesGetter).build();
   }
 
@@ -49,8 +61,24 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
    * HTTP client attributes extractor.
    */
   public static <REQUEST, RESPONSE> HttpClientAttributesExtractorBuilder<REQUEST, RESPONSE> builder(
+      HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter) {
+    return new HttpClientAttributesExtractorBuilder<>(httpAttributesGetter, httpAttributesGetter);
+  }
+
+  /**
+   * Returns a new {@link HttpClientAttributesExtractorBuilder} that can be used to configure the
+   * HTTP client attributes extractor.
+   *
+   * @deprecated Make sure that your {@linkplain HttpClientAttributesGetter getter} implements all
+   *     the network-related methods and use {@link #builder(HttpClientAttributesGetter)} instead.
+   *     This method will be removed in the 2.0 release.
+   */
+  @Deprecated
+  public static <REQUEST, RESPONSE> HttpClientAttributesExtractorBuilder<REQUEST, RESPONSE> builder(
       HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter,
-      NetClientAttributesGetter<REQUEST, RESPONSE> netAttributesGetter) {
+      io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter<
+              REQUEST, RESPONSE>
+          netAttributesGetter) {
     return new HttpClientAttributesExtractorBuilder<>(httpAttributesGetter, netAttributesGetter);
   }
 
@@ -59,50 +87,21 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
   private final InternalServerAttributesExtractor<REQUEST, RESPONSE> internalServerExtractor;
   private final ToIntFunction<Context> resendCountIncrementer;
 
-  HttpClientAttributesExtractor(
-      HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter,
-      NetClientAttributesGetter<REQUEST, RESPONSE> netAttributesGetter,
-      List<String> capturedRequestHeaders,
-      List<String> capturedResponseHeaders) {
-    this(
-        httpAttributesGetter,
-        netAttributesGetter,
-        capturedRequestHeaders,
-        capturedResponseHeaders,
-        HttpClientResend::getAndIncrement);
-  }
-
-  // visible for tests
-  HttpClientAttributesExtractor(
-      HttpClientAttributesGetter<REQUEST, RESPONSE> httpAttributesGetter,
-      NetClientAttributesGetter<REQUEST, RESPONSE> netAttributesGetter,
-      List<String> capturedRequestHeaders,
-      List<String> capturedResponseHeaders,
-      ToIntFunction<Context> resendCountIncrementer) {
-    super(httpAttributesGetter, capturedRequestHeaders, capturedResponseHeaders);
-    HttpNetAddressPortExtractor<REQUEST> addressPortExtractor =
-        new HttpNetAddressPortExtractor<>(httpAttributesGetter);
-    internalNetExtractor =
-        new InternalNetClientAttributesExtractor<>(
-            netAttributesGetter, addressPortExtractor, SemconvStability.emitOldHttpSemconv());
-    internalNetworkExtractor =
-        new InternalNetworkAttributesExtractor<>(
-            netAttributesGetter,
-            HttpNetworkTransportFilter.INSTANCE,
-            SemconvStability.emitStableHttpSemconv(),
-            SemconvStability.emitOldHttpSemconv());
-    internalServerExtractor =
-        new InternalServerAttributesExtractor<>(
-            netAttributesGetter,
-            this::shouldCaptureServerPort,
-            addressPortExtractor,
-            SemconvStability.emitStableHttpSemconv(),
-            SemconvStability.emitOldHttpSemconv(),
-            InternalServerAttributesExtractor.Mode.PEER);
-    this.resendCountIncrementer = resendCountIncrementer;
+  HttpClientAttributesExtractor(HttpClientAttributesExtractorBuilder<REQUEST, RESPONSE> builder) {
+    super(
+        builder.httpAttributesGetter,
+        HttpStatusCodeConverter.CLIENT,
+        builder.capturedRequestHeaders,
+        builder.capturedResponseHeaders,
+        builder.knownMethods);
+    internalNetExtractor = builder.buildNetExtractor();
+    internalNetworkExtractor = builder.buildNetworkExtractor();
+    internalServerExtractor = builder.buildServerExtractor();
+    resendCountIncrementer = builder.resendCountIncrementer;
   }
 
   @Override
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
     super.onStart(attributes, parentContext, request);
 
@@ -110,23 +109,16 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
 
     String fullUrl = stripSensitiveData(getter.getUrlFull(request));
     if (SemconvStability.emitStableHttpSemconv()) {
-      internalSet(attributes, UrlAttributes.URL_FULL, fullUrl);
+      internalSet(attributes, SemanticAttributes.URL_FULL, fullUrl);
     }
     if (SemconvStability.emitOldHttpSemconv()) {
       internalSet(attributes, SemanticAttributes.HTTP_URL, fullUrl);
     }
-  }
 
-  private boolean shouldCaptureServerPort(int port, REQUEST request) {
-    String url = getter.getUrlFull(request);
-    if (url == null) {
-      return true;
+    int resendCount = resendCountIncrementer.applyAsInt(parentContext);
+    if (resendCount > 0) {
+      attributes.put(SemanticAttributes.HTTP_RESEND_COUNT, resendCount);
     }
-    // according to spec: extract if not default (80 for http scheme, 443 for https).
-    if ((url.startsWith("http://") && port == 80) || (url.startsWith("https://") && port == 443)) {
-      return false;
-    }
-    return true;
   }
 
   @Override
@@ -141,11 +133,6 @@ public final class HttpClientAttributesExtractor<REQUEST, RESPONSE>
     internalNetExtractor.onEnd(attributes, request, response);
     internalNetworkExtractor.onEnd(attributes, request, response);
     internalServerExtractor.onEnd(attributes, request, response);
-
-    int resendCount = resendCountIncrementer.applyAsInt(context);
-    if (resendCount > 0) {
-      attributes.put(SemanticAttributes.HTTP_RESEND_COUNT, resendCount);
-    }
   }
 
   /**

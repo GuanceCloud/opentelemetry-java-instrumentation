@@ -5,10 +5,10 @@
 
 package io.opentelemetry.javaagent.instrumentation.reactornetty.v1_0;
 
-import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.opentelemetry.api.trace.SpanKind.CLIENT;
 import static io.opentelemetry.api.trace.SpanKind.INTERNAL;
 import static io.opentelemetry.api.trace.SpanKind.SERVER;
+import static io.opentelemetry.javaagent.instrumentation.reactornetty.v1_0.AbstractReactorNettyHttpClientTest.USER_AGENT;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +19,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.test.server.http.RequestContextGetter;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 import io.opentelemetry.testing.internal.armeria.common.HttpData;
 import io.opentelemetry.testing.internal.armeria.common.HttpResponse;
 import io.opentelemetry.testing.internal.armeria.common.HttpStatus;
@@ -76,6 +76,7 @@ class ReactorNettyBaseUrlOnlyTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   void testSuccessfulRequest() {
     HttpClient httpClient = HttpClient.create();
     String uri = "http://localhost:" + server.httpPort() + "/base";
@@ -86,6 +87,7 @@ class ReactorNettyBaseUrlOnlyTest {
             () ->
                 httpClient
                     .baseUrl(uri)
+                    .headers(h -> h.set("User-Agent", USER_AGENT))
                     .get()
                     .responseSingle(
                         (resp, content) -> {
@@ -109,12 +111,14 @@ class ReactorNettyBaseUrlOnlyTest {
                         .hasAttributesSatisfyingExactly(
                             equalTo(SemanticAttributes.HTTP_METHOD, "GET"),
                             equalTo(SemanticAttributes.HTTP_URL, uri + "/"),
+                            equalTo(SemanticAttributes.USER_AGENT_ORIGINAL, USER_AGENT),
                             equalTo(SemanticAttributes.HTTP_STATUS_CODE, 200),
+                            equalTo(SemanticAttributes.HTTP_REQUEST_CONTENT_LENGTH, 0),
                             satisfies(
                                 SemanticAttributes.HTTP_RESPONSE_CONTENT_LENGTH,
                                 AbstractLongAssert::isNotNegative),
-                            equalTo(stringKey("net.protocol.name"), "http"),
-                            equalTo(stringKey("net.protocol.version"), "1.1"),
+                            equalTo(SemanticAttributes.NET_PROTOCOL_NAME, "http"),
+                            equalTo(SemanticAttributes.NET_PROTOCOL_VERSION, "1.1"),
                             equalTo(SemanticAttributes.NET_PEER_NAME, "localhost"),
                             equalTo(SemanticAttributes.NET_PEER_PORT, server.httpPort()),
                             equalTo(SemanticAttributes.NET_SOCK_PEER_ADDR, "127.0.0.1")),

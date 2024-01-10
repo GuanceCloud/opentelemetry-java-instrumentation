@@ -15,11 +15,8 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributesGetter;
-import io.opentelemetry.instrumentation.api.instrumenter.net.internal.NetAttributes;
-import io.opentelemetry.instrumentation.api.instrumenter.network.internal.NetworkAttributes;
-import io.opentelemetry.instrumentation.api.instrumenter.url.internal.UrlAttributes;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +36,19 @@ class HttpServerAttributesExtractorBothSemconvTest {
 
     @Override
     public String getUrlScheme(Map<String, Object> request) {
-      return (String) request.get("scheme");
+      return (String) request.get("urlScheme");
     }
 
     @Nullable
     @Override
     public String getUrlPath(Map<String, Object> request) {
-      return (String) request.get("path");
+      return (String) request.get("urlPath");
     }
 
     @Nullable
     @Override
     public String getUrlQuery(Map<String, Object> request) {
-      return (String) request.get("query");
+      return (String) request.get("urlQuery");
     }
 
     @Override
@@ -78,23 +75,19 @@ class HttpServerAttributesExtractorBothSemconvTest {
       String values = (String) response.get("header." + name);
       return values == null ? emptyList() : asList(values.split(","));
     }
-  }
-
-  static class TestNetServerAttributesGetter
-      implements NetServerAttributesGetter<Map<String, Object>, Map<String, Object>> {
 
     @Nullable
     @Override
     public String getNetworkTransport(
         Map<String, Object> request, @Nullable Map<String, Object> response) {
-      return (String) request.get("transport");
+      return (String) request.get("networkTransport");
     }
 
     @Nullable
     @Override
     public String getNetworkType(
         Map<String, Object> request, @Nullable Map<String, Object> response) {
-      return (String) request.get("type");
+      return (String) request.get("networkType");
     }
 
     @Nullable
@@ -114,32 +107,33 @@ class HttpServerAttributesExtractorBothSemconvTest {
     @Nullable
     @Override
     public String getServerAddress(Map<String, Object> request) {
-      return (String) request.get("hostName");
+      return (String) request.get("serverAddress");
     }
 
     @Nullable
     @Override
     public Integer getServerPort(Map<String, Object> request) {
-      return (Integer) request.get("hostPort");
+      return (Integer) request.get("serverPort");
     }
   }
 
   @Test
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   void normal() {
     Map<String, Object> request = new HashMap<>();
     request.put("method", "POST");
-    request.put("url", "http://github.com");
-    request.put("path", "/repositories/1");
-    request.put("query", "details=true");
-    request.put("scheme", "http");
+    request.put("urlFull", "http://github.com");
+    request.put("urlPath", "/repositories/1");
+    request.put("urlQuery", "details=true");
+    request.put("urlScheme", "http");
     request.put("header.content-length", "10");
     request.put("route", "/repositories/{id}");
     request.put("header.user-agent", "okhttp 3.x");
     request.put("header.host", "github.com");
     request.put("header.forwarded", "for=1.1.1.1;proto=https");
     request.put("header.custom-request-header", "123,456");
-    request.put("transport", "udp");
-    request.put("type", "ipv4");
+    request.put("networkTransport", "udp");
+    request.put("networkType", "ipv4");
     request.put("protocolName", "http");
     request.put("protocolVersion", "2.0");
 
@@ -150,31 +144,30 @@ class HttpServerAttributesExtractorBothSemconvTest {
 
     Function<Context, String> routeFromContext = ctx -> "/repositories/{repoId}";
 
-    HttpServerAttributesExtractor<Map<String, Object>, Map<String, Object>> extractor =
-        new HttpServerAttributesExtractor<>(
-            new TestHttpServerAttributesGetter(),
-            new TestNetServerAttributesGetter(),
-            singletonList("Custom-Request-Header"),
-            singletonList("Custom-Response-Header"),
-            routeFromContext);
+    AttributesExtractor<Map<String, Object>, Map<String, Object>> extractor =
+        HttpServerAttributesExtractor.builder(new TestHttpServerAttributesGetter())
+            .setCapturedRequestHeaders(singletonList("Custom-Request-Header"))
+            .setCapturedResponseHeaders(singletonList("Custom-Response-Header"))
+            .setHttpRouteGetter(routeFromContext)
+            .build();
 
     AttributesBuilder startAttributes = Attributes.builder();
     extractor.onStart(startAttributes, Context.root(), request);
     assertThat(startAttributes.build())
         .containsOnly(
             entry(SemanticAttributes.NET_HOST_NAME, "github.com"),
-            entry(NetworkAttributes.SERVER_ADDRESS, "github.com"),
+            entry(SemanticAttributes.SERVER_ADDRESS, "github.com"),
             entry(SemanticAttributes.HTTP_METHOD, "POST"),
-            entry(HttpAttributes.HTTP_REQUEST_METHOD, "POST"),
+            entry(SemanticAttributes.HTTP_REQUEST_METHOD, "POST"),
             entry(SemanticAttributes.HTTP_SCHEME, "http"),
             entry(SemanticAttributes.HTTP_TARGET, "/repositories/1?details=true"),
-            entry(UrlAttributes.URL_SCHEME, "http"),
-            entry(UrlAttributes.URL_PATH, "/repositories/1"),
-            entry(UrlAttributes.URL_QUERY, "details=true"),
+            entry(SemanticAttributes.URL_SCHEME, "http"),
+            entry(SemanticAttributes.URL_PATH, "/repositories/1"),
+            entry(SemanticAttributes.URL_QUERY, "details=true"),
             entry(SemanticAttributes.USER_AGENT_ORIGINAL, "okhttp 3.x"),
             entry(SemanticAttributes.HTTP_ROUTE, "/repositories/{id}"),
             entry(SemanticAttributes.HTTP_CLIENT_IP, "1.1.1.1"),
-            entry(NetworkAttributes.CLIENT_ADDRESS, "1.1.1.1"),
+            entry(SemanticAttributes.CLIENT_ADDRESS, "1.1.1.1"),
             entry(
                 AttributeKey.stringArrayKey("http.request.header.custom_request_header"),
                 asList("123", "456")));
@@ -183,19 +176,19 @@ class HttpServerAttributesExtractorBothSemconvTest {
     extractor.onEnd(endAttributes, Context.root(), request, response, null);
     assertThat(endAttributes.build())
         .containsOnly(
-            entry(NetAttributes.NET_PROTOCOL_NAME, "http"),
-            entry(NetAttributes.NET_PROTOCOL_VERSION, "2.0"),
-            entry(NetworkAttributes.NETWORK_TRANSPORT, "udp"),
-            entry(NetworkAttributes.NETWORK_TYPE, "ipv4"),
-            entry(NetworkAttributes.NETWORK_PROTOCOL_NAME, "http"),
-            entry(NetworkAttributes.NETWORK_PROTOCOL_VERSION, "2.0"),
+            entry(SemanticAttributes.NET_PROTOCOL_NAME, "http"),
+            entry(SemanticAttributes.NET_PROTOCOL_VERSION, "2.0"),
+            entry(SemanticAttributes.NETWORK_TRANSPORT, "udp"),
+            entry(SemanticAttributes.NETWORK_TYPE, "ipv4"),
+            entry(SemanticAttributes.NETWORK_PROTOCOL_NAME, "http"),
+            entry(SemanticAttributes.NETWORK_PROTOCOL_VERSION, "2.0"),
             entry(SemanticAttributes.HTTP_ROUTE, "/repositories/{repoId}"),
             entry(SemanticAttributes.HTTP_REQUEST_CONTENT_LENGTH, 10L),
-            entry(HttpAttributes.HTTP_REQUEST_BODY_SIZE, 10L),
+            entry(SemanticAttributes.HTTP_REQUEST_BODY_SIZE, 10L),
             entry(SemanticAttributes.HTTP_STATUS_CODE, 202L),
-            entry(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, 202L),
+            entry(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, 202L),
             entry(SemanticAttributes.HTTP_RESPONSE_CONTENT_LENGTH, 20L),
-            entry(HttpAttributes.HTTP_RESPONSE_BODY_SIZE, 20L),
+            entry(SemanticAttributes.HTTP_RESPONSE_BODY_SIZE, 20L),
             entry(
                 AttributeKey.stringArrayKey("http.response.header.custom_response_header"),
                 asList("654", "321")));

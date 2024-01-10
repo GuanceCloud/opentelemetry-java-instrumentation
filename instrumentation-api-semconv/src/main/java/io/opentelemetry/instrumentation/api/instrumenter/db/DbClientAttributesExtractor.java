@@ -10,11 +10,11 @@ import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorU
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 
 /**
  * Extractor of <a
- * href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/database.md">database
+ * href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md">database
  * client attributes</a>.
  *
  * <p>This class delegates to a type-specific {@link DbClientAttributesGetter} for individual

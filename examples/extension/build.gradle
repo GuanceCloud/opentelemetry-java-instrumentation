@@ -11,10 +11,10 @@ plugins {
   See https://imperceptiblethoughts.com/shadow/ for more details about Shadow plugin.
    */
   id "com.github.johnrengelman.shadow" version "8.1.1"
-  id "com.diffplug.spotless" version "6.19.0"
+  id "com.diffplug.spotless" version "6.22.0"
 
-  id "io.opentelemetry.instrumentation.muzzle-generation" version "1.28.0-alpha"
-  id "io.opentelemetry.instrumentation.muzzle-check" version "1.28.0-alpha"
+  id "io.opentelemetry.instrumentation.muzzle-generation" version "1.31.0-alpha"
+  id "io.opentelemetry.instrumentation.muzzle-check" version "1.31.0-alpha"
 }
 
 group 'io.opentelemetry.example'
@@ -23,12 +23,13 @@ version '1.0'
 ext {
   versions = [
     // this line is managed by .github/scripts/update-sdk-version.sh
-    opentelemetrySdk           : "1.28.0",
+    opentelemetrySdk           : "1.31.0",
 
     // these lines are managed by .github/scripts/update-version.sh
-    opentelemetryJavaagent     : "1.28.0",
-    opentelemetryJavaagentAlpha: "1.28.0-alpha",
-    junit                      : "5.9.3"
+    opentelemetryJavaagent     : "1.31.0",
+    opentelemetryJavaagentAlpha: "1.31.0-alpha",
+
+    junit                      : "5.10.0"
   ]
 
   deps = [
@@ -95,19 +96,19 @@ dependencies {
   Only dependencies added to `implementation` configuration will be picked up by Shadow plugin
   and added to the resulting jar for our extension's distribution.
    */
-  implementation 'org.apache.commons:commons-lang3:3.12.0'
+  implementation 'org.apache.commons:commons-lang3:3.13.0'
 
   //All dependencies below are only for tests
-  testImplementation("org.testcontainers:testcontainers:1.18.3")
+  testImplementation("org.testcontainers:testcontainers:1.19.1")
   testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-  testImplementation("com.google.protobuf:protobuf-java-util:3.23.4")
+  testImplementation("com.google.protobuf:protobuf-java-util:3.24.4")
   testImplementation("com.squareup.okhttp3:okhttp:4.11.0")
   testImplementation("io.opentelemetry:opentelemetry-api")
-  testImplementation("io.opentelemetry.proto:opentelemetry-proto:0.20.0-alpha")
+  testImplementation("io.opentelemetry.proto:opentelemetry-proto:1.0.0-alpha")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:${versions.junit}")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${versions.junit}")
-  testRuntimeOnly("ch.qos.logback:logback-classic:1.4.8")
+  testRuntimeOnly("ch.qos.logback:logback-classic:1.4.11")
 
   //Otel Java instrumentation that we use and extend during integration tests
   otel("io.opentelemetry.javaagent:opentelemetry-javaagent:${versions.opentelemetryJavaagent}")

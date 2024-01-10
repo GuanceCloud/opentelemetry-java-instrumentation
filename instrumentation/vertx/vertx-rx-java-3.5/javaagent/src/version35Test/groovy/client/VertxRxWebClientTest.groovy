@@ -10,7 +10,7 @@ import io.opentelemetry.instrumentation.test.AgentTestTrait
 import io.opentelemetry.instrumentation.test.base.HttpClientTest
 import io.opentelemetry.instrumentation.testing.junit.http.HttpClientResult
 import io.opentelemetry.instrumentation.testing.junit.http.SingleConnection
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
+import io.opentelemetry.semconv.SemanticAttributes
 import io.vertx.core.VertxOptions
 import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.client.WebClientOptions
@@ -20,8 +20,6 @@ import io.vertx.reactivex.ext.web.client.HttpRequest
 import io.vertx.reactivex.ext.web.client.HttpResponse
 import io.vertx.reactivex.ext.web.client.WebClient
 import spock.lang.Shared
-
-import static io.opentelemetry.api.common.AttributeKey.stringKey
 
 class VertxRxWebClientTest extends HttpClientTest<HttpRequest<Buffer>> implements AgentTestTrait {
 
@@ -95,8 +93,8 @@ class VertxRxWebClientTest extends HttpClientTest<HttpRequest<Buffer>> implement
   @Override
   Set<AttributeKey<?>> httpAttributes(URI uri) {
     def attributes = super.httpAttributes(uri)
-    attributes.remove(stringKey("net.protocol.name"))
-    attributes.remove(stringKey("net.protocol.version"))
+    attributes.remove(SemanticAttributes.NET_PROTOCOL_NAME)
+    attributes.remove(SemanticAttributes.NET_PROTOCOL_VERSION)
     attributes.remove(SemanticAttributes.NET_PEER_NAME)
     attributes.remove(SemanticAttributes.NET_PEER_PORT)
     return attributes

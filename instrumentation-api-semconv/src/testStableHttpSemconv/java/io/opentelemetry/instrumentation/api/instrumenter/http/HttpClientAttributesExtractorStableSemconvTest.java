@@ -18,11 +18,12 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesGetter;
-import io.opentelemetry.instrumentation.api.instrumenter.network.internal.NetworkAttributes;
-import io.opentelemetry.instrumentation.api.instrumenter.url.internal.UrlAttributes;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.instrumentation.api.instrumenter.http.internal.HttpAttributes;
+import io.opentelemetry.instrumentation.api.internal.HttpConstants;
+import io.opentelemetry.semconv.SemanticAttributes;
+import java.net.ConnectException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.ToIntFunction;
@@ -34,6 +35,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class HttpClientAttributesExtractorStableSemconvTest {
 
@@ -42,7 +44,7 @@ class HttpClientAttributesExtractorStableSemconvTest {
 
     @Override
     public String getUrlFull(Map<String, String> request) {
-      return request.get("url");
+      return request.get("urlFull");
     }
 
     @Override
@@ -69,23 +71,19 @@ class HttpClientAttributesExtractorStableSemconvTest {
       String value = response.get("header." + name);
       return value == null ? emptyList() : asList(value.split(","));
     }
-  }
-
-  static class TestNetClientAttributesGetter
-      implements NetClientAttributesGetter<Map<String, String>, Map<String, String>> {
 
     @Nullable
     @Override
     public String getNetworkTransport(
         Map<String, String> request, @Nullable Map<String, String> response) {
-      return request.get("transport");
+      return request.get("networkTransport");
     }
 
     @Nullable
     @Override
     public String getNetworkType(
         Map<String, String> request, @Nullable Map<String, String> response) {
-      return request.get("type");
+      return request.get("networkType");
     }
 
     @Nullable
@@ -105,14 +103,23 @@ class HttpClientAttributesExtractorStableSemconvTest {
     @Nullable
     @Override
     public String getServerAddress(Map<String, String> request) {
-      return request.get("peerName");
+      return request.get("serverAddress");
     }
 
     @Nullable
     @Override
     public Integer getServerPort(Map<String, String> request) {
-      String value = request.get("peerPort");
+      String value = request.get("serverPort");
       return value == null ? null : Integer.parseInt(value);
+    }
+
+    @Nullable
+    @Override
+    public String getErrorType(
+        Map<String, String> request,
+        @Nullable Map<String, String> respobse,
+        @Nullable Throwable error) {
+      return request.get("errorType");
     }
   }
 
@@ -120,16 +127,16 @@ class HttpClientAttributesExtractorStableSemconvTest {
   void normal() {
     Map<String, String> request = new HashMap<>();
     request.put("method", "POST");
-    request.put("url", "http://github.com");
+    request.put("urlFull", "http://github.com");
     request.put("header.content-length", "10");
     request.put("header.user-agent", "okhttp 3.x");
     request.put("header.custom-request-header", "123,456");
-    request.put("transport", "udp");
-    request.put("type", "ipv4");
+    request.put("networkTransport", "udp");
+    request.put("networkType", "ipv4");
     request.put("protocolName", "http");
     request.put("protocolVersion", "1.1");
-    request.put("peerName", "github.com");
-    request.put("peerPort", "123");
+    request.put("serverAddress", "github.com");
+    request.put("serverPort", "123");
 
     Map<String, String> response = new HashMap<>();
     response.put("statusCode", "202");
@@ -139,41 +146,40 @@ class HttpClientAttributesExtractorStableSemconvTest {
     ToIntFunction<Context> resendCountFromContext = context -> 2;
 
     AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
-        new HttpClientAttributesExtractor<>(
-            new TestHttpClientAttributesGetter(),
-            new TestNetClientAttributesGetter(),
-            singletonList("Custom-Request-Header"),
-            singletonList("Custom-Response-Header"),
-            resendCountFromContext);
+        HttpClientAttributesExtractor.builder(new TestHttpClientAttributesGetter())
+            .setCapturedRequestHeaders(singletonList("Custom-Request-Header"))
+            .setCapturedResponseHeaders(singletonList("Custom-Response-Header"))
+            .setResendCountIncrementer(resendCountFromContext)
+            .build();
 
     AttributesBuilder startAttributes = Attributes.builder();
     extractor.onStart(startAttributes, Context.root(), request);
     assertThat(startAttributes.build())
         .containsOnly(
-            entry(HttpAttributes.HTTP_REQUEST_METHOD, "POST"),
-            entry(UrlAttributes.URL_FULL, "http://github.com"),
+            entry(SemanticAttributes.HTTP_REQUEST_METHOD, "POST"),
+            entry(SemanticAttributes.URL_FULL, "http://github.com"),
             entry(SemanticAttributes.USER_AGENT_ORIGINAL, "okhttp 3.x"),
             entry(
                 AttributeKey.stringArrayKey("http.request.header.custom_request_header"),
                 asList("123", "456")),
-            entry(NetworkAttributes.SERVER_ADDRESS, "github.com"),
-            entry(NetworkAttributes.SERVER_PORT, 123L));
+            entry(SemanticAttributes.SERVER_ADDRESS, "github.com"),
+            entry(SemanticAttributes.SERVER_PORT, 123L),
+            entry(SemanticAttributes.HTTP_RESEND_COUNT, 2L));
 
     AttributesBuilder endAttributes = Attributes.builder();
     extractor.onEnd(endAttributes, Context.root(), request, response, null);
     assertThat(endAttributes.build())
         .containsOnly(
-            entry(HttpAttributes.HTTP_REQUEST_BODY_SIZE, 10L),
-            entry(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, 202L),
-            entry(HttpAttributes.HTTP_RESPONSE_BODY_SIZE, 20L),
-            entry(SemanticAttributes.HTTP_RESEND_COUNT, 2L),
+            entry(SemanticAttributes.HTTP_REQUEST_BODY_SIZE, 10L),
+            entry(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, 202L),
+            entry(SemanticAttributes.HTTP_RESPONSE_BODY_SIZE, 20L),
             entry(
                 AttributeKey.stringArrayKey("http.response.header.custom_response_header"),
                 asList("654", "321")),
-            entry(NetworkAttributes.NETWORK_TRANSPORT, "udp"),
-            entry(NetworkAttributes.NETWORK_TYPE, "ipv4"),
-            entry(NetworkAttributes.NETWORK_PROTOCOL_NAME, "http"),
-            entry(NetworkAttributes.NETWORK_PROTOCOL_VERSION, "1.1"));
+            entry(SemanticAttributes.NETWORK_TRANSPORT, "udp"),
+            entry(SemanticAttributes.NETWORK_TYPE, "ipv4"),
+            entry(SemanticAttributes.NETWORK_PROTOCOL_NAME, "http"),
+            entry(SemanticAttributes.NETWORK_PROTOCOL_VERSION, "1.1"));
   }
 
   @ParameterizedTest
@@ -186,11 +192,10 @@ class HttpClientAttributesExtractorStableSemconvTest {
     Map<String, String> request = new HashMap<>();
     request.put("protocolName", observedProtocolName);
     request.put("protocolVersion", observedProtocolVersion);
-    request.put("transport", observedTransport);
+    request.put("networkTransport", observedTransport);
 
     AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
-        HttpClientAttributesExtractor.create(
-            new TestHttpClientAttributesGetter(), new TestNetClientAttributesGetter());
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
 
     AttributesBuilder attributes = Attributes.builder();
     extractor.onStart(attributes, Context.root(), request);
@@ -198,9 +203,9 @@ class HttpClientAttributesExtractorStableSemconvTest {
 
     if (extractedTransport != null) {
       assertThat(attributes.build())
-          .containsEntry(NetworkAttributes.NETWORK_TRANSPORT, extractedTransport);
+          .containsEntry(SemanticAttributes.NETWORK_TRANSPORT, extractedTransport);
     } else {
-      assertThat(attributes.build()).doesNotContainKey(NetworkAttributes.NETWORK_TRANSPORT);
+      assertThat(attributes.build()).doesNotContainKey(SemanticAttributes.NETWORK_TRANSPORT);
     }
   }
 
@@ -218,5 +223,157 @@ class HttpClientAttributesExtractorStableSemconvTest {
           arguments("http", "3.0", "tcp", "tcp"),
           arguments("http", "42", "tcp", "tcp"));
     }
+  }
+
+  @ParameterizedTest
+  @ArgumentsSource(ValidRequestMethodsProvider.class)
+  void shouldExtractKnownMethods(String requestMethod) {
+    Map<String, String> request = new HashMap<>();
+    request.put("method", requestMethod);
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), request);
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD, requestMethod)
+        .doesNotContainKey(SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"get", "Get"})
+  void shouldTreatMethodsAsCaseSensitive(String requestMethod) {
+    Map<String, String> request = new HashMap<>();
+    request.put("method", requestMethod);
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), request);
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD, HttpConstants._OTHER)
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL, requestMethod);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PURGE", "not a method really"})
+  void shouldUseOtherForUnknownMethods(String requestMethod) {
+    Map<String, String> request = new HashMap<>();
+    request.put("method", requestMethod);
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), request);
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD, HttpConstants._OTHER)
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL, requestMethod);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"only", "custom", "methods", "allowed"})
+  void shouldExtractKnownMethods_override(String requestMethod) {
+    Map<String, String> request = new HashMap<>();
+    request.put("method", requestMethod);
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.builder(new TestHttpClientAttributesGetter())
+            .setKnownMethods(new HashSet<>(asList("only", "custom", "methods", "allowed")))
+            .build();
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), request);
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD, requestMethod)
+        .doesNotContainKey(SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL);
+  }
+
+  @ParameterizedTest
+  @ArgumentsSource(ValidRequestMethodsProvider.class)
+  void shouldUseOtherForUnknownMethods_override(String requestMethod) {
+    Map<String, String> request = new HashMap<>();
+    request.put("method", requestMethod);
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.builder(new TestHttpClientAttributesGetter())
+            .setKnownMethods(new HashSet<>(asList("only", "custom", "methods", "allowed")))
+            .build();
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), request);
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD, HttpConstants._OTHER)
+        .containsEntry(SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL, requestMethod);
+  }
+
+  @Test
+  void shouldExtractErrorType_httpStatusCode() {
+    Map<String, String> response = new HashMap<>();
+    response.put("statusCode", "400");
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), emptyMap());
+    extractor.onEnd(attributes, Context.root(), emptyMap(), response, null);
+
+    assertThat(attributes.build())
+        .containsEntry(SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, 400)
+        .containsEntry(HttpAttributes.ERROR_TYPE, "400");
+  }
+
+  @Test
+  void shouldExtractErrorType_getter() {
+    Map<String, String> request = new HashMap<>();
+    request.put("statusCode", "0");
+    request.put("errorType", "custom error type");
+
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), emptyMap());
+    extractor.onEnd(attributes, Context.root(), request, emptyMap(), null);
+
+    assertThat(attributes.build()).containsEntry(HttpAttributes.ERROR_TYPE, "custom error type");
+  }
+
+  @Test
+  void shouldExtractErrorType_exceptionClassName() {
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), emptyMap());
+    extractor.onEnd(attributes, Context.root(), emptyMap(), emptyMap(), new ConnectException());
+
+    assertThat(attributes.build())
+        .containsEntry(HttpAttributes.ERROR_TYPE, "java.net.ConnectException");
+  }
+
+  @Test
+  void shouldExtractErrorType_other() {
+    AttributesExtractor<Map<String, String>, Map<String, String>> extractor =
+        HttpClientAttributesExtractor.create(new TestHttpClientAttributesGetter());
+
+    AttributesBuilder attributes = Attributes.builder();
+    extractor.onStart(attributes, Context.root(), emptyMap());
+    extractor.onEnd(attributes, Context.root(), emptyMap(), emptyMap(), null);
+
+    assertThat(attributes.build()).containsEntry(HttpAttributes.ERROR_TYPE, HttpConstants._OTHER);
   }
 }

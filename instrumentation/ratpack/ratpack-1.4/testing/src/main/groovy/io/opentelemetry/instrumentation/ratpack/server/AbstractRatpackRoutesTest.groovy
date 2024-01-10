@@ -7,7 +7,7 @@ package io.opentelemetry.instrumentation.ratpack.server
 
 import io.opentelemetry.instrumentation.test.InstrumentationSpecification
 import io.opentelemetry.instrumentation.test.utils.PortUtils
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
+import io.opentelemetry.semconv.SemanticAttributes
 import io.opentelemetry.testing.internal.armeria.client.WebClient
 import ratpack.path.PathBinding
 import ratpack.server.RatpackServer
@@ -17,7 +17,7 @@ import spock.lang.Unroll
 
 import static io.opentelemetry.api.trace.SpanKind.INTERNAL
 import static io.opentelemetry.api.trace.SpanKind.SERVER
-import static io.opentelemetry.semconv.trace.attributes.SemanticAttributes.NetTransportValues.IP_TCP
+import static io.opentelemetry.semconv.SemanticAttributes.NetTransportValues.IP_TCP
 
 @Unroll
 abstract class AbstractRatpackRoutesTest extends InstrumentationSpecification {
@@ -96,8 +96,8 @@ abstract class AbstractRatpackRoutesTest extends InstrumentationSpecification {
           hasNoParent()
           attributes {
             "$SemanticAttributes.NET_TRANSPORT" {it == null || it == IP_TCP }
-            "net.protocol.name" "http"
-            "net.protocol.version" "1.1"
+            "$SemanticAttributes.NET_PROTOCOL_NAME" "http"
+            "$SemanticAttributes.NET_PROTOCOL_VERSION" "1.1"
             "$SemanticAttributes.NET_HOST_NAME" { it == "localhost" || it == null }
             "$SemanticAttributes.NET_HOST_PORT" { it == app.bindPort || it == null }
             "$SemanticAttributes.NET_SOCK_PEER_ADDR" { it == "127.0.0.1" || it == null }

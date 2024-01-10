@@ -14,16 +14,18 @@ import io.opentelemetry.instrumentation.api.instrumenter.SpanKindExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.db.DbClientSpanNameExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.db.SqlClientAttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.net.PeerServiceAttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesExtractor;
+import io.opentelemetry.instrumentation.api.util.VirtualField;
 import io.opentelemetry.javaagent.bootstrap.internal.CommonConfig;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.sqlclient.SqlConnectOptions;
-import java.util.Map;
+import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.impl.SqlClientBase;
+import java.util.concurrent.CompletableFuture;
 
 public final class VertxSqlClientSingletons {
-  public static final String OTEL_REQUEST_KEY = "otel.request";
-  public static final String OTEL_CONTEXT_KEY = "otel.context";
-  public static final String OTEL_PARENT_CONTEXT_KEY = "otel.parent-context";
   private static final String INSTRUMENTATION_NAME = "io.opentelemetry.vertx-sql-client-4.0";
   private static final Instrumenter<VertxSqlClientRequest, Void> INSTRUMENTER;
   private static final ThreadLocal<SqlConnectOptions> connectOptions = new ThreadLocal<>();
@@ -41,11 +43,11 @@ public final class VertxSqlClientSingletons {
                         CommonConfig.get().isStatementSanitizationEnabled())
                     .build())
             .addAttributesExtractor(
-                NetClientAttributesExtractor.create(VertxSqlClientNetAttributesGetter.INSTANCE))
+                ServerAttributesExtractor.create(VertxSqlClientNetAttributesGetter.INSTANCE))
             .addAttributesExtractor(
                 PeerServiceAttributesExtractor.create(
                     VertxSqlClientNetAttributesGetter.INSTANCE,
-                    CommonConfig.get().getPeerServiceMapping()));
+                    CommonConfig.get().getPeerServiceResolver()));
 
     INSTRUMENTER = builder.buildInstrumenter(SpanKindExtractor.alwaysClient());
   }
@@ -62,16 +64,66 @@ public final class VertxSqlClientSingletons {
     return connectOptions.get();
   }
 
-  public static Scope endQuerySpan(Map<Object, Object> contextData, Throwable throwable) {
-    VertxSqlClientRequest otelRequest =
-        (VertxSqlClientRequest) contextData.remove(OTEL_REQUEST_KEY);
-    Context otelContext = (Context) contextData.remove(OTEL_CONTEXT_KEY);
-    Context otelParentContext = (Context) contextData.remove(OTEL_PARENT_CONTEXT_KEY);
-    if (otelRequest == null || otelContext == null || otelParentContext == null) {
+  private static final VirtualField<Promise<?>, RequestData> requestDataField =
+      VirtualField.find(Promise.class, RequestData.class);
+
+  public static void attachRequest(
+      Promise<?> promise, VertxSqlClientRequest request, Context context, Context parentContext) {
+    requestDataField.set(promise, new RequestData(request, context, parentContext));
+  }
+
+  public static Scope endQuerySpan(Promise<?> promise, Throwable throwable) {
+    RequestData requestData = requestDataField.get(promise);
+    if (requestData == null) {
       return null;
     }
-    instrumenter().end(otelContext, otelRequest, null, throwable);
-    return otelParentContext.makeCurrent();
+    instrumenter().end(requestData.context, requestData.request, null, throwable);
+    return requestData.parentContext.makeCurrent();
+  }
+
+  static class RequestData {
+    final VertxSqlClientRequest request;
+    final Context context;
+    final Context parentContext;
+
+    RequestData(VertxSqlClientRequest request, Context context, Context parentContext) {
+      this.request = request;
+      this.context = context;
+      this.parentContext = parentContext;
+    }
+  }
+
+  // this virtual field is also used in SqlClientBase instrumentation
+  private static final VirtualField<SqlClientBase<?>, SqlConnectOptions> connectOptionsField =
+      VirtualField.find(SqlClientBase.class, SqlConnectOptions.class);
+
+  public static Future<SqlConnection> attachConnectOptions(
+      Future<SqlConnection> future, SqlConnectOptions connectOptions) {
+    return future.map(
+        sqlConnection -> {
+          if (sqlConnection instanceof SqlClientBase) {
+            connectOptionsField.set((SqlClientBase<?>) sqlConnection, connectOptions);
+          }
+          return sqlConnection;
+        });
+  }
+
+  public static <T> Future<T> wrapContext(Future<T> future) {
+    Context context = Context.current();
+    CompletableFuture<T> result = new CompletableFuture<>();
+    future
+        .toCompletionStage()
+        .whenComplete(
+            (value, throwable) -> {
+              try (Scope ignore = context.makeCurrent()) {
+                if (throwable != null) {
+                  result.completeExceptionally(throwable);
+                } else {
+                  result.complete(value);
+                }
+              }
+            });
+    return Future.fromCompletionStage(result);
   }
 
   private VertxSqlClientSingletons() {}

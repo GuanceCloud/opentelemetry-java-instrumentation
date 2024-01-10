@@ -122,7 +122,7 @@ abstract class NettyAlignmentRule : ComponentMetadataRule {
     with(ctx.details) {
       if (id.group == "io.netty" && id.name != "netty") {
         if (id.version.startsWith("4.1.")) {
-          belongsTo("io.netty:netty-bom:4.1.65.Final", false)
+          belongsTo("io.netty:netty-bom:4.1.100.Final", false)
         } else if (id.version.startsWith("4.0.")) {
           belongsTo("io.netty:netty-bom:4.0.56.Final", false)
         }
@@ -139,8 +139,16 @@ dependencies {
   compileOnly("com.google.code.findbugs:jsr305")
   compileOnly("com.google.errorprone:error_prone_annotations")
 
-  codenarc("org.codenarc:CodeNarc:2.2.0")
-  codenarc(platform("org.codehaus.groovy:groovy-bom:3.0.9"))
+  codenarc("org.codenarc:CodeNarc:3.3.0")
+  codenarc(platform("org.codehaus.groovy:groovy-bom:3.0.19"))
+
+  modules {
+    // checkstyle uses the very old google-collections which causes Java 9 module conflict with
+    // guava which is also on the classpath
+    module("com.google.collections:google-collections") {
+      replacedBy("com.google.guava:guava", "google-collections is now part of Guava")
+    }
+  }
 }
 
 testing {
@@ -186,6 +194,41 @@ testing {
   }
 }
 
+var path = project.path
+if (path.startsWith(":instrumentation:")) {
+  // remove segments that are a prefix of the next segment
+  // for example :instrumentation:log4j:log4j-context-data:log4j-context-data-2.17 is transformed to log4j-context-data-2.17
+  var tmpPath = path
+  val suffix = tmpPath.substringAfterLast(':')
+  var prefix = ":instrumentation:"
+  if (suffix == "library") {
+    // strip ":library" suffix
+    tmpPath = tmpPath.substringBeforeLast(':')
+  } else if (suffix == "library-autoconfigure") {
+    // replace ":library-autoconfigure" with "-autoconfigure"
+    tmpPath = tmpPath.substringBeforeLast(':') + "-autoconfigure"
+  } else if (suffix == "javaagent") {
+    // strip ":javaagent" suffix and add it to prefix
+    prefix += "javaagent:"
+    tmpPath = tmpPath.substringBeforeLast(':')
+  }
+  val segments = tmpPath.substring(":instrumentation:".length).split(':')
+  var newPath = ""
+  var done = false
+  for (s in segments) {
+    if (!done && (newPath.isEmpty() || s.startsWith(newPath))) {
+      newPath = s
+    } else {
+      newPath += ":$s"
+      done = true
+    }
+  }
+  if (newPath.isNotEmpty()) {
+    path = prefix + newPath
+  }
+}
+var javaModuleName = "io.opentelemetry" + path.replace(".", "_").replace("-", "_").replace(":", ".")
+
 tasks {
   named<Jar>("jar") {
     // By default Gradle Jar task can put multiple files with the same name
@@ -202,7 +245,8 @@ tasks {
         "Implementation-Title" to project.name,
         "Implementation-Version" to project.version,
         "Implementation-Vendor" to "OpenTelemetry",
-        "Implementation-URL" to "https://github.com/open-telemetry/opentelemetry-java-instrumentation"
+        "Implementation-URL" to "https://github.com/open-telemetry/opentelemetry-java-instrumentation",
+        "Automatic-Module-Name" to javaModuleName
       )
     }
   }
@@ -286,7 +330,8 @@ tasks.withType<Test>().configureEach {
 
   val trustStore = project(":testing-common").file("src/misc/testing-keystore.p12")
   // Work around payara not working when this is set for some reason.
-  if (project.name != "jaxrs-2.0-payara-testing") {
+  // Don't set for camel as we have tests that interact with AWS and need normal trustStore
+  if (project.name != "jaxrs-2.0-payara-testing" && project.description != "camel-2-20") {
     jvmArgumentProviders.add(KeystoreArgumentsProvider(trustStore))
   }
 
@@ -357,7 +402,7 @@ codenarc {
 checkstyle {
   configFile = rootProject.file("buildscripts/checkstyle.xml")
   // this version should match the version of google_checks.xml used as basis for above configuration
-  toolVersion = "8.37"
+  toolVersion = "10.12.4"
   maxWarnings = 0
 }
 
@@ -403,6 +448,7 @@ configurations.configureEach {
       substitute(module("io.opentelemetry.javaagent:opentelemetry-agent-for-testing")).using(project(":testing:agent-for-testing"))
       substitute(module("io.opentelemetry.javaagent:opentelemetry-testing-common")).using(project(":testing-common"))
       substitute(module("io.opentelemetry.javaagent:opentelemetry-muzzle")).using(project(":muzzle"))
+      substitute(module("io.opentelemetry.javaagent:opentelemetry-javaagent")).using(project(":javaagent"))
     }
 
     // The above substitutions ensure dependencies managed by this BOM for external projects refer to this repo's projects here.

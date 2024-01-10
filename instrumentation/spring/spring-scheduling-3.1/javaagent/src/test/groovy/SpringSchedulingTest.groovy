@@ -5,7 +5,7 @@
 
 import io.opentelemetry.api.trace.StatusCode
 import io.opentelemetry.instrumentation.test.AgentInstrumentationSpecification
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
+import io.opentelemetry.semconv.SemanticAttributes
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 import java.util.concurrent.CountDownLatch
@@ -84,11 +84,11 @@ class SpringSchedulingTest extends AgentInstrumentationSpecification {
     assertTraces(1) {
       trace(0, 1) {
         span(0) {
-          name "LambdaTaskConfigurer\$\$Lambda\$.run"
+          name "LambdaTaskConfigurer\$\$Lambda.run"
           hasNoParent()
           attributes {
             "job.system" "spring_scheduling"
-            "code.namespace" { it.startsWith("LambdaTaskConfigurer\$\$Lambda\$") }
+            "code.namespace" { it.startsWith("LambdaTaskConfigurer\$\$Lambda") }
             "code.function" "run"
           }
         }

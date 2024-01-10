@@ -19,9 +19,13 @@ import javax.annotation.Nullable;
 
 /**
  * Extractor of <a
- * href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/span-general.md#general-network-connection-attributes">Network
+ * href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/general/attributes.md#server-client-and-shared-network-attributes">Network
  * attributes</a>.
+ *
+ * @deprecated Make sure that your instrumentation uses the extractors from the {@code ...network}
+ *     package instead. This class will be removed in the 2.0 release.
  */
+@Deprecated
 public final class NetServerAttributesExtractor<REQUEST, RESPONSE>
     implements AttributesExtractor<REQUEST, RESPONSE> {
 
@@ -52,7 +56,8 @@ public final class NetServerAttributesExtractor<REQUEST, RESPONSE>
             FallbackAddressPortExtractor.noop(),
             SemconvStability.emitStableHttpSemconv(),
             SemconvStability.emitOldHttpSemconv(),
-            InternalServerAttributesExtractor.Mode.HOST);
+            InternalServerAttributesExtractor.Mode.HOST,
+            /* captureServerSocketAttributes= */ true);
     internalClientExtractor =
         new InternalClientAttributesExtractor<>(
             getter,

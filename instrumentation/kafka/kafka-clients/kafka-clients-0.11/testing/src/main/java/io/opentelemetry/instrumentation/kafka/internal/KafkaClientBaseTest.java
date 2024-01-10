@@ -10,7 +10,7 @@ import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satis
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.testing.assertj.AttributeAssertion;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -99,7 +100,7 @@ public abstract class KafkaClientBaseTest {
         });
   }
 
-  public HashMap<String, Object> consumerProps() {
+  public Map<String, Object> consumerProps() {
     HashMap<String, Object> props = new HashMap<>();
     props.put("bootstrap.servers", kafka.getBootstrapServers());
     props.put("group.id", "test");
@@ -111,7 +112,7 @@ public abstract class KafkaClientBaseTest {
     return props;
   }
 
-  public HashMap<String, Object> producerProps() {
+  public Map<String, Object> producerProps() {
     HashMap<String, Object> props = new HashMap<>();
     props.put("bootstrap.servers", kafka.getBootstrapServers());
     props.put("retries", 0);
@@ -159,7 +160,7 @@ public abstract class KafkaClientBaseTest {
                 equalTo(SemanticAttributes.MESSAGING_SYSTEM, "kafka"),
                 equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, SHARED_TOPIC),
                 satisfies(
-                    SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
+                    SemanticAttributes.MESSAGING_CLIENT_ID,
                     stringAssert -> stringAssert.startsWith("producer")),
                 satisfies(
                     SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION,
@@ -190,15 +191,11 @@ public abstract class KafkaClientBaseTest {
                 equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, SHARED_TOPIC),
                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "receive"),
                 satisfies(
-                    SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
+                    SemanticAttributes.MESSAGING_CLIENT_ID,
                     stringAssert -> stringAssert.startsWith("consumer"))));
-    // consumer group id is not available in version 0.11
+    // consumer group is not available in version 0.11
     if (Boolean.getBoolean("testLatestDeps")) {
       assertions.add(equalTo(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP, "test"));
-      assertions.add(
-          satisfies(
-              SemanticAttributes.MESSAGING_CONSUMER_ID,
-              stringAssert -> stringAssert.startsWith("test - consumer")));
     }
     if (testHeaders) {
       assertions.add(
@@ -218,10 +215,10 @@ public abstract class KafkaClientBaseTest {
                 equalTo(SemanticAttributes.MESSAGING_DESTINATION_NAME, SHARED_TOPIC),
                 equalTo(SemanticAttributes.MESSAGING_OPERATION, "process"),
                 satisfies(
-                    SemanticAttributes.MESSAGING_KAFKA_CLIENT_ID,
+                    SemanticAttributes.MESSAGING_CLIENT_ID,
                     stringAssert -> stringAssert.startsWith("consumer")),
                 satisfies(
-                    SemanticAttributes.MESSAGING_KAFKA_SOURCE_PARTITION,
+                    SemanticAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION,
                     AbstractLongAssert::isNotNegative),
                 satisfies(
                     SemanticAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET,
@@ -229,13 +226,9 @@ public abstract class KafkaClientBaseTest {
                 satisfies(
                     AttributeKey.longKey("kafka.record.queue_time_ms"),
                     AbstractLongAssert::isNotNegative)));
-    // consumer group id is not available in version 0.11
+    // consumer group is not available in version 0.11
     if (Boolean.getBoolean("testLatestDeps")) {
       assertions.add(equalTo(SemanticAttributes.MESSAGING_KAFKA_CONSUMER_GROUP, "test"));
-      assertions.add(
-          satisfies(
-              SemanticAttributes.MESSAGING_CONSUMER_ID,
-              stringAssert -> stringAssert.startsWith("test - consumer")));
     }
     if (messageKey != null) {
       assertions.add(equalTo(SemanticAttributes.MESSAGING_KAFKA_MESSAGE_KEY, messageKey));

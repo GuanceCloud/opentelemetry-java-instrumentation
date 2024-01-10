@@ -6,23 +6,24 @@
 package io.opentelemetry.instrumentation.jdbc.internal;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is internal and is hence not for public use. Its APIs are unstable and can change at
  * any time.
  */
 public final class DbSetArgs {
-  private HashMap<Integer, String> args;
+  private Map<Integer, String> args;
 
-  public DbSetArgs(HashMap<Integer, String> map) {
+  public DbSetArgs(Map<Integer, String> map) {
     this.args = map;
   }
 
-  public HashMap<Integer, String> getArgs() {
+  public Map<Integer, String> getArgs() {
     return this.args;
   }
 
-  public void setArgs(HashMap<Integer, String> args) {
+  public void setArgs(Map<Integer, String> args) {
     this.args = args;
   }
 

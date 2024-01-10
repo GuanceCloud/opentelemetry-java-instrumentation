@@ -18,9 +18,11 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesGetter;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.instrumentation.api.internal.SemconvStability;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,10 +35,11 @@ class PeerServiceAttributesExtractorTest {
   @Test
   void shouldNotSetAnyValueIfNetExtractorReturnsNulls() {
     // given
-    Map<String, String> peerServiceMapping = singletonMap("1.2.3.4", "myService");
+    PeerServiceResolver peerServiceResolver =
+        PeerServiceResolver.create(singletonMap("1.2.3.4", "myService"));
 
     PeerServiceAttributesExtractor<String, String> underTest =
-        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
+        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceResolver);
 
     Context context = Context.root();
 
@@ -52,10 +55,11 @@ class PeerServiceAttributesExtractorTest {
   @Test
   void shouldNotSetAnyValueIfPeerNameDoesNotMatch() {
     // given
-    Map<String, String> peerServiceMapping = singletonMap("example.com", "myService");
+    PeerServiceResolver peerServiceResolver =
+        PeerServiceResolver.create(singletonMap("example.com", "myService"));
 
     PeerServiceAttributesExtractor<String, String> underTest =
-        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
+        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceResolver);
 
     when(netAttributesExtractor.getServerAddress(any())).thenReturn("example2.com");
 
@@ -79,8 +83,10 @@ class PeerServiceAttributesExtractorTest {
     peerServiceMapping.put("example.com", "myService");
     peerServiceMapping.put("1.2.3.4", "someOtherService");
 
+    PeerServiceResolver peerServiceResolver = PeerServiceResolver.create(peerServiceMapping);
+
     PeerServiceAttributesExtractor<String, String> underTest =
-        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
+        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceResolver);
 
     when(netAttributesExtractor.getServerAddress(any())).thenReturn("example.com");
 
@@ -101,13 +107,18 @@ class PeerServiceAttributesExtractorTest {
 
   @Test
   void shouldSetSockPeerNameIfItMatchesAndNoPeerNameProvided() {
+
+    Assumptions.assumeTrue(SemconvStability.emitOldHttpSemconv());
+
     // given
     Map<String, String> peerServiceMapping = new HashMap<>();
     peerServiceMapping.put("example.com", "myService");
     peerServiceMapping.put("1.2.3.4", "someOtherService");
 
+    PeerServiceResolver peerServiceResolver = PeerServiceResolver.create(peerServiceMapping);
+
     PeerServiceAttributesExtractor<String, String> underTest =
-        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceMapping);
+        new PeerServiceAttributesExtractor<>(netAttributesExtractor, peerServiceResolver);
 
     when(netAttributesExtractor.getServerSocketDomain(any(), any())).thenReturn("example.com");
 

@@ -9,45 +9,58 @@ import static io.opentelemetry.instrumentation.api.instrumenter.http.CapturedHtt
 import static io.opentelemetry.instrumentation.api.instrumenter.http.CapturedHttpHeadersUtil.requestAttributeKey;
 import static io.opentelemetry.instrumentation.api.instrumenter.http.CapturedHttpHeadersUtil.responseAttributeKey;
 import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
-import static java.util.logging.Level.FINE;
+import static io.opentelemetry.instrumentation.api.internal.HttpConstants._OTHER;
 
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.network.internal.FallbackAddressPortExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.http.internal.HttpAttributes;
 import io.opentelemetry.instrumentation.api.internal.SemconvStability;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
+import java.util.HashSet;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.Set;
 import javax.annotation.Nullable;
 
 /**
  * Extractor of <a
- * href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#common-attributes">HTTP
+ * href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes">HTTP
  * attributes</a> that are common to client and server instrumentations.
  */
 abstract class HttpCommonAttributesExtractor<
         REQUEST, RESPONSE, GETTER extends HttpCommonAttributesGetter<REQUEST, RESPONSE>>
     implements AttributesExtractor<REQUEST, RESPONSE> {
 
-  private static final Logger logger = Logger.getLogger(HttpCommonAttributesGetter.class.getName());
-
   final GETTER getter;
+  private final HttpStatusCodeConverter statusCodeConverter;
   private final List<String> capturedRequestHeaders;
   private final List<String> capturedResponseHeaders;
+  private final Set<String> knownMethods;
 
   HttpCommonAttributesExtractor(
-      GETTER getter, List<String> capturedRequestHeaders, List<String> capturedResponseHeaders) {
+      GETTER getter,
+      HttpStatusCodeConverter statusCodeConverter,
+      List<String> capturedRequestHeaders,
+      List<String> capturedResponseHeaders,
+      Set<String> knownMethods) {
     this.getter = getter;
+    this.statusCodeConverter = statusCodeConverter;
     this.capturedRequestHeaders = lowercase(capturedRequestHeaders);
     this.capturedResponseHeaders = lowercase(capturedResponseHeaders);
+    this.knownMethods = new HashSet<>(knownMethods);
   }
 
   @Override
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
     String method = getter.getHttpRequestMethod(request);
     if (SemconvStability.emitStableHttpSemconv()) {
-      internalSet(attributes, HttpAttributes.HTTP_REQUEST_METHOD, method);
+      if (method == null || knownMethods.contains(method)) {
+        internalSet(attributes, SemanticAttributes.HTTP_REQUEST_METHOD, method);
+      } else {
+        internalSet(attributes, SemanticAttributes.HTTP_REQUEST_METHOD, _OTHER);
+        internalSet(attributes, SemanticAttributes.HTTP_REQUEST_METHOD_ORIGINAL, method);
+      }
     }
     if (SemconvStability.emitOldHttpSemconv()) {
       internalSet(attributes, SemanticAttributes.HTTP_METHOD, method);
@@ -63,6 +76,7 @@ abstract class HttpCommonAttributesExtractor<
   }
 
   @Override
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   public void onEnd(
       AttributesBuilder attributes,
       Context context,
@@ -72,17 +86,18 @@ abstract class HttpCommonAttributesExtractor<
 
     Long requestBodySize = requestBodySize(request);
     if (SemconvStability.emitStableHttpSemconv()) {
-      internalSet(attributes, HttpAttributes.HTTP_REQUEST_BODY_SIZE, requestBodySize);
+      internalSet(attributes, SemanticAttributes.HTTP_REQUEST_BODY_SIZE, requestBodySize);
     }
     if (SemconvStability.emitOldHttpSemconv()) {
       internalSet(attributes, SemanticAttributes.HTTP_REQUEST_CONTENT_LENGTH, requestBodySize);
     }
 
+    Integer statusCode = null;
     if (response != null) {
-      Integer statusCode = getter.getHttpResponseStatusCode(request, response, error);
+      statusCode = getter.getHttpResponseStatusCode(request, response, error);
       if (statusCode != null && statusCode > 0) {
         if (SemconvStability.emitStableHttpSemconv()) {
-          internalSet(attributes, HttpAttributes.HTTP_RESPONSE_STATUS_CODE, (long) statusCode);
+          internalSet(attributes, SemanticAttributes.HTTP_RESPONSE_STATUS_CODE, (long) statusCode);
         }
         if (SemconvStability.emitOldHttpSemconv()) {
           internalSet(attributes, SemanticAttributes.HTTP_STATUS_CODE, (long) statusCode);
@@ -91,7 +106,7 @@ abstract class HttpCommonAttributesExtractor<
 
       Long responseBodySize = responseBodySize(request, response);
       if (SemconvStability.emitStableHttpSemconv()) {
-        internalSet(attributes, HttpAttributes.HTTP_RESPONSE_BODY_SIZE, responseBodySize);
+        internalSet(attributes, SemanticAttributes.HTTP_RESPONSE_BODY_SIZE, responseBodySize);
       }
       if (SemconvStability.emitOldHttpSemconv()) {
         internalSet(attributes, SemanticAttributes.HTTP_RESPONSE_CONTENT_LENGTH, responseBodySize);
@@ -103,6 +118,25 @@ abstract class HttpCommonAttributesExtractor<
           internalSet(attributes, responseAttributeKey(name), values);
         }
       }
+    }
+
+    if (SemconvStability.emitStableHttpSemconv()) {
+      String errorType = null;
+      if (statusCode != null && statusCode > 0) {
+        if (statusCodeConverter.isError(statusCode)) {
+          errorType = statusCode.toString();
+        }
+      } else {
+        errorType = getter.getErrorType(request, response, error);
+        // fall back to exception class name & _OTHER
+        if (errorType == null && error != null) {
+          errorType = error.getClass().getName();
+        }
+        if (errorType == null) {
+          errorType = _OTHER;
+        }
+      }
+      internalSet(attributes, HttpAttributes.ERROR_TYPE, errorType);
     }
   }
 
@@ -137,37 +171,6 @@ abstract class HttpCommonAttributesExtractor<
     } catch (NumberFormatException e) {
       // not a number
       return null;
-    }
-  }
-
-  static final class HttpNetAddressPortExtractor<REQUEST>
-      implements FallbackAddressPortExtractor<REQUEST> {
-
-    private final HttpCommonAttributesGetter<REQUEST, ?> getter;
-
-    HttpNetAddressPortExtractor(HttpCommonAttributesGetter<REQUEST, ?> getter) {
-      this.getter = getter;
-    }
-
-    @Override
-    public void extract(AddressPortSink sink, REQUEST request) {
-      String host = firstHeaderValue(getter.getHttpRequestHeader(request, "host"));
-      if (host == null) {
-        return;
-      }
-
-      int hostHeaderSeparator = host.indexOf(':');
-      if (hostHeaderSeparator == -1) {
-        sink.setAddress(host);
-        return;
-      }
-
-      sink.setAddress(host.substring(0, hostHeaderSeparator));
-      try {
-        sink.setPort(Integer.parseInt(host.substring(hostHeaderSeparator + 1)));
-      } catch (NumberFormatException e) {
-        logger.log(FINE, e.getMessage(), e);
-      }
     }
   }
 }

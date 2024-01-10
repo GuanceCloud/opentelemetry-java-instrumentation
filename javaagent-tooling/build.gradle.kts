@@ -40,6 +40,8 @@ dependencies {
   implementation("io.opentelemetry.contrib:opentelemetry-aws-xray-propagator")
 
   api("net.bytebuddy:byte-buddy-dep")
+  implementation("org.ow2.asm:asm-tree")
+  implementation("org.ow2.asm:asm-util")
 
   annotationProcessor("com.google.auto.service:auto-service")
   compileOnly("com.google.auto.service:auto-service-annotations")
@@ -73,6 +75,17 @@ testing {
         implementation(project(":javaagent-tooling"))
         implementation("net.bytebuddy:byte-buddy-dep")
         compileOnly("com.google.guava:guava")
+
+        // Used by byte-buddy but not brought in as a transitive dependency.
+        compileOnly("com.google.code.findbugs:annotations")
+      }
+    }
+
+    val testPatchBytecodeVersion by registering(JvmTestSuite::class) {
+      dependencies {
+        implementation(project(":javaagent-bootstrap"))
+        implementation(project(":javaagent-tooling"))
+        implementation("net.bytebuddy:byte-buddy-dep")
 
         // Used by byte-buddy but not brought in as a transitive dependency.
         compileOnly("com.google.code.findbugs:annotations")

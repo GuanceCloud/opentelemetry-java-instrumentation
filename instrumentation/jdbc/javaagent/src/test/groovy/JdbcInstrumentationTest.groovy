@@ -11,7 +11,7 @@ import io.opentelemetry.instrumentation.jdbc.TestConnection
 import io.opentelemetry.instrumentation.jdbc.TestDriver
 import io.opentelemetry.instrumentation.test.AgentInstrumentationSpecification
 import io.opentelemetry.javaagent.instrumentation.jdbc.test.ProxyStatementFactory
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
+import io.opentelemetry.semconv.SemanticAttributes
 import org.apache.derby.jdbc.EmbeddedDataSource
 import org.apache.derby.jdbc.EmbeddedDriver
 import org.h2.Driver
@@ -580,6 +580,10 @@ class JdbcInstrumentationTest extends AgentInstrumentationSpecification {
           attributes {
             "$SemanticAttributes.CODE_NAMESPACE" datasource.class.name
             "$SemanticAttributes.CODE_FUNCTION" "getConnection"
+            "$SemanticAttributes.DB_SYSTEM" system
+            "$SemanticAttributes.DB_USER" { user == null | user == it }
+            "$SemanticAttributes.DB_NAME" "jdbcunittest"
+            "$SemanticAttributes.DB_CONNECTION_STRING" connectionString
           }
         }
         if (recursive) {
@@ -590,6 +594,10 @@ class JdbcInstrumentationTest extends AgentInstrumentationSpecification {
             attributes {
               "$SemanticAttributes.CODE_NAMESPACE" datasource.class.name
               "$SemanticAttributes.CODE_FUNCTION" "getConnection"
+              "$SemanticAttributes.DB_SYSTEM" system
+              "$SemanticAttributes.DB_USER" { user == null | user == it }
+              "$SemanticAttributes.DB_NAME" "jdbcunittest"
+              "$SemanticAttributes.DB_CONNECTION_STRING" connectionString
             }
           }
         }
@@ -597,13 +605,13 @@ class JdbcInstrumentationTest extends AgentInstrumentationSpecification {
     }
 
     where:
-    datasource                               | init
-    new JdbcDataSource()                     | { ds -> ds.setURL(jdbcUrls.get("h2")) }
-    new EmbeddedDataSource()                 | { ds -> ds.jdbcurl = jdbcUrls.get("derby") }
-    cpDatasources.get("hikari").get("h2")    | null
-    cpDatasources.get("hikari").get("derby") | null
-    cpDatasources.get("c3p0").get("h2")      | null
-    cpDatasources.get("c3p0").get("derby")   | null
+    datasource                               | init                                         | system  | user  | connectionString
+    new JdbcDataSource()                     | { ds -> ds.setURL(jdbcUrls.get("h2")) }      | "h2"    | null  | "h2:mem:"
+    new EmbeddedDataSource()                 | { ds -> ds.jdbcurl = jdbcUrls.get("derby") } | "derby" | "APP" | "derby:memory:"
+    cpDatasources.get("hikari").get("h2")    | null                                         | "h2"    | null  | "h2:mem:"
+    cpDatasources.get("hikari").get("derby") | null                                         | "derby" | "APP" | "derby:memory:"
+    cpDatasources.get("c3p0").get("h2")      | null                                         | "h2"    | null  | "h2:mem:"
+    cpDatasources.get("c3p0").get("derby")   | null                                         | "derby" | "APP" | "derby:memory:"
 
     // Tomcat's pool doesn't work because the getConnection method is
     // implemented in a parent class that doesn't implement DataSource
@@ -829,6 +837,38 @@ class JdbcInstrumentationTest extends AgentInstrumentationSpecification {
     Statement proxyStatement = ProxyStatementFactory.proxyStatement(statement)
     ResultSet resultSet = runWithSpan("parent") {
       return proxyStatement.executeQuery("SELECT 3")
+    }
+
+    expect:
+    resultSet.next()
+    resultSet.getInt(1) == 3
+    assertTraces(1) {
+      trace(0, 2) {
+        span(0) {
+          name "parent"
+          kind SpanKind.INTERNAL
+          hasNoParent()
+        }
+        span(1) {
+          name "SELECT $dbNameLower"
+          kind CLIENT
+          childOf span(0)
+        }
+      }
+    }
+
+    cleanup:
+    statement.close()
+    connection.close()
+  }
+
+  // regression test for https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/9359
+  def "test proxy prepared statement"() {
+    def connection = new Driver().connect(jdbcUrls.get("h2"), null)
+    PreparedStatement statement = connection.prepareStatement("SELECT 3")
+    PreparedStatement proxyStatement = ProxyStatementFactory.proxyPreparedStatement(statement)
+    ResultSet resultSet = runWithSpan("parent") {
+      return proxyStatement.executeQuery()
     }
 
     expect:

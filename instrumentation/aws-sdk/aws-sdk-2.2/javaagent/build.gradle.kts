@@ -10,6 +10,7 @@ muzzle {
     // Used by all SDK services, the only case it isn't is an SDK extension such as a custom HTTP
     // client, which is not target of instrumentation anyways.
     extraDependency("software.amazon.awssdk:protocol-core")
+
     excludeInstrumentationName("aws-sdk-2.2-sqs")
     excludeInstrumentationName("aws-sdk-2.2-sns")
 
@@ -71,8 +72,9 @@ dependencies {
 
   testImplementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:testing"))
   // Make sure these don't add HTTP headers
-  testImplementation(project(":instrumentation:apache-httpclient:apache-httpclient-4.0:javaagent"))
-  testImplementation(project(":instrumentation:netty:netty-4.1:javaagent"))
+  testInstrumentation(project(":instrumentation:apache-httpclient:apache-httpclient-4.0:javaagent"))
+  testInstrumentation(project(":instrumentation:apache-httpclient:apache-httpclient-5.0:javaagent"))
+  testInstrumentation(project(":instrumentation:netty:netty-4.1:javaagent"))
 
   testLibrary("software.amazon.awssdk:dynamodb:2.2.0")
   testLibrary("software.amazon.awssdk:ec2:2.2.0")
@@ -84,6 +86,23 @@ dependencies {
   testLibrary("software.amazon.awssdk:ses:2.2.0")
 }
 
+val latestDepTest = findProperty("testLatestDeps") as Boolean
+
+testing {
+  suites {
+    val s3PresignerTest by registering(JvmTestSuite::class) {
+      dependencies {
+        if (latestDepTest) {
+          implementation("software.amazon.awssdk:s3:+")
+        } else {
+          implementation("software.amazon.awssdk:s3:2.10.12")
+        }
+        implementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:library"))
+      }
+    }
+  }
+}
+
 tasks {
   val testExperimentalSqs by registering(Test::class) {
     group = "verification"
@@ -93,11 +112,13 @@ tasks {
 
   check {
     dependsOn(testExperimentalSqs)
+    dependsOn(testing.suites)
   }
 
   withType<Test>().configureEach {
     // TODO run tests both with and without experimental span attributes
     systemProperty("otel.instrumentation.aws-sdk.experimental-span-attributes", "true")
+    systemProperty("otel.instrumentation.aws-sdk.experimental-record-individual-http-error", "true")
   }
 
   withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>().configureEach {

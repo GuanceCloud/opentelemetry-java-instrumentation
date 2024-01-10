@@ -8,8 +8,8 @@ package io.opentelemetry.instrumentation.api.instrumenter.network.internal;
 import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
 
 import io.opentelemetry.api.common.AttributesBuilder;
-import io.opentelemetry.instrumentation.api.instrumenter.net.internal.NetAttributes;
 import io.opentelemetry.instrumentation.api.instrumenter.network.NetworkAttributesGetter;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.util.Locale;
 import javax.annotation.Nullable;
 
@@ -35,6 +35,7 @@ public final class InternalNetworkAttributesExtractor<REQUEST, RESPONSE> {
     this.emitOldHttpAttributes = emitOldHttpAttributes;
   }
 
+  @SuppressWarnings("deprecation") // until old http semconv are dropped in 2.0
   public void onEnd(AttributesBuilder attributes, REQUEST request, @Nullable RESPONSE response) {
     String protocolName = lowercase(getter.getNetworkProtocolName(request, response));
     String protocolVersion = lowercase(getter.getNetworkProtocolVersion(request, response));
@@ -43,20 +44,20 @@ public final class InternalNetworkAttributesExtractor<REQUEST, RESPONSE> {
       String transport = lowercase(getter.getNetworkTransport(request, response));
       if (networkTransportFilter.shouldAddNetworkTransport(
           protocolName, protocolVersion, transport)) {
-        internalSet(attributes, NetworkAttributes.NETWORK_TRANSPORT, transport);
+        internalSet(attributes, SemanticAttributes.NETWORK_TRANSPORT, transport);
       }
       internalSet(
           attributes,
-          NetworkAttributes.NETWORK_TYPE,
+          SemanticAttributes.NETWORK_TYPE,
           lowercase(getter.getNetworkType(request, response)));
-      internalSet(attributes, NetworkAttributes.NETWORK_PROTOCOL_NAME, protocolName);
-      internalSet(attributes, NetworkAttributes.NETWORK_PROTOCOL_VERSION, protocolVersion);
+      internalSet(attributes, SemanticAttributes.NETWORK_PROTOCOL_NAME, protocolName);
+      internalSet(attributes, SemanticAttributes.NETWORK_PROTOCOL_VERSION, protocolVersion);
     }
     if (emitOldHttpAttributes) {
       // net.transport and net.sock.family are not 1:1 convertible with network.transport and
       // network.type; they must be handled separately in the old net.* extractors
-      internalSet(attributes, NetAttributes.NET_PROTOCOL_NAME, protocolName);
-      internalSet(attributes, NetAttributes.NET_PROTOCOL_VERSION, protocolVersion);
+      internalSet(attributes, SemanticAttributes.NET_PROTOCOL_NAME, protocolName);
+      internalSet(attributes, SemanticAttributes.NET_PROTOCOL_VERSION, protocolVersion);
     }
   }
 

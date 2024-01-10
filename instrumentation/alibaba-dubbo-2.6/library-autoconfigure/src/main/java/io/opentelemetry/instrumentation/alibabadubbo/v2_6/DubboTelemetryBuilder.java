@@ -12,14 +12,13 @@ import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.instrumenter.InstrumenterBuilder;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetClientAttributesExtractor;
-import io.opentelemetry.instrumentation.api.instrumenter.net.NetServerAttributesExtractor;
+import io.opentelemetry.instrumentation.api.instrumenter.network.ServerAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.rpc.RpcClientAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.rpc.RpcServerAttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.rpc.RpcSpanNameExtractor;
 import io.opentelemetry.instrumentation.alibabadubbo.v2_6.internal.DubboNetClientAttributesGetter;
 import io.opentelemetry.instrumentation.alibabadubbo.v2_6.internal.DubboNetServerAttributesGetter;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.semconv.SemanticAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -68,14 +67,14 @@ public final class DubboTelemetryBuilder {
                 openTelemetry, INSTRUMENTATION_NAME, spanNameExtractor)
             .addAttributesExtractor(RpcServerAttributesExtractor.create(rpcAttributesGetter))
             .addAttributesExtractor(
-                NetServerAttributesExtractor.create(new DubboNetServerAttributesGetter()))
+                ServerAttributesExtractor.create(new DubboNetServerAttributesGetter()))
             .addAttributesExtractors(attributesExtractors);
 
     InstrumenterBuilder<DubboRequest, Result> clientInstrumenterBuilder =
         Instrumenter.<DubboRequest, Result>builder(
                 openTelemetry, INSTRUMENTATION_NAME, spanNameExtractor)
             .addAttributesExtractor(RpcClientAttributesExtractor.create(rpcAttributesGetter))
-            .addAttributesExtractor(NetClientAttributesExtractor.create(netClientAttributesGetter))
+            .addAttributesExtractor(ServerAttributesExtractor.create(netClientAttributesGetter))
             .addAttributesExtractors(attributesExtractors);
 
     if (peerService != null) {
