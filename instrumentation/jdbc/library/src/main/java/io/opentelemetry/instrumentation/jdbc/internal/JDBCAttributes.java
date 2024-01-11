@@ -37,7 +37,7 @@ public final class JDBCAttributes<REQUEST, RESPONSE> implements AttributesExtrac
  
   @Override
   public void onStart(AttributesBuilder attributes, Context parentContext, REQUEST request) {
-    if (this.args == null || this.args.getArgs()==null){
+    if (this.args == null || this.args.getArgs()==null || this.args.getArgs().size()==0){
       return;
     }
     StringBuilder sb = new StringBuilder();
