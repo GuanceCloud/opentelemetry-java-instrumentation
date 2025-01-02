@@ -9,6 +9,8 @@ import static io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge.currentCo
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.statementInstrumenter;
+import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.resetArgs;
+import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -19,6 +21,7 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcData;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
+import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import java.sql.PreparedStatement;
@@ -44,6 +47,9 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         nameStartsWith("execute").and(takesArguments(0)).and(isPublic()),
         PreparedStatementInstrumentation.class.getName() + "$PreparedStatementAdvice");
+    transformer.applyAdviceToMethod(
+        nameStartsWith("set").and(isPublic()).and(takesArguments(2)),
+        PreparedStatementInstrumentation.class.getName() + "$SetStringAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -99,7 +105,33 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
       if (scope != null) {
         scope.close();
         statementInstrumenter().end(context, request, null, throwable);
+        resetArgs();
       }
     }
+  }
+  @SuppressWarnings("unused")
+  public static class SetStringAdvice {
+    @Advice.OnMethodEnter(suppress = Throwable.class)
+    public static void onEnter(
+        @Advice.AllArguments Object[] args, @Advice.This Statement statement) {
+
+      int index = 0;
+      String arg = "";
+      if (args.length != 2) {
+        return;
+      }
+
+      if (args[0] instanceof Integer) {
+        index = (Integer) args[0];
+      }
+      arg = args[1].toString();
+
+      if (AgentInstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation", false)) {
+        setArg(index, arg);
+      }
+    }
+
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    public static void stopSpan(@Advice.Thrown Throwable throwable) {}
   }
 }
