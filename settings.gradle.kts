@@ -35,8 +35,8 @@ dependencyResolutionManagement {
       val latestDepTest = gradle.startParameter.projectProperties["testLatestDeps"] == "true"
       create(name) {
         val version =
-          gradle.startParameter.projectProperties["${name}Version"]
-            ?: (if (latestDepTest) maxVersion else minVersion)
+            gradle.startParameter.projectProperties["${name}Version"]
+                ?: (if (latestDepTest) maxVersion else minVersion)
         plugin("versions", "org.springframework.boot").version(version)
       }
     }
@@ -147,8 +147,6 @@ include(":instrumentation:apache-httpclient:apache-httpclient-4.3:testing")
 include(":instrumentation:apache-httpclient:apache-httpclient-5.0:javaagent")
 include(":instrumentation:apache-httpclient:apache-httpclient-5.2:library")
 include(":instrumentation:apache-shenyu-2.4:javaagent")
-include(":instrumentation:apache-thrift:javaagent")
-include(":instrumentation:apache-thrift:library-autoconfigure")
 include(":instrumentation:armeria:armeria-1.3:javaagent")
 include(":instrumentation:armeria:armeria-1.3:library")
 include(":instrumentation:armeria:armeria-1.3:testing")
@@ -578,6 +576,7 @@ include(":instrumentation:struts:struts-7.0:javaagent")
 include(":instrumentation:tapestry-5.4:javaagent")
 include(":instrumentation:taobao-hsf:javaagent")
 include(":instrumentation:taobao-hsf:library")
+include(":instrumentation:thrift-0.14.1:javaagent")
 include(":instrumentation:tomcat:tomcat-7.0:javaagent")
 include(":instrumentation:tomcat:tomcat-10.0:javaagent")
 include(":instrumentation:tomcat:tomcat-common:javaagent")
