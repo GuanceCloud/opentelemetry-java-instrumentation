@@ -13,4 +13,14 @@ import io.opentelemetry.javaagent.instrumentation.thrift.ThriftRequest;
  * any time.
  */
 public final class ThriftNetServerAttributesGetter
-    implements ServerAttributesGetter<ThriftRequest> {}
+    implements ServerAttributesGetter<ThriftRequest> {
+  @Override
+  public String getServerAddress(ThriftRequest request) {
+    return request.host;
+  }
+
+  @Override
+  public Integer getServerPort(ThriftRequest request) {
+    return request.port;
+  }
+}
