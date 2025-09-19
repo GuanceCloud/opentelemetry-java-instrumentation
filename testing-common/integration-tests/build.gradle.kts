@@ -11,6 +11,8 @@ dependencies {
   testCompileOnly(project(":javaagent-bootstrap"))
   testCompileOnly(project(":javaagent-extension-api"))
   testCompileOnly(project(":muzzle"))
+  testCompileOnly("com.google.auto.service:auto-service-annotations")
+  testCompileOnly("com.google.code.findbugs:annotations")
 
   testImplementation("net.bytebuddy:byte-buddy")
   testImplementation("net.bytebuddy:byte-buddy-agent")
@@ -27,6 +29,8 @@ dependencies {
 
 tasks {
   val testFieldInjectionDisabled by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("context.FieldInjectionDisabledTest")
     }
@@ -35,6 +39,8 @@ tasks {
   }
 
   val testFieldBackedImplementation by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("context.FieldBackedImplementationTest")
     }
@@ -47,34 +53,16 @@ tasks {
     jvmArgs("-XX:+IgnoreUnrecognizedVMOptions")
   }
 
-  val testIndyModuleOldBytecodeInstrumentation by registering(Test::class) {
-    filter {
-      includeTestsMatching("InstrumentOldBytecode")
-    }
-    include("**/InstrumentOldBytecode.*")
-    jvmArgs("-Dotel.instrumentation.inline-ibm-resource-level.enabled=false")
-  }
-
-  val testInlineModuleOldBytecodeInstrumentation by registering(Test::class) {
-    filter {
-      includeTestsMatching("InstrumentOldBytecode")
-    }
-    include("**/InstrumentOldBytecode.*")
-    jvmArgs("-Dotel.instrumentation.indy-ibm-resource-level.enabled=false")
-  }
-
   test {
     filter {
       excludeTestsMatching("context.FieldInjectionDisabledTest")
       excludeTestsMatching("context.FieldBackedImplementationTest")
-      excludeTestsMatching("InstrumentOldBytecode")
     }
     // this is needed for AgentInstrumentationSpecificationTest
     jvmArgs("-Dotel.javaagent.exclude-classes=config.exclude.packagename.*,config.exclude.SomeClass,config.exclude.SomeClass\$NestedClass")
   }
 
   check {
-    dependsOn(testFieldInjectionDisabled)
-    dependsOn(testFieldBackedImplementation)
+    dependsOn(testFieldInjectionDisabled, testFieldBackedImplementation)
   }
 }

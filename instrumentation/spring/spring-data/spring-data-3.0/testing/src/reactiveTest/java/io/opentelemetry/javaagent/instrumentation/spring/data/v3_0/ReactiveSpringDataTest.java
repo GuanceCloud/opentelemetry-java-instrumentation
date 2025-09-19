@@ -7,6 +7,7 @@ package io.opentelemetry.javaagent.instrumentation.spring.data.v3_0;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
+import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStableDbSystemName;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_CONNECTION_STRING;
@@ -21,9 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
+import io.opentelemetry.instrumentation.testing.junit.code.SemconvCodeStabilityUtil;
 import io.opentelemetry.javaagent.instrumentation.spring.data.v3_0.repository.CustomerRepository;
 import io.opentelemetry.javaagent.instrumentation.spring.data.v3_0.repository.PersistenceConfig;
-import io.opentelemetry.semconv.incubating.CodeIncubatingAttributes;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,7 +52,7 @@ class ReactiveSpringDataTest {
     applicationContext.close();
   }
 
-  @SuppressWarnings("deprecation") // TODO DB_CONNECTION_STRING deprecation
+  @SuppressWarnings("deprecation") // using deprecated semconv
   @Test
   void testFindAll() {
     long count =
@@ -69,10 +70,8 @@ class ReactiveSpringDataTest {
                     span.hasName("CustomerRepository.findAll")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(
-                                CodeIncubatingAttributes.CODE_NAMESPACE,
-                                CustomerRepository.class.getName()),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "findAll")),
+                            SemconvCodeStabilityUtil.codeFunctionAssertions(
+                                CustomerRepository.class, "findAll")),
                 span ->
                     span.hasName("SELECT db.CUSTOMER")
                         .hasKind(SpanKind.CLIENT)
@@ -83,7 +82,7 @@ class ReactiveSpringDataTest {
                                 assertThat(spanData.getEndEpochNanos())
                                     .isLessThanOrEqualTo(trace.getSpan(1).getEndEpochNanos()))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "h2"),
+                            equalTo(maybeStable(DB_SYSTEM), maybeStableDbSystemName("h2")),
                             equalTo(maybeStable(DB_NAME), "db"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(maybeStable(DB_STATEMENT), "SELECT CUSTOMER.* FROM CUSTOMER"),

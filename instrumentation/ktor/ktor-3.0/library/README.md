@@ -8,7 +8,7 @@ Server and client instrumentations are supported.
 ### Add these dependencies to your project
 
 Replace `OPENTELEMETRY_VERSION` with the [latest
-release](https://search.maven.org/search?q=g:io.opentelemetry.instrumentation%20AND%20a:opentelemetry-ktor-3.0).
+release]( https://central.sonatype.com/artifact/io.opentelemetry.instrumentation/opentelemetry-ktor-3.0).
 
 For Maven, add to your `pom.xml` dependencies:
 
@@ -32,7 +32,8 @@ implementation("io.opentelemetry.instrumentation:opentelemetry-ktor-3.0:OPENTELE
 
 ## Initializing server instrumentation
 
-Initialize instrumentation by installing the `KtorServerTelemetry` feature.
+Initialize instrumentation by installing the `KtorServerTelemetry` feature. Make sure that no other
+logging plugin is installed before this.
 You must set the `OpenTelemetry` to use with the feature.
 
 ```kotlin

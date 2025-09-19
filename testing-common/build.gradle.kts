@@ -9,10 +9,22 @@ group = "io.opentelemetry.javaagent"
 sourceSets {
   main {
     val armeriaShadedDeps = project(":testing:armeria-shaded-for-testing")
-    output.dir(armeriaShadedDeps.file("build/extracted/shadow"), "builtBy" to ":testing:armeria-shaded-for-testing:extractShadowJar")
+    output.dir(
+      armeriaShadedDeps.file("build/extracted/shadow"),
+      "builtBy" to ":testing:armeria-shaded-for-testing:extractShadowJar"
+    )
 
     val protoShadedDeps = project(":testing:proto-shaded-for-testing")
-    output.dir(protoShadedDeps.file("build/extracted/shadow"), "builtBy" to ":testing:proto-shaded-for-testing:extractShadowJar")
+    output.dir(
+      protoShadedDeps.file("build/extracted/shadow"),
+      "builtBy" to ":testing:proto-shaded-for-testing:extractShadowJar"
+    )
+
+    val wiremockShadedDeps = project(":testing:wiremock-shaded-for-testing")
+    output.dir(
+      wiremockShadedDeps.file("build/extracted/shadow"),
+      "builtBy" to ":testing:wiremock-shaded-for-testing:extractShadowJar"
+    )
   }
 }
 
@@ -45,12 +57,13 @@ dependencies {
   api("org.assertj:assertj-core")
   // Needs to be api dependency due to Spock restriction.
   api("org.awaitility:awaitility")
-  api("com.google.guava:guava")
   api("org.mockito:mockito-core")
   api("org.slf4j:slf4j-api")
 
   compileOnly(project(":testing:armeria-shaded-for-testing", configuration = "shadow"))
   compileOnly(project(":testing:proto-shaded-for-testing", configuration = "shadow"))
+  // used to record LLM responses in gen AI tests
+  compileOnly(project(":testing:wiremock-shaded-for-testing", configuration = "shadow"))
   compileOnly(project(":javaagent-bootstrap"))
 
   compileOnly("com.google.auto.value:auto-value-annotations")
@@ -62,6 +75,9 @@ dependencies {
   implementation("org.slf4j:jcl-over-slf4j")
   implementation("org.slf4j:jul-to-slf4j")
   implementation("io.opentelemetry:opentelemetry-exporter-logging")
+  implementation("io.opentelemetry.contrib:opentelemetry-baggage-processor")
+  implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi")
+  compileOnly("io.opentelemetry:opentelemetry-sdk-extension-incubator")
   api(project(":instrumentation-api-incubator"))
 
   annotationProcessor("com.google.auto.service:auto-service")
@@ -80,5 +96,10 @@ dependencies {
 tasks {
   javadoc {
     enabled = false
+  }
+
+  jar {
+    // When there are duplicates between multiple shaded dependencies, just ignore them.
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   }
 }

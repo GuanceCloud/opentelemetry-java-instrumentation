@@ -13,12 +13,13 @@ import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 import javax.annotation.Nullable;
 
 public enum VertxRedisClientAttributesGetter
-    implements DbClientAttributesGetter<VertxRedisClientRequest> {
+    implements DbClientAttributesGetter<VertxRedisClientRequest, Void> {
   INSTANCE;
 
   private static final RedisCommandSanitizer sanitizer =
       RedisCommandSanitizer.create(AgentCommonConfig.get().isStatementSanitizationEnabled());
 
+  @SuppressWarnings("deprecation") // using deprecated DbSystemIncubatingValues
   @Override
   public String getDbSystem(VertxRedisClientRequest request) {
     return DbIncubatingAttributes.DbSystemIncubatingValues.REDIS;

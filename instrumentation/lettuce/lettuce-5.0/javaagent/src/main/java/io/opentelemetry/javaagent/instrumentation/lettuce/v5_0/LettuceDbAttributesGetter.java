@@ -15,11 +15,13 @@ import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 
-final class LettuceDbAttributesGetter implements DbClientAttributesGetter<RedisCommand<?, ?, ?>> {
+final class LettuceDbAttributesGetter
+    implements DbClientAttributesGetter<RedisCommand<?, ?, ?>, Void> {
 
   private static final RedisCommandSanitizer sanitizer =
       RedisCommandSanitizer.create(AgentCommonConfig.get().isStatementSanitizationEnabled());
 
+  @SuppressWarnings("deprecation") // using deprecated DbSystemIncubatingValues
   @Override
   public String getDbSystem(RedisCommand<?, ?, ?> request) {
     return DbIncubatingAttributes.DbSystemIncubatingValues.REDIS;

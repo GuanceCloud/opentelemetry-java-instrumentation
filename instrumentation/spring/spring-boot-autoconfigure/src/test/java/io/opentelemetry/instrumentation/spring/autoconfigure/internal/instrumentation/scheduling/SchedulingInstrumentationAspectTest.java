@@ -6,9 +6,6 @@
 package io.opentelemetry.instrumentation.spring.autoconfigure.internal.instrumentation.scheduling;
 
 import static io.opentelemetry.api.trace.SpanKind.INTERNAL;
-import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
-import static io.opentelemetry.semconv.incubating.CodeIncubatingAttributes.CODE_FUNCTION;
-import static io.opentelemetry.semconv.incubating.CodeIncubatingAttributes.CODE_NAMESPACE;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opentelemetry.api.OpenTelemetry;
@@ -17,10 +14,13 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.testing.junit.LibraryInstrumentationExtension;
+import io.opentelemetry.instrumentation.testing.junit.code.SemconvCodeStabilityUtil;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
+import io.opentelemetry.sdk.testing.assertj.AttributeAssertion;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,6 +62,10 @@ class SchedulingInstrumentationAspectTest {
     schedulingTester = factory.getProxy();
   }
 
+  protected List<AttributeAssertion> assertCodeFunction(String method) {
+    return SemconvCodeStabilityUtil.codeFunctionAssertions(unproxiedTesterClassName, method);
+  }
+
   @Test
   @DisplayName("when method is annotated with @Scheduled should start a new span.")
   void scheduled() {
@@ -75,9 +79,7 @@ class SchedulingInstrumentationAspectTest {
                 span ->
                     span.hasName(unproxiedTesterSimpleClassName + ".testScheduled")
                         .hasKind(INTERNAL)
-                        .hasAttributesSatisfyingExactly(
-                            equalTo(CODE_NAMESPACE, unproxiedTesterClassName),
-                            equalTo(CODE_FUNCTION, "testScheduled"))));
+                        .hasAttributesSatisfyingExactly(assertCodeFunction("testScheduled"))));
   }
 
   @Test
@@ -93,9 +95,7 @@ class SchedulingInstrumentationAspectTest {
                 span ->
                     span.hasName(unproxiedTesterSimpleClassName + ".testMultiScheduled")
                         .hasKind(INTERNAL)
-                        .hasAttributesSatisfyingExactly(
-                            equalTo(CODE_NAMESPACE, unproxiedTesterClassName),
-                            equalTo(CODE_FUNCTION, "testMultiScheduled"))));
+                        .hasAttributesSatisfyingExactly(assertCodeFunction("testMultiScheduled"))));
   }
 
   @Test
@@ -111,9 +111,7 @@ class SchedulingInstrumentationAspectTest {
                 span ->
                     span.hasName(unproxiedTesterSimpleClassName + ".testSchedules")
                         .hasKind(INTERNAL)
-                        .hasAttributesSatisfyingExactly(
-                            equalTo(CODE_NAMESPACE, unproxiedTesterClassName),
-                            equalTo(CODE_FUNCTION, "testSchedules"))));
+                        .hasAttributesSatisfyingExactly(assertCodeFunction("testSchedules"))));
   }
 
   @Test
@@ -130,9 +128,7 @@ class SchedulingInstrumentationAspectTest {
                 span ->
                     span.hasName(unproxiedTesterSimpleClassName + ".testNestedSpan")
                         .hasKind(INTERNAL)
-                        .hasAttributesSatisfyingExactly(
-                            equalTo(CODE_NAMESPACE, unproxiedTesterClassName),
-                            equalTo(CODE_FUNCTION, "testNestedSpan")),
+                        .hasAttributesSatisfyingExactly(assertCodeFunction("testNestedSpan")),
                 nestedSpan ->
                     nestedSpan.hasParent(trace.getSpan(0)).hasKind(INTERNAL).hasName("test")));
   }
@@ -152,8 +148,7 @@ class SchedulingInstrumentationAspectTest {
                         .hasKind(INTERNAL)
                         .hasStatus(StatusData.error())
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CODE_NAMESPACE, unproxiedTesterClassName),
-                            equalTo(CODE_FUNCTION, "testScheduledWithException"))));
+                            assertCodeFunction("testScheduledWithException"))));
   }
 
   static class InstrumentationSchedulingTester {

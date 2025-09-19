@@ -18,7 +18,6 @@ import net.bytebuddy.description.enumeration.EnumerationDescription;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
-import net.bytebuddy.matcher.ElementMatchers;
 
 /**
  * This factory is designed to wrap around {@link Advice.PostProcessor.Factory} and ensures that
@@ -53,27 +52,15 @@ public class ForceDynamicallyTypedAssignReturnedFactory implements Advice.PostPr
   }
 
   @Override
-  public Advice.PostProcessor make(MethodDescription.InDefinedShape adviceMethod, boolean exit) {
-    return delegate.make(forceDynamicTyping(adviceMethod), exit);
+  public Advice.PostProcessor make(
+      List<? extends AnnotationDescription> methodAnnotations,
+      TypeDescription returnType,
+      boolean exit) {
+    return delegate.make(forceDynamicTyping(methodAnnotations), returnType, exit);
   }
 
   // Visible for testing
-  static MethodDescription.InDefinedShape forceDynamicTyping(
-      MethodDescription.InDefinedShape adviceMethod) {
-    return new MethodDescription.Latent(
-        adviceMethod.getDeclaringType(),
-        adviceMethod.getInternalName(),
-        adviceMethod.getModifiers(),
-        adviceMethod.getTypeVariables().asTokenList(ElementMatchers.none()),
-        adviceMethod.getReturnType(),
-        adviceMethod.getParameters().asTokenList(ElementMatchers.none()),
-        adviceMethod.getExceptionTypes(),
-        forceDynamicTyping(adviceMethod.getDeclaredAnnotations()),
-        adviceMethod.getDefaultValue(),
-        adviceMethod.getReceiverType());
-  }
-
-  private static List<? extends AnnotationDescription> forceDynamicTyping(
+  static List<? extends AnnotationDescription> forceDynamicTyping(
       List<? extends AnnotationDescription> declaredAnnotations) {
     return declaredAnnotations.stream()
         .map(ForceDynamicallyTypedAssignReturnedFactory::forceDynamicTyping)
@@ -81,7 +68,6 @@ public class ForceDynamicallyTypedAssignReturnedFactory implements Advice.PostPr
   }
 
   private static AnnotationDescription forceDynamicTyping(AnnotationDescription anno) {
-
     String name = anno.getAnnotationType().getName();
     if (name.equals(TO_FIELD_TYPENAME)
         || name.equals(TO_ARGUMENT_TYPENAME)
@@ -114,7 +100,7 @@ public class ForceDynamicallyTypedAssignReturnedFactory implements Advice.PostPr
     return anno;
   }
 
-  private static AnnotationDescription replaceAnnotationValue(
+  static AnnotationDescription replaceAnnotationValue(
       AnnotationDescription anno,
       String propertyName,
       Function<AnnotationValue<?, ?>, AnnotationValue<?, ?>> valueMapper) {

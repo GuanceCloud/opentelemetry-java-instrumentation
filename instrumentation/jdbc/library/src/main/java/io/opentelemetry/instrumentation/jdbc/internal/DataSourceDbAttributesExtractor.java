@@ -6,6 +6,8 @@
 package io.opentelemetry.instrumentation.jdbc.internal;
 
 import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
+import static io.opentelemetry.semconv.DbAttributes.DB_NAMESPACE;
+import static io.opentelemetry.semconv.DbAttributes.DB_SYSTEM_NAME;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributesBuilder;
@@ -21,7 +23,6 @@ enum DataSourceDbAttributesExtractor implements AttributesExtractor<DataSource, 
 
   // copied from DbIncubatingAttributes
   private static final AttributeKey<String> DB_NAME = AttributeKey.stringKey("db.name");
-  private static final AttributeKey<String> DB_NAMESPACE = AttributeKey.stringKey("db.namespace");
   private static final AttributeKey<String> DB_SYSTEM = AttributeKey.stringKey("db.system");
   private static final AttributeKey<String> DB_USER = AttributeKey.stringKey("db.user");
   private static final AttributeKey<String> DB_CONNECTION_STRING =
@@ -43,13 +44,15 @@ enum DataSourceDbAttributesExtractor implements AttributesExtractor<DataSource, 
     }
     if (SemconvStability.emitStableDatabaseSemconv()) {
       internalSet(attributes, DB_NAMESPACE, getName(dbInfo));
+      internalSet(
+          attributes, DB_SYSTEM_NAME, SemconvStability.stableDbSystemName(dbInfo.getSystem()));
     }
     if (SemconvStability.emitOldDatabaseSemconv()) {
       internalSet(attributes, DB_USER, dbInfo.getUser());
       internalSet(attributes, DB_NAME, getName(dbInfo));
       internalSet(attributes, DB_CONNECTION_STRING, dbInfo.getShortUrl());
+      internalSet(attributes, DB_SYSTEM, dbInfo.getSystem());
     }
-    internalSet(attributes, DB_SYSTEM, dbInfo.getSystem());
   }
 
   private static String getName(DbInfo dbInfo) {

@@ -5,6 +5,8 @@
 
 package io.opentelemetry.instrumentation.spring.autoconfigure.internal.properties;
 
+import io.opentelemetry.api.incubator.config.ConfigProvider;
+import io.opentelemetry.api.incubator.config.DeclarativeConfigProperties;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.InstrumentationConfig;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigurationException;
@@ -13,7 +15,13 @@ import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 
-final class ConfigPropertiesBridge implements InstrumentationConfig {
+/**
+ * Support for {@link ConfigProperties} in {@link InstrumentationConfig}.
+ *
+ * <p>This class is internal and is hence not for public use. Its APIs are unstable and can change
+ * at any time.
+ */
+public final class ConfigPropertiesBridge implements InstrumentationConfig {
 
   private final ConfigProperties configProperties;
 
@@ -101,5 +109,23 @@ final class ConfigPropertiesBridge implements InstrumentationConfig {
     } catch (ConfigurationException ignored) {
       return defaultValue;
     }
+  }
+
+  @Override
+  public boolean isDeclarative() {
+    return false;
+  }
+
+  @Override
+  public DeclarativeConfigProperties getDeclarativeConfig(String node) {
+    throw new IllegalStateException(
+        "Declarative configuration is not supported in spring boot autoconfigure yet");
+  }
+
+  @Nullable
+  @Override
+  public ConfigProvider getConfigProvider() {
+    // declarative config support will be added in the future
+    return null;
   }
 }

@@ -25,9 +25,7 @@ val scalaMinor = Regex("""^([0-9]+\.[0-9]+)\.?.*$""").find(scalaVersion)!!.run {
   minorVersion
 }
 
-val scalified = fun(pack: String): String {
-  return "${pack}_$scalaMinor"
-}
+val scalified = fun(pack: String): String = "${pack}_$scalaMinor"
 
 dependencies {
   bootstrap(project(":instrumentation:executors:bootstrap"))
@@ -39,12 +37,15 @@ dependencies {
 
   implementation(project(":instrumentation:netty:netty-4.1:javaagent"))
   implementation(project(":instrumentation:netty:netty-4.1:library"))
-  implementation(project(":instrumentation:netty:netty-4-common:library"))
+  implementation(project(":instrumentation:netty:netty-common-4.0:library"))
 }
 
 tasks {
   test {
     jvmArgs("-Dotel.instrumentation.http.client.emit-experimental-telemetry=true")
     jvmArgs("-Dotel.instrumentation.http.server.emit-experimental-telemetry=true")
+    systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
+
+    systemProperty("metadataConfig", "otel.instrumentation.http.client.emit-experimental-telemetry=true,otel.instrumentation.http.server.emit-experimental-telemetry=true")
   }
 }

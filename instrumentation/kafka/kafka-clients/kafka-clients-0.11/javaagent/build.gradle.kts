@@ -17,7 +17,7 @@ dependencies {
   annotationProcessor("com.google.auto.value:auto-value")
 
   bootstrap(project(":instrumentation:kafka:kafka-clients:kafka-clients-0.11:bootstrap"))
-  implementation(project(":instrumentation:kafka:kafka-clients:kafka-clients-common:library"))
+  implementation(project(":instrumentation:kafka:kafka-clients:kafka-clients-common-0.11:library"))
 
   library("org.apache.kafka:kafka-clients:0.11.0.0")
 
@@ -36,6 +36,8 @@ tasks {
   }
 
   val testPropagationDisabled by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("KafkaClientPropagationDisabledTest")
     }
@@ -44,6 +46,8 @@ tasks {
   }
 
   val testReceiveSpansDisabled by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("KafkaClientSuppressReceiveSpansTest")
     }
@@ -59,7 +63,15 @@ tasks {
   }
 
   check {
-    dependsOn(testPropagationDisabled)
-    dependsOn(testReceiveSpansDisabled)
+    dependsOn(testPropagationDisabled, testReceiveSpansDisabled)
+  }
+}
+
+val latestDepTest = findProperty("testLatestDeps") as Boolean
+
+// kafka 4.1 requires java 11
+if (latestDepTest) {
+  otelJava {
+    minJavaVersionSupported.set(JavaVersion.VERSION_11)
   }
 }

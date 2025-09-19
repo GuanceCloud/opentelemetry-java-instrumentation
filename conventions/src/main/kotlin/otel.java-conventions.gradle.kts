@@ -143,7 +143,7 @@ abstract class NettyAlignmentRule : ComponentMetadataRule {
     with(ctx.details) {
       if (id.group == "io.netty" && id.name != "netty") {
         if (id.version.startsWith("4.1.")) {
-          belongsTo("io.netty:netty-bom:4.1.116.Final", false)
+          belongsTo("io.netty:netty-bom:4.1.127.Final", false)
         } else if (id.version.startsWith("4.0.")) {
           belongsTo("io.netty:netty-bom:4.0.56.Final", false)
         }
@@ -160,8 +160,8 @@ dependencies {
   compileOnly("com.google.code.findbugs:jsr305")
   compileOnly("com.google.errorprone:error_prone_annotations")
 
-  codenarc("org.codenarc:CodeNarc:3.5.0")
-  codenarc(platform("org.codehaus.groovy:groovy-bom:3.0.23"))
+  codenarc("org.codenarc:CodeNarc:3.6.0")
+  codenarc(platform("org.codehaus.groovy:groovy-bom:3.0.25"))
 
   modules {
     // checkstyle uses the very old google-collections which causes Java 9 module conflict with
@@ -339,6 +339,14 @@ val resourceClassesCsv = resourceNames.joinToString(",") { "io.opentelemetry.sdk
 tasks.withType<Test>().configureEach {
   useJUnitPlatform()
 
+  // work around jvm crash on openJ9 8 after updating armeria to 1.33.1
+  val testJavaVersion = gradle.startParameter.projectProperties["testJavaVersion"]?.let(JavaVersion::toVersion)
+  val useJ9 = gradle.startParameter.projectProperties["testJavaVM"]?.run { this == "openj9" }
+    ?: false
+  if (useJ9 && testJavaVersion != null && testJavaVersion.isJava8) {
+    jvmArgs("-Xjit:exclude={io/opentelemetry/testing/internal/io/netty/buffer/HeapByteBufUtil.*},exclude={io/opentelemetry/testing/internal/io/netty/buffer/UnpooledHeapByteBuf.*},exclude={io/opentelemetry/testing/internal/io/netty/buffer/AbstractByteBuf.*}")
+  }
+
   // There's no real harm in setting this for all tests even if any happen to not be using context
   // propagation.
   jvmArgs("-Dio.opentelemetry.context.enableStrictContext=${rootProject.findProperty("enableStrictContext") ?: true}")
@@ -356,9 +364,10 @@ tasks.withType<Test>().configureEach {
   val trustStore = project(":testing-common").file("src/misc/testing-keystore.p12")
   // Work around payara not working when this is set for some reason.
   // Don't set for:
+  // - aws-sdk as we have tests that interact with AWS and need normal trustStore
   // - camel as we have tests that interact with AWS and need normal trustStore
   // - vaadin as tests need to be able to download nodejs when not cached in ~/.vaadin/
-  if (project.name != "jaxrs-2.0-payara-testing" && !project.path.contains("vaadin") && project.description != "camel-2-20") {
+  if (project.name != "jaxrs-2.0-payara-testing" && !project.path.contains("vaadin") && project.description != "camel-2-20" && !project.path.contains("aws-sdk")) {
     jvmArgumentProviders.add(KeystoreArgumentsProvider(trustStore))
   }
 
@@ -430,7 +439,7 @@ codenarc {
 checkstyle {
   configFile = rootProject.file("buildscripts/checkstyle.xml")
   // this version should match the version of google_checks.xml used as basis for above configuration
-  toolVersion = "10.21.0"
+  toolVersion = "11.0.1"
   maxWarnings = 0
 }
 
@@ -439,7 +448,6 @@ dependencyCheck {
   suppressionFile = "buildscripts/dependency-check-suppressions.xml"
   failBuildOnCVSS = 7.0f // fail on high or critical CVE
   nvd.apiKey = System.getenv("NVD_API_KEY")
-  nvd.delay = 3500 // until next dependency check release (https://github.com/jeremylong/DependencyCheck/pull/6333)
 }
 
 idea {

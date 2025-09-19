@@ -24,16 +24,16 @@ dependencies {
   testLibrary("io.ktor:ktor-server-netty:$ktorVersion")
   testLibrary("io.ktor:ktor-client-cio:$ktorVersion")
 
-  latestDepTestLibrary("io.ktor:ktor-client-core:2.+")
-  latestDepTestLibrary("io.ktor:ktor-server-core:2.+")
-  latestDepTestLibrary("io.ktor:ktor-server-netty:2.+")
-  latestDepTestLibrary("io.ktor:ktor-client-cio:2.+")
+  latestDepTestLibrary("io.ktor:ktor-client-core:2.+") // see ktor-3.0 module
+  latestDepTestLibrary("io.ktor:ktor-server-core:2.+") // see ktor-3.0 module
+  latestDepTestLibrary("io.ktor:ktor-server-netty:2.+") // see ktor-3.0 module
+  latestDepTestLibrary("io.ktor:ktor-client-cio:2.+") // see ktor-3.0 module
 }
 
 kotlin {
   compilerOptions {
     jvmTarget.set(JvmTarget.JVM_1_8)
     @Suppress("deprecation")
-    languageVersion.set(KotlinVersion.KOTLIN_1_6)
+    languageVersion.set(KotlinVersion.KOTLIN_1_8)
   }
 }

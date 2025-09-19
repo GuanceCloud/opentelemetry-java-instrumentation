@@ -33,24 +33,29 @@ dependencies {
 
   testImplementation("javax.servlet:javax.servlet-api:3.1.0")
 
-  latestDepTestLibrary("org.springframework.integration:spring-integration-core:5.+")
-  latestDepTestLibrary("org.springframework.boot:spring-boot-starter-test:2.+")
-  latestDepTestLibrary("org.springframework.boot:spring-boot-starter:2.+")
-  latestDepTestLibrary("org.springframework.cloud:spring-cloud-stream:3.+")
-  latestDepTestLibrary("org.springframework.cloud:spring-cloud-stream-binder-rabbit:3.+")
+  latestDepTestLibrary("org.springframework.integration:spring-integration-core:5.+") // documented limitation
+  latestDepTestLibrary("org.springframework.boot:spring-boot-starter-test:2.+") // documented limitation
+  latestDepTestLibrary("org.springframework.boot:spring-boot-starter:2.+") // documented limitation
+  latestDepTestLibrary("org.springframework.cloud:spring-cloud-stream:3.+") // documented limitation
+  latestDepTestLibrary("org.springframework.cloud:spring-cloud-stream-binder-rabbit:3.+") // documented limitation
 }
 
 tasks {
   val testWithRabbitInstrumentation by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("SpringIntegrationAndRabbitTest")
     }
     include("**/SpringIntegrationAndRabbitTest.*")
     jvmArgs("-Dotel.instrumentation.rabbitmq.enabled=true")
     jvmArgs("-Dotel.instrumentation.spring-rabbit.enabled=true")
+    systemProperty("metadataConfig", "otel.instrumentation.spring-rabbit.enabled=true")
   }
 
   val testWithProducerInstrumentation by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("SpringCloudStreamProducerTest")
     }
@@ -58,6 +63,7 @@ tasks {
     jvmArgs("-Dotel.instrumentation.rabbitmq.enabled=false")
     jvmArgs("-Dotel.instrumentation.spring-rabbit.enabled=false")
     jvmArgs("-Dotel.instrumentation.spring-integration.producer.enabled=true")
+    systemProperty("metadataConfig", "otel.instrumentation.spring-integration.producer.enabled=true")
   }
 
   test {
@@ -70,13 +76,14 @@ tasks {
   }
 
   check {
-    dependsOn(testWithRabbitInstrumentation)
-    dependsOn(testWithProducerInstrumentation)
+    dependsOn(testWithRabbitInstrumentation, testWithProducerInstrumentation)
   }
 
   withType<Test>().configureEach {
     systemProperty("testLatestDeps", findProperty("testLatestDeps") as Boolean)
     usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
+
+    systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
   }
 }
 

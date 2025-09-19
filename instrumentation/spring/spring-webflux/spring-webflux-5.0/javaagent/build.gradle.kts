@@ -59,21 +59,20 @@ dependencies {
   testLibrary("org.springframework.boot:spring-boot-starter-webflux:2.0.0.RELEASE")
   testLibrary("org.springframework.boot:spring-boot-starter-test:2.0.0.RELEASE")
   testLibrary("org.springframework.boot:spring-boot-starter-reactor-netty:2.0.0.RELEASE")
-  testImplementation("org.spockframework:spock-spring:2.4-M1-groovy-4.0")
 }
 
+val latestDepTest = findProperty("testLatestDeps") as Boolean
+
 tasks.withType<Test>().configureEach {
-  // TODO run tests both with and without experimental span attributes
-  jvmArgs("-Dotel.instrumentation.spring-webflux.experimental-span-attributes=true")
   // required on jdk17
   jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
   jvmArgs("-XX:+IgnoreUnrecognizedVMOptions")
   jvmArgs("-Dotel.instrumentation.common.experimental.controller-telemetry.enabled=true")
 
-  systemProperty("testLatestDeps", findProperty("testLatestDeps") as Boolean)
+  systemProperty("metadataConfig", "otel.instrumentation.common.experimental.controller-telemetry.enabled")
+  systemProperty("testLatestDeps", latestDepTest)
+  systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
 }
-
-val latestDepTest = findProperty("testLatestDeps") as Boolean
 
 if (latestDepTest) {
   // spring 6 requires java 17

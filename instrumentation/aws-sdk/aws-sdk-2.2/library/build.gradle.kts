@@ -14,40 +14,38 @@ dependencies {
   compileOnly("software.amazon.awssdk:json-utils:2.17.0")
   compileOnly(project(":muzzle")) // For @NoMuzzle
 
+  // Don't use library to make sure base test is run with the floor version.
+  // bedrock runtime is tested separately in testBedrockRuntime.
+  // First release with Converse API
+  compileOnly("software.amazon.awssdk:bedrockruntime:2.25.63")
+
   testImplementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:testing"))
 
   testLibrary("software.amazon.awssdk:dynamodb:2.2.0")
   testLibrary("software.amazon.awssdk:ec2:2.2.0")
   testLibrary("software.amazon.awssdk:kinesis:2.2.0")
+  testLibrary("software.amazon.awssdk:lambda:2.2.0")
   testLibrary("software.amazon.awssdk:rds:2.2.0")
   testLibrary("software.amazon.awssdk:s3:2.2.0")
+  testLibrary("software.amazon.awssdk:secretsmanager:2.2.0")
   testLibrary("software.amazon.awssdk:ses:2.2.0")
+  testLibrary("software.amazon.awssdk:sfn:2.2.0")
 }
+
+val testLatestDeps = findProperty("testLatestDeps") as Boolean
 
 testing {
   suites {
     val testCoreOnly by registering(JvmTestSuite::class) {
-      sources {
-        groovy {
-          setSrcDirs(listOf("src/testCoreOnly/groovy"))
-        }
-      }
-
       dependencies {
         implementation(project())
         implementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:testing"))
         compileOnly("software.amazon.awssdk:sqs:2.2.0")
-        if (findProperty("testLatestDeps") as Boolean) {
-          implementation("software.amazon.awssdk:aws-core:+")
-          implementation("software.amazon.awssdk:aws-json-protocol:+")
-          implementation("software.amazon.awssdk:dynamodb:+")
-          implementation("software.amazon.awssdk:lambda:+")
-        } else {
-          implementation("software.amazon.awssdk:aws-core:2.2.0")
-          implementation("software.amazon.awssdk:aws-json-protocol:2.2.0")
-          implementation("software.amazon.awssdk:dynamodb:2.2.0")
-          implementation("software.amazon.awssdk:lambda:2.2.0")
-        }
+        val version = if (testLatestDeps) "latest.release" else "2.2.0"
+        implementation("software.amazon.awssdk:aws-core:$version")
+        implementation("software.amazon.awssdk:aws-json-protocol:$version")
+        implementation("software.amazon.awssdk:dynamodb:$version")
+        implementation("software.amazon.awssdk:lambda:$version")
       }
     }
 
@@ -55,11 +53,17 @@ testing {
       dependencies {
         implementation(project())
         implementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:testing"))
-        if (findProperty("testLatestDeps") as Boolean) {
-          implementation("software.amazon.awssdk:lambda:+")
-        } else {
-          implementation("software.amazon.awssdk:lambda:2.17.0")
-        }
+        val version = if (testLatestDeps) "latest.release" else "2.17.0"
+        implementation("software.amazon.awssdk:lambda:$version")
+      }
+    }
+
+    val testBedrockRuntime by registering(JvmTestSuite::class) {
+      dependencies {
+        implementation(project())
+        implementation(project(":instrumentation:aws-sdk:aws-sdk-2.2:testing"))
+        val version = if (testLatestDeps) "latest.release" else "2.25.63"
+        implementation("software.amazon.awssdk:bedrockruntime:$version")
       }
     }
   }
@@ -74,10 +78,13 @@ tasks {
   }
 
   val testStableSemconv by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
     jvmArgs("-Dotel.semconv-stability.opt-in=database")
   }
 
   check {
-    dependsOn(testStableSemconv)
+    dependsOn(testing.suites, testStableSemconv)
   }
 }

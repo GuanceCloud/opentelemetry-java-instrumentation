@@ -17,8 +17,8 @@ See [Running the tests](./docs/contributing/running-tests.md) for more details.
 
 For developers testing code changes before a release is complete, there are
 snapshot builds of the `main` branch. They are available from
-the Sonatype OSS snapshots repository at `https://oss.sonatype.org/content/repositories/snapshots/`
-([browse](https://oss.sonatype.org/content/repositories/snapshots/io/opentelemetry/))
+the Sonatype snapshot repository at `https://central.sonatype.com/repository/maven-snapshots/`
+([browse](https://central.sonatype.com/service/rest/repository/browse/maven-snapshots/io/opentelemetry/)).
 
 ### Building from source
 
@@ -87,7 +87,8 @@ https://gradle.com/s/ila4qwp5lcf5s
 ```
 
 Opening the build scan link can sometimes take several seconds (it's a large build), but it
-typically makes it a lot clearer what's failing.
+typically makes it a lot clearer what's failing. Sometimes there will be several build scans in a
+log, so look for one that follows the "BUILD FAILED" message.
 
 You can also try the "Explain error" button at the top of the GitHub Actions page,
 which often does a reasonable job of parsing the long build log and displaying the important part.

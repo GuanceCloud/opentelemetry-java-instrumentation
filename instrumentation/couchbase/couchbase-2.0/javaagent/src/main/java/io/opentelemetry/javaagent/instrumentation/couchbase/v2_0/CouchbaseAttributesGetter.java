@@ -9,8 +9,10 @@ import io.opentelemetry.instrumentation.api.incubator.semconv.db.DbClientAttribu
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 import javax.annotation.Nullable;
 
-final class CouchbaseAttributesGetter implements DbClientAttributesGetter<CouchbaseRequestInfo> {
+final class CouchbaseAttributesGetter
+    implements DbClientAttributesGetter<CouchbaseRequestInfo, Void> {
 
+  @SuppressWarnings("deprecation") // using deprecated DbSystemIncubatingValues
   @Override
   public String getDbSystem(CouchbaseRequestInfo couchbaseRequest) {
     return DbIncubatingAttributes.DbSystemIncubatingValues.COUCHBASE;

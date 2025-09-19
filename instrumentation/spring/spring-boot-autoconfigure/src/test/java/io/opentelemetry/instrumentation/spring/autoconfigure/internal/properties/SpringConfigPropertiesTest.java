@@ -8,6 +8,7 @@ package io.opentelemetry.instrumentation.spring.autoconfigure.internal.propertie
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration;
 import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import io.opentelemetry.sdk.autoconfigure.spi.internal.DefaultConfigProperties;
@@ -79,6 +80,19 @@ class SpringConfigPropertiesTest {
 
   @ParameterizedTest
   @MethodSource("headerKeys")
+  @DisplayName("should map headers from spring properties with user supplied OpenTelemetry bean")
+  void mapFlatHeadersWithUserSuppliedOtelBean(String key) {
+    this.contextRunner
+        .withSystemProperties(key + "=a=1,b=2")
+        .withBean(OpenTelemetry.class, OpenTelemetry::noop)
+        .run(
+            context ->
+                assertThat(getConfig(context).getMap(key))
+                    .containsExactly(entry("a", "1"), entry("b", "2")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("headerKeys")
   @DisplayName("should map headers from spring application.yaml")
   void mapObjectHeaders(String key) {
     this.contextRunner
@@ -91,7 +105,6 @@ class SpringConfigPropertiesTest {
 
   public static Stream<Arguments> listProperties() {
     return Stream.of(
-        Arguments.of("otel.experimental.metrics.view.config", Arrays.asList("a", "b")),
         Arguments.of("otel.experimental.resource.disabled.keys", Arrays.asList("a", "b")),
         Arguments.of("otel.propagators", Arrays.asList("baggage", "b3")),
         Arguments.of("otel.logs.exporter", Collections.singletonList("console")),

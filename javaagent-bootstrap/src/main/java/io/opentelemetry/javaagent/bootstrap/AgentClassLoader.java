@@ -84,7 +84,27 @@ public class AgentClassLoader extends URLClassLoader {
    */
   public AgentClassLoader(
       File javaagentFile, String internalJarFileName, boolean isSecurityManagerSupportEnabled) {
-    super(new URL[] {}, getParentClassLoader());
+    this(javaagentFile, internalJarFileName, isSecurityManagerSupportEnabled, null);
+  }
+
+  /**
+   * Construct a new AgentClassLoader with a custom parent ClassLoader. This is used by some 3rd
+   * party command-line utilities in order to reuse classes that are bundled as classdata files
+   * under `inst/`.
+   *
+   * @param javaagentFile Used for resource lookups.
+   * @param internalJarFileName File name of the internal jar
+   * @param isSecurityManagerSupportEnabled Whether this class loader should define classes with all
+   *     permissions
+   * @param parentClassLoader Custom parent ClassLoader to use. If null, the default parent will be
+   *     used.
+   */
+  public AgentClassLoader(
+      File javaagentFile,
+      String internalJarFileName,
+      boolean isSecurityManagerSupportEnabled,
+      @Nullable ClassLoader parentClassLoader) {
+    super(new URL[] {}, parentClassLoader != null ? parentClassLoader : getParentClassLoader());
     if (javaagentFile == null) {
       throw new IllegalArgumentException("Agent jar location should be set");
     }
@@ -169,11 +189,11 @@ public class AgentClassLoader extends URLClassLoader {
   }
 
   private Class<?> findAgentClass(String name) throws ClassNotFoundException {
-    JarEntry jarEntry = findJarEntry(name.replace('.', '/') + ".class");
-    if (jarEntry != null) {
+    AgentJarResource jarResource = findAgentJarResource(name.replace('.', '/') + ".class");
+    if (jarResource != null) {
       byte[] bytes;
       try {
-        bytes = getJarEntryBytes(jarEntry);
+        bytes = getJarEntryBytes(jarResource.getJarEntry());
       } catch (IOException exception) {
         throw new ClassNotFoundException(name, exception);
       }
@@ -236,18 +256,20 @@ public class AgentClassLoader extends URLClassLoader {
     return index == -1 ? null : className.substring(0, index);
   }
 
-  private JarEntry findJarEntry(String name) {
+  private AgentJarResource findAgentJarResource(String name) {
     // shading renames .class to .classdata
     boolean isClass = name.endsWith(".class");
     if (isClass) {
       name += getClassSuffix();
     }
 
-    JarEntry jarEntry = jarFile.getJarEntry(jarEntryPrefix + name);
+    String jarEntryName = jarEntryPrefix + name;
+    JarEntry jarEntry = jarFile.getJarEntry(jarEntryName);
+    AgentJarResource jarResource = AgentJarResource.create(jarEntryName, jarEntry);
     if (MULTI_RELEASE_JAR_ENABLE) {
-      jarEntry = findVersionedJarEntry(jarEntry, name);
+      jarResource = findVersionedAgentJarResource(jarResource, name);
     }
-    return jarEntry;
+    return jarResource;
   }
 
   // suffix appended to class resource names
@@ -256,22 +278,23 @@ public class AgentClassLoader extends URLClassLoader {
     return "data";
   }
 
-  private JarEntry findVersionedJarEntry(JarEntry jarEntry, String name) {
+  private AgentJarResource findVersionedAgentJarResource(
+      AgentJarResource jarResource, String name) {
     // same logic as in JarFile.getVersionedEntry
     if (!name.startsWith(META_INF)) {
       // search for versioned entry by looping over possible versions form high to low
       int version = JAVA_VERSION;
       while (version >= MIN_MULTI_RELEASE_JAR_JAVA_VERSION) {
-        JarEntry versionedJarEntry =
-            jarFile.getJarEntry(jarEntryPrefix + META_INF_VERSIONS + version + "/" + name);
+        String versionedJarEntryName = jarEntryPrefix + META_INF_VERSIONS + version + "/" + name;
+        JarEntry versionedJarEntry = jarFile.getJarEntry(versionedJarEntryName);
         if (versionedJarEntry != null) {
-          return versionedJarEntry;
+          return AgentJarResource.create(versionedJarEntryName, versionedJarEntry);
         }
         version--;
       }
     }
 
-    return jarEntry;
+    return jarResource;
   }
 
   @Override
@@ -296,17 +319,17 @@ public class AgentClassLoader extends URLClassLoader {
   }
 
   private URL findJarResource(String name) {
-    JarEntry jarEntry = findJarEntry(name);
-    return getJarEntryUrl(jarEntry);
+    AgentJarResource jarResource = findAgentJarResource(name);
+    return getAgentJarResourceUrl(jarResource);
   }
 
-  private URL getJarEntryUrl(JarEntry jarEntry) {
-    if (jarEntry != null) {
+  private URL getAgentJarResourceUrl(AgentJarResource jarResource) {
+    if (jarResource != null) {
       try {
-        return new URL(jarBase, jarEntry.getName());
+        return new URL(jarBase, jarResource.getName());
       } catch (MalformedURLException e) {
         throw new IllegalStateException(
-            "Failed to construct url for jar entry " + jarEntry.getName(), e);
+            "Failed to construct url for jar entry " + jarResource.getName(), e);
       }
     }
 
@@ -374,7 +397,8 @@ public class AgentClassLoader extends URLClassLoader {
       // find from agent jar
       if (agentClassLoader != null) {
         JarEntry jarEntry = agentClassLoader.jarFile.getJarEntry(resourceName);
-        return agentClassLoader.getJarEntryUrl(jarEntry);
+        AgentJarResource jarResource = AgentJarResource.create(resourceName, jarEntry);
+        return agentClassLoader.getAgentJarResourceUrl(jarResource);
       }
       return null;
     }
@@ -382,6 +406,28 @@ public class AgentClassLoader extends URLClassLoader {
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
       throw new ClassNotFoundException(name);
+    }
+  }
+
+  private static class AgentJarResource {
+    private final String name;
+    private final JarEntry jarEntry;
+
+    private AgentJarResource(String name, JarEntry jarEntry) {
+      this.name = name;
+      this.jarEntry = jarEntry;
+    }
+
+    String getName() {
+      return name;
+    }
+
+    JarEntry getJarEntry() {
+      return jarEntry;
+    }
+
+    static AgentJarResource create(String name, JarEntry jarEntry) {
+      return jarEntry != null ? new AgentJarResource(name, jarEntry) : null;
     }
   }
 
@@ -479,7 +525,7 @@ public class AgentClassLoader extends URLClassLoader {
 
     private final ClassLoader platformClassLoader = getPlatformLoader();
 
-    public PlatformDelegatingClassLoader() {
+    PlatformDelegatingClassLoader() {
       super(null);
     }
 

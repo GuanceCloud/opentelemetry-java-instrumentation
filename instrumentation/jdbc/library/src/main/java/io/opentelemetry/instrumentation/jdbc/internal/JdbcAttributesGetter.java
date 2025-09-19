@@ -7,13 +7,12 @@ package io.opentelemetry.instrumentation.jdbc.internal;
 
 import io.opentelemetry.instrumentation.api.incubator.semconv.db.SqlClientAttributesGetter;
 import io.opentelemetry.instrumentation.jdbc.internal.dbinfo.DbInfo;
+import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Map;
 import javax.annotation.Nullable;
 
-/**
- * This class is internal and is hence not for public use. Its APIs are unstable and can change at
- * any time.
- */
-public final class JdbcAttributesGetter implements SqlClientAttributesGetter<DbRequest> {
+final class JdbcAttributesGetter implements SqlClientAttributesGetter<DbRequest, Void> {
 
   @Nullable
   @Override
@@ -42,9 +41,27 @@ public final class JdbcAttributesGetter implements SqlClientAttributesGetter<DbR
     return request.getDbInfo().getShortUrl();
   }
 
+  @Override
+  public Collection<String> getRawQueryTexts(DbRequest request) {
+    return request.getQueryTexts();
+  }
+
+  @Override
+  public Long getBatchSize(DbRequest request) {
+    return request.getBatchSize();
+  }
+
   @Nullable
   @Override
-  public String getRawQueryText(DbRequest request) {
-    return request.getQueryText();
+  public String getResponseStatus(@Nullable Void response, @Nullable Throwable error) {
+    if (error instanceof SQLException) {
+      return Integer.toString(((SQLException) error).getErrorCode());
+    }
+    return null;
+  }
+
+  @Override
+  public Map<String, String> getQueryParameters(DbRequest request) {
+    return request.getPreparedStatementParameters();
   }
 }

@@ -30,6 +30,7 @@ import io.opentelemetry.semconv.NetworkAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 import io.opentelemetry.semconv.UserAgentAttributes;
+import io.opentelemetry.semconv.incubating.UrlIncubatingAttributes;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -110,6 +112,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @ParameterizedTest
   @ValueSource(strings = {"/success", "/success?with=params"})
   void successfulGetRequest(String path) throws Exception {
+    assumeTrue(options.getHasSendRequest());
+
     URI uri = resolveAddress(path);
     String method = "GET";
     int responseCode = doRequest(method, uri);
@@ -129,6 +133,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void requestWithNonStandardHttpMethod() throws Exception {
     assumeTrue(options.getTestNonStandardHttpMethod());
+    assumeTrue(options.getHasSendRequest());
 
     URI uri = resolveAddress("/success");
     String method = "TEST";
@@ -149,6 +154,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @ParameterizedTest
   @ValueSource(strings = {"PUT", "POST"})
   void successfulRequestWithParent(String method) throws Exception {
+    assumeTrue(options.getHasSendRequest());
+
     URI uri = resolveAddress("/success");
     int responseCode = testing.runWithSpan("parent", () -> doRequest(method, uri));
 
@@ -167,6 +174,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
 
   @Test
   void successfulRequestWithNotSampledParent() throws Exception {
+    assumeTrue(options.getHasSendRequest());
+
     String method = "GET";
     URI uri = resolveAddress("/success");
     int responseCode = testing.runWithNonRecordingSpan(() -> doRequest(method, uri));
@@ -184,6 +193,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   void shouldSuppressNestedClientSpanIfAlreadyUnderParentClientSpan(String method)
       throws Exception {
     assumeTrue(options.getTestWithClientParent());
+    assumeTrue(options.getHasSendRequest());
 
     URI uri = resolveAddress("/success");
     int responseCode =
@@ -437,10 +447,13 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
 
   // TODO: add basic auth scenario
 
-  @Test
-  void errorSpan() {
+  @ParameterizedTest
+  @CsvSource({"/error,500", "/client-error,400"})
+  void errorSpan(String path, int responseCode) {
+    assumeTrue(options.getHasSendRequest());
+
     String method = "GET";
-    URI uri = resolveAddress("/error");
+    URI uri = resolveAddress(path);
 
     testing.runWithSpan(
         "parent",
@@ -456,7 +469,9 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
         trace -> {
           trace.hasSpansSatisfyingExactly(
               span -> span.hasName("parent").hasKind(SpanKind.INTERNAL).hasNoParent(),
-              span -> assertClientSpan(span, uri, method, 500, null).hasParent(trace.getSpan(0)),
+              span ->
+                  assertClientSpan(span, uri, method, responseCode, null)
+                      .hasParent(trace.getSpan(0)),
               span -> assertServerSpan(span).hasParent(trace.getSpan(1)));
         });
   }
@@ -464,6 +479,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void reuseRequest() throws Exception {
     assumeTrue(options.getTestReusedRequest());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "GET";
     URI uri = resolveAddress("/success");
@@ -493,6 +509,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   //   and the trace is not broken)
   @Test
   void requestWithExistingTracingHeaders() throws Exception {
+    assumeTrue(options.getHasSendRequest());
+
     String method = "GET";
     URI uri = resolveAddress("/success");
 
@@ -510,6 +528,9 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
 
   @Test
   void captureHttpHeaders() throws Exception {
+    assumeTrue(options.getTestCaptureHttpHeaders());
+    assumeTrue(options.getHasSendRequest());
+
     URI uri = resolveAddress("/success");
     String method = "GET";
     int responseCode =
@@ -539,6 +560,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void connectionErrorUnopenedPort() {
     assumeTrue(options.getTestConnectionFailure());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "GET";
     URI uri = URI.create("http://localhost:" + PortUtils.UNUSABLE_PORT + '/');
@@ -610,6 +632,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void connectionErrorNonRoutableAddress() {
     assumeTrue(options.getTestRemoteConnection());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "HEAD";
     URI uri = URI.create(options.getTestHttps() ? "https://192.0.2.1/" : "http://192.0.2.1/");
@@ -643,6 +666,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void readTimedOut() {
     assumeTrue(options.getTestReadTimeout());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "GET";
     URI uri = resolveAddress("/read-timeout");
@@ -682,6 +706,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   void httpsRequest() throws Exception {
     assumeTrue(options.getTestRemoteConnection());
     assumeTrue(options.getTestHttps());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "GET";
     URI uri = URI.create("https://localhost:" + server.httpsPort() + "/success");
@@ -700,6 +725,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
 
   @Test
   void httpClientMetrics() throws Exception {
+    assumeTrue(options.getHasSendRequest());
+
     URI uri = resolveAddress("/success");
     String method = "GET";
     int responseCode = doRequest(method, uri);
@@ -738,6 +765,8 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
    */
   @Test
   void highConcurrency() {
+    assumeTrue(options.getHasSendRequest());
+
     int count = 50;
     String method = "GET";
     URI uri = resolveAddress("/success");
@@ -963,6 +992,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
   @Test
   void spanEndsAfterBodyReceived() throws Exception {
     assumeTrue(options.isSpanEndsAfterBody());
+    assumeTrue(options.getHasSendRequest());
 
     String method = "GET";
     URI uri = resolveAddress("/long-request");
@@ -1029,8 +1059,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
         });
   }
 
-  // Visible for spock bridge.
-  SpanDataAssert assertClientSpan(
+  protected SpanDataAssert assertClientSpan(
       SpanDataAssert span,
       URI uri,
       String method,
@@ -1090,6 +1119,12 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
               if (httpClientAttributes.contains(UrlAttributes.URL_FULL)) {
                 assertThat(attrs).containsEntry(UrlAttributes.URL_FULL, uri.toString());
               }
+              if (options.getHasUrlTemplate()) {
+                assertThat(attrs)
+                    .containsEntry(
+                        UrlIncubatingAttributes.URL_TEMPLATE,
+                        options.getExpectedUrlTemplateMapper().apply(uri));
+              }
               if (httpClientAttributes.contains(HttpAttributes.HTTP_REQUEST_METHOD)) {
                 assertThat(attrs).containsEntry(HttpAttributes.HTTP_REQUEST_METHOD, method);
               }
@@ -1119,8 +1154,7 @@ public abstract class AbstractHttpClientTest<REQUEST> implements HttpClientTypeA
             });
   }
 
-  // Visible for spock bridge.
-  static SpanDataAssert assertServerSpan(SpanDataAssert span) {
+  protected static SpanDataAssert assertServerSpan(SpanDataAssert span) {
     return span.hasName("test-http-server").hasKind(SpanKind.SERVER);
   }
 

@@ -15,8 +15,8 @@ public class DecoratorRegistry {
   private static final SpanDecorator DEFAULT = new BaseSpanDecorator();
   private static final Map<String, SpanDecorator> DECORATORS = loadDecorators();
 
+  @SuppressWarnings("deprecation") // using deprecated DbSystemIncubatingValues
   private static Map<String, SpanDecorator> loadDecorators() {
-
     Map<String, SpanDecorator> result = new HashMap<>();
     result.put("ahc", new HttpSpanDecorator());
     result.put("ampq", new MessagingSpanDecorator("ampq"));
@@ -32,8 +32,14 @@ public class DecoratorRegistry {
     result.put("direct-vm", new InternalSpanDecorator());
     result.put("disruptor", new InternalSpanDecorator());
     result.put("disruptor-vm", new InternalSpanDecorator());
-    result.put("elasticsearch", new DbSpanDecorator("elasticsearch", "elasticsearch"));
-    result.put("opensearch", new DbSpanDecorator("opensearch", "opensearch"));
+    result.put(
+        "elasticsearch",
+        new DbSpanDecorator(
+            "elasticsearch", DbIncubatingAttributes.DbSystemIncubatingValues.ELASTICSEARCH));
+    result.put(
+        "opensearch",
+        new DbSpanDecorator(
+            "opensearch", DbIncubatingAttributes.DbSystemIncubatingValues.OPENSEARCH));
     result.put("http4", new Http4SpanDecorator());
     result.put("https4", new Https4SpanDecorator());
     result.put("http", new HttpSpanDecorator());

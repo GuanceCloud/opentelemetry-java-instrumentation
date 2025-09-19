@@ -5,12 +5,16 @@
 
 package io.opentelemetry.javaagent.instrumentation.geode;
 
+import static io.opentelemetry.instrumentation.testing.junit.db.DbClientMetricsTestUtil.assertDurationMetric;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_NAME;
+import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_NAMESPACE;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_OPERATION;
+import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_OPERATION_NAME;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_STATEMENT;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_SYSTEM;
+import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_SYSTEM_NAME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +54,15 @@ class PutGetTest {
         Arguments.of("Humpty", "Dumpty"),
         Arguments.of(Integer.valueOf(1), "One"),
         Arguments.of("One", Integer.valueOf(1)));
+  }
+
+  @Test
+  @SuppressWarnings("deprecation") // using deprecated semconv
+  void testDurationMetric() {
+    region.put("key", "value");
+
+    assertDurationMetric(
+        testing, "io.opentelemetry.geode-1.4", DB_SYSTEM_NAME, DB_NAMESPACE, DB_OPERATION_NAME);
   }
 
   @ParameterizedTest
@@ -137,21 +150,21 @@ class PutGetTest {
                     span.hasName("clear test-region")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "geode"),
+                            equalTo(maybeStable(DB_SYSTEM), "geode"),
                             equalTo(maybeStable(DB_NAME), "test-region"),
                             equalTo(maybeStable(DB_OPERATION), "clear")),
                 span ->
                     span.hasName("put test-region")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "geode"),
+                            equalTo(maybeStable(DB_SYSTEM), "geode"),
                             equalTo(maybeStable(DB_NAME), "test-region"),
                             equalTo(maybeStable(DB_OPERATION), "put")),
                 span ->
                     span.hasName(verb.concat(" test-region"))
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "geode"),
+                            equalTo(maybeStable(DB_SYSTEM), "geode"),
                             equalTo(maybeStable(DB_NAME), "test-region"),
                             equalTo(maybeStable(DB_OPERATION), verb),
                             equalTo(maybeStable(DB_STATEMENT), query))));

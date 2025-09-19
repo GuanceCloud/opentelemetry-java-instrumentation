@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.powerjob.v4_0;
 
+import static io.opentelemetry.instrumentation.testing.junit.code.SemconvCodeStabilityUtil.codeFunctionAssertions;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static java.util.Arrays.asList;
 
@@ -342,11 +343,12 @@ class PowerJobBasicProcessorTest {
     List<AttributeAssertion> attributeAssertions =
         new ArrayList<>(
             asList(
-                equalTo(AttributeKey.stringKey("code.namespace"), codeNamespace),
-                equalTo(AttributeKey.stringKey("code.function"), "process"),
                 equalTo(AttributeKey.stringKey("job.system"), "powerjob"),
                 equalTo(AttributeKey.longKey("scheduling.powerjob.job.id"), jobId),
                 equalTo(AttributeKey.stringKey("scheduling.powerjob.job.type"), jobType)));
+
+    attributeAssertions.addAll(codeFunctionAssertions(codeNamespace, "process"));
+
     if (!StringUtils.isNullOrEmpty(jobParam)) {
       attributeAssertions.add(
           equalTo(AttributeKey.stringKey("scheduling.powerjob.job.param"), jobParam));

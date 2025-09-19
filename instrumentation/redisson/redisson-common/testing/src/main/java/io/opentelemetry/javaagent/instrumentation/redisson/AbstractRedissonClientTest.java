@@ -95,6 +95,13 @@ public abstract class AbstractRedissonClientTest {
       newAddress = "redis://" + address;
     }
     Config config = new Config();
+    try {
+      // script cache is enabled by default in 3.46.0 and that causes hashCommand and lockCommand
+      // tests to fail
+      Config.class.getMethod("setUseScriptCache", boolean.class).invoke(config, false);
+    } catch (NoSuchMethodException ignored) {
+      // ignored
+    }
     SingleServerConfig singleServerConfig = config.useSingleServer();
     singleServerConfig.setAddress(newAddress);
     singleServerConfig.setTimeout(30_000);
@@ -127,7 +134,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SET foo ?"),
                             equalTo(maybeStable(DB_OPERATION), "SET"))),
         trace ->
@@ -139,7 +146,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "GET foo"),
                             equalTo(maybeStable(DB_OPERATION), "GET"))));
   }
@@ -165,7 +172,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SET batch1 ?;SET batch2 ?"))));
   }
 
@@ -205,7 +212,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "MULTI;SET batch1 ?"))
                         .hasParent(trace.getSpan(0)),
                 span ->
@@ -215,7 +222,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SET batch2 ?"),
                             equalTo(maybeStable(DB_OPERATION), "SET"))
                         .hasParent(trace.getSpan(0)),
@@ -226,7 +233,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "EXEC"),
                             equalTo(maybeStable(DB_OPERATION), "EXEC"))
                         .hasParent(trace.getSpan(0))));
@@ -248,7 +255,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "RPUSH list1 ?"),
                             equalTo(maybeStable(DB_OPERATION), "RPUSH"))
                         .hasNoParent()));
@@ -273,7 +280,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(
                                 maybeStable(DB_STATEMENT),
                                 String.format("EVAL %s 1 map1 ? ?", script)),
@@ -287,7 +294,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "HGET map1 key1"),
                             equalTo(maybeStable(DB_OPERATION), "HGET"))));
   }
@@ -308,7 +315,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SADD set1 ?"),
                             equalTo(maybeStable(DB_OPERATION), "SADD"))));
   }
@@ -336,7 +343,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "ZADD sort_set1 ? ? ? ? ? ?"),
                             equalTo(maybeStable(DB_OPERATION), "ZADD"))));
   }
@@ -362,7 +369,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "INCR AtomicLong"),
                             equalTo(maybeStable(DB_OPERATION), "INCR"))));
   }
@@ -388,7 +395,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_OPERATION), "EVAL"),
                             satisfies(
                                 maybeStable(DB_STATEMENT),
@@ -403,7 +410,7 @@ public abstract class AbstractRedissonClientTest {
                             equalTo(NETWORK_TYPE, "ipv4"),
                             equalTo(NETWORK_PEER_ADDRESS, ip),
                             equalTo(NETWORK_PEER_PORT, (long) port),
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_OPERATION), "EVAL"),
                             satisfies(
                                 maybeStable(DB_STATEMENT),
@@ -419,7 +426,7 @@ public abstract class AbstractRedissonClientTest {
                               equalTo(NETWORK_TYPE, "ipv4"),
                               equalTo(NETWORK_PEER_ADDRESS, ip),
                               equalTo(NETWORK_PEER_PORT, (long) port),
-                              equalTo(DB_SYSTEM, "redis"),
+                              equalTo(maybeStable(DB_SYSTEM), "redis"),
                               equalTo(maybeStable(DB_OPERATION), "DEL"),
                               satisfies(
                                   maybeStable(DB_STATEMENT),

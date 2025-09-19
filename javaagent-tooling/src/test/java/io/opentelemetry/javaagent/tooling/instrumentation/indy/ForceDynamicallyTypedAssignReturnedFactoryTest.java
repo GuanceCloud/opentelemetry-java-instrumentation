@@ -7,6 +7,7 @@ package io.opentelemetry.javaagent.tooling.instrumentation.indy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.asm.Advice.AssignReturned;
 import net.bytebuddy.asm.Advice.AssignReturned.ToArguments.ToArgument;
@@ -17,7 +18,7 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import org.junit.jupiter.api.Test;
 
-public class ForceDynamicallyTypedAssignReturnedFactoryTest {
+class ForceDynamicallyTypedAssignReturnedFactoryTest {
 
   @AssignReturned.ToFields(@ToField(value = "foo", index = 42))
   @AssignReturned.ToArguments(@ToArgument(value = 3, index = 7))
@@ -29,7 +30,7 @@ public class ForceDynamicallyTypedAssignReturnedFactoryTest {
   static void testMethod() {}
 
   @Test
-  public void checkTypingMadeDynamic() {
+  void checkTypingMadeDynamic() {
     MethodDescription.InDefinedShape original =
         TypeDescription.ForLoadedType.of(ForceDynamicallyTypedAssignReturnedFactoryTest.class)
             .getDeclaredMethods()
@@ -40,9 +41,10 @@ public class ForceDynamicallyTypedAssignReturnedFactoryTest {
 
     ClassLoader cl = ForceDynamicallyTypedAssignReturnedFactoryTest.class.getClassLoader();
 
-    MethodDescription modified =
-        ForceDynamicallyTypedAssignReturnedFactory.forceDynamicTyping(original);
-    assertThat(modified.getDeclaredAnnotations())
+    List<? extends AnnotationDescription> modifiedAnnotations =
+        ForceDynamicallyTypedAssignReturnedFactory.forceDynamicTyping(
+            original.getDeclaredAnnotations());
+    assertThat(modifiedAnnotations)
         .hasSize(7)
         .anySatisfy(
             toFields -> {

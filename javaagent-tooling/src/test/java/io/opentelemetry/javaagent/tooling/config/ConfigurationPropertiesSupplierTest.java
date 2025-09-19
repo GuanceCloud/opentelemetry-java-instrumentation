@@ -10,7 +10,6 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.incubator.events.GlobalEventLoggerProvider;
 import io.opentelemetry.javaagent.tooling.OpenTelemetryInstaller;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.internal.AutoConfigureUtil;
@@ -19,8 +18,8 @@ import io.opentelemetry.sdk.autoconfigure.spi.AutoConfigurationCustomizerProvide
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junitpioneer.jupiter.ClearSystemProperty;
@@ -29,11 +28,11 @@ import org.junitpioneer.jupiter.SetSystemProperty;
 @ClearSystemProperty(key = ConfigurationFile.CONFIGURATION_FILE_PROPERTY)
 class ConfigurationPropertiesSupplierTest {
 
-  @BeforeAll
-  @AfterAll
-  static void cleanUp() {
+  @BeforeEach
+  @AfterEach
+  void setUp() {
     GlobalOpenTelemetry.resetForTest();
-    GlobalEventLoggerProvider.resetForTest();
+    ConfigurationFile.resetForTest();
   }
 
   // regression for https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/6696
@@ -47,7 +46,8 @@ class ConfigurationPropertiesSupplierTest {
 
     // when
     AutoConfiguredOpenTelemetrySdk autoConfiguredSdk =
-        OpenTelemetryInstaller.installOpenTelemetrySdk(this.getClass().getClassLoader());
+        OpenTelemetryInstaller.installOpenTelemetrySdk(
+            this.getClass().getClassLoader(), EarlyInitAgentConfig.create());
 
     // then
     assertThat(AutoConfigureUtil.getConfig(autoConfiguredSdk).getString("custom.key"))

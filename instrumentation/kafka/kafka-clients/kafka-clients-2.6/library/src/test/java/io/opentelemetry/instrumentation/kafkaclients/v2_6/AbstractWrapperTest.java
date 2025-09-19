@@ -8,7 +8,7 @@ package io.opentelemetry.instrumentation.kafkaclients.v2_6;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.instrumentation.kafka.internal.KafkaClientBaseTest;
+import io.opentelemetry.instrumentation.kafkaclients.common.v0_11.internal.KafkaClientBaseTest;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.LibraryInstrumentationExtension;
 import java.nio.charset.StandardCharsets;
@@ -34,7 +34,7 @@ abstract class AbstractWrapperTest extends KafkaClientBaseTest {
   void testWrappers(boolean testHeaders) throws InterruptedException {
     KafkaTelemetryBuilder telemetryBuilder =
         KafkaTelemetry.builder(testing.getOpenTelemetry())
-            .setCapturedHeaders(singletonList("test-message-header"))
+            .setCapturedHeaders(singletonList("Test-Message-Header"))
             // TODO run tests both with and without experimental span attributes
             .setCaptureExperimentalSpanAttributes(true);
     configure(telemetryBuilder);
@@ -50,7 +50,7 @@ abstract class AbstractWrapperTest extends KafkaClientBaseTest {
           if (testHeaders) {
             producerRecord
                 .headers()
-                .add("test-message-header", "test".getBytes(StandardCharsets.UTF_8));
+                .add("Test-Message-Header", "test".getBytes(StandardCharsets.UTF_8));
           }
           wrappedProducer.send(
               producerRecord,

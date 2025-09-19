@@ -25,8 +25,8 @@ muzzle {
 
 dependencies {
   library("io.netty:netty-codec-http:4.0.0.Final")
-  implementation(project(":instrumentation:netty:netty-4-common:javaagent"))
-  implementation(project(":instrumentation:netty:netty-4-common:library"))
+  implementation(project(":instrumentation:netty:netty-common-4.0:javaagent"))
+  implementation(project(":instrumentation:netty:netty-common-4.0:library"))
   implementation(project(":instrumentation:netty:netty-common:library"))
 
   testInstrumentation(project(":instrumentation:netty:netty-3.8:javaagent"))
@@ -37,17 +37,20 @@ dependencies {
 
 tasks {
   val testConnectionSpan by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("Netty40ConnectionSpanTest")
       includeTestsMatching("Netty40ClientSslTest")
     }
     include("**/Netty40ConnectionSpanTest.*", "**/Netty40ClientSslTest.*")
-
     jvmArgs("-Dotel.instrumentation.netty.connection-telemetry.enabled=true")
     jvmArgs("-Dotel.instrumentation.netty.ssl-telemetry.enabled=true")
   }
 
   test {
+    systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
+
     filter {
       excludeTestsMatching("Netty40ConnectionSpanTest")
       excludeTestsMatching("Netty40ClientSslTest")

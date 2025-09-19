@@ -7,6 +7,10 @@ package io.opentelemetry.javaagent.instrumentation.vertx.v4_0.redis;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
+import static io.opentelemetry.semconv.DbAttributes.DB_NAMESPACE;
+import static io.opentelemetry.semconv.DbAttributes.DB_OPERATION_NAME;
+import static io.opentelemetry.semconv.DbAttributes.DB_QUERY_TEXT;
+import static io.opentelemetry.semconv.DbAttributes.DB_SYSTEM_NAME;
 import static io.opentelemetry.semconv.NetworkAttributes.NETWORK_PEER_ADDRESS;
 import static io.opentelemetry.semconv.NetworkAttributes.NETWORK_PEER_PORT;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
@@ -17,7 +21,6 @@ import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_STAT
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_SYSTEM;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
@@ -86,6 +89,12 @@ class VertxRedisClientTest {
                     span.hasName("SET")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(redisSpanAttributes("SET", "SET foo ?"))));
+
+    if (emitStableDatabaseSemconv()) {
+      testing.waitAndAssertMetrics(
+          "io.opentelemetry.vertx-redis-client-4.0",
+          metric -> metric.hasName("db.client.operation.duration"));
+    }
   }
 
   @Test
@@ -211,10 +220,10 @@ class VertxRedisClientTest {
     // not testing database/dup
     if (emitStableDatabaseSemconv()) {
       return new AttributeAssertion[] {
-        equalTo(DB_SYSTEM, "redis"),
-        equalTo(AttributeKey.stringKey("db.query.text"), statement),
-        equalTo(AttributeKey.stringKey("db.operation.name"), operation),
-        equalTo(AttributeKey.stringKey("db.namespace"), "1"),
+        equalTo(DB_SYSTEM_NAME, "redis"),
+        equalTo(DB_QUERY_TEXT, statement),
+        equalTo(DB_OPERATION_NAME, operation),
+        equalTo(DB_NAMESPACE, "1"),
         equalTo(SERVER_ADDRESS, host),
         equalTo(SERVER_PORT, port),
         equalTo(NETWORK_PEER_PORT, port),

@@ -11,8 +11,10 @@ import java.util.Locale;
 import javax.annotation.Nullable;
 import redis.RedisCommand;
 
-final class RediscalaAttributesGetter implements DbClientAttributesGetter<RedisCommand<?, ?>> {
+final class RediscalaAttributesGetter
+    implements DbClientAttributesGetter<RedisCommand<?, ?>, Void> {
 
+  @SuppressWarnings("deprecation") // using deprecated DbSystemIncubatingValues
   @Override
   public String getDbSystem(RedisCommand<?, ?> redisCommand) {
     return DbIncubatingAttributes.DbSystemIncubatingValues.REDIS;

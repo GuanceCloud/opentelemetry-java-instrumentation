@@ -13,8 +13,7 @@ import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
 import io.opentelemetry.instrumentation.api.semconv.http.HttpServerAttributesExtractorBuilder;
 import io.opentelemetry.instrumentation.restlet.v1_1.internal.Experimental;
 import io.opentelemetry.instrumentation.restlet.v1_1.internal.RestletTelemetryBuilderFactory;
-import java.util.List;
-import java.util.Set;
+import java.util.Collection;
 import java.util.function.Function;
 import org.restlet.data.Request;
 import org.restlet.data.Response;
@@ -25,8 +24,8 @@ public final class RestletTelemetryBuilder {
   private final DefaultHttpServerInstrumenterBuilder<Request, Response> builder;
 
   static {
-    Experimental.setSetEmitExperimentalTelemetry(
-        (builder, emit) -> builder.builder.setEmitExperimentalHttpServerMetrics(emit));
+    Experimental.internalSetEmitExperimentalTelemetry(
+        (builder, emit) -> builder.builder.setEmitExperimentalHttpServerTelemetry(emit));
   }
 
   RestletTelemetryBuilder(OpenTelemetry openTelemetry) {
@@ -50,7 +49,7 @@ public final class RestletTelemetryBuilder {
    * @param requestHeaders A list of HTTP header names.
    */
   @CanIgnoreReturnValue
-  public RestletTelemetryBuilder setCapturedRequestHeaders(List<String> requestHeaders) {
+  public RestletTelemetryBuilder setCapturedRequestHeaders(Collection<String> requestHeaders) {
     builder.setCapturedRequestHeaders(requestHeaders);
     return this;
   }
@@ -61,7 +60,7 @@ public final class RestletTelemetryBuilder {
    * @param responseHeaders A list of HTTP header names.
    */
   @CanIgnoreReturnValue
-  public RestletTelemetryBuilder setCapturedResponseHeaders(List<String> responseHeaders) {
+  public RestletTelemetryBuilder setCapturedResponseHeaders(Collection<String> responseHeaders) {
     builder.setCapturedResponseHeaders(responseHeaders);
     return this;
   }
@@ -77,34 +76,18 @@ public final class RestletTelemetryBuilder {
    * not supplement it.
    *
    * @param knownMethods A set of recognized HTTP request methods.
-   * @see HttpServerAttributesExtractorBuilder#setKnownMethods(Set)
+   * @see HttpServerAttributesExtractorBuilder#setKnownMethods(Collection)
    */
   @CanIgnoreReturnValue
-  public RestletTelemetryBuilder setKnownMethods(Set<String> knownMethods) {
+  public RestletTelemetryBuilder setKnownMethods(Collection<String> knownMethods) {
     builder.setKnownMethods(knownMethods);
-    return this;
-  }
-
-  /**
-   * Configures the instrumentation to emit experimental HTTP server metrics.
-   *
-   * @param emitExperimentalHttpServerMetrics {@code true} if the experimental HTTP server metrics
-   *     are to be emitted.
-   * @deprecated Use {@link Experimental#setEmitExperimentalTelemetry(RestletTelemetryBuilder,
-   *     boolean)} instead.
-   */
-  @Deprecated
-  @CanIgnoreReturnValue
-  public RestletTelemetryBuilder setEmitExperimentalHttpServerMetrics(
-      boolean emitExperimentalHttpServerMetrics) {
-    builder.setEmitExperimentalHttpServerMetrics(emitExperimentalHttpServerMetrics);
     return this;
   }
 
   /** Sets custom {@link SpanNameExtractor} via transform function. */
   @CanIgnoreReturnValue
   public RestletTelemetryBuilder setSpanNameExtractor(
-      Function<SpanNameExtractor<? super Request>, ? extends SpanNameExtractor<? super Request>>
+      Function<SpanNameExtractor<Request>, SpanNameExtractor<Request>>
           spanNameExtractorTransformer) {
     builder.setSpanNameExtractor(spanNameExtractorTransformer);
     return this;

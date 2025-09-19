@@ -28,8 +28,14 @@ dependencies {
   latestDepTestLibrary("org.springframework.boot:spring-boot:2.+") // documented limitation
 }
 
+otelJava {
+  // due to security manager deprecation this test does not work on jdk 24 with default configuration
+  maxJavaVersionForTests.set(JavaVersion.VERSION_23)
+}
+
 tasks.withType<Test>().configureEach {
   jvmArgs("-Djava.rmi.server.hostname=127.0.0.1")
+  systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
 }
 
 configurations.testRuntimeClasspath {

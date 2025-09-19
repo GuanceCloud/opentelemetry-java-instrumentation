@@ -6,6 +6,9 @@
 package io.opentelemetry.instrumentation.grpc.v1_6;
 
 import static io.opentelemetry.instrumentation.grpc.v1_6.AbstractGrpcTest.addExtraClientAttributes;
+import static io.opentelemetry.instrumentation.grpc.v1_6.ExperimentalTestHelper.GRPC_RECEIVED_MESSAGE_COUNT;
+import static io.opentelemetry.instrumentation.grpc.v1_6.ExperimentalTestHelper.GRPC_SENT_MESSAGE_COUNT;
+import static io.opentelemetry.instrumentation.grpc.v1_6.ExperimentalTestHelper.experimentalSatisfies;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
@@ -159,10 +162,11 @@ public abstract class AbstractGrpcStreamingTest {
                 .sorted()
                 .collect(Collectors.toList()));
 
-    List<Consumer<EventData>> events = new ArrayList<>();
-    for (int i = 1; i <= clientMessageCount * serverMessageCount + clientMessageCount; i++) {
-      long messageId = i;
-      events.add(
+    List<Consumer<EventData>> clientEvents = new ArrayList<>();
+    List<Consumer<EventData>> serverEvents = new ArrayList<>();
+    for (long i = 0; i < clientMessageCount; i++) {
+      long clientMessageId = i + 1;
+      clientEvents.add(
           event ->
               assertThat(event)
                   .hasName("message")
@@ -170,14 +174,46 @@ public abstract class AbstractGrpcStreamingTest {
                       attrs ->
                           assertThat(attrs)
                               .hasSize(2)
-                              .hasEntrySatisfying(
-                                  MessageIncubatingAttributes.MESSAGE_TYPE,
-                                  val ->
-                                      assertThat(val)
-                                          .satisfiesAnyOf(
-                                              v -> assertThat(v).isEqualTo("RECEIVED"),
-                                              v -> assertThat(v).isEqualTo("SENT")))
-                              .containsEntry(MessageIncubatingAttributes.MESSAGE_ID, messageId)));
+                              .containsEntry(MessageIncubatingAttributes.MESSAGE_TYPE, "SENT")
+                              .containsEntry(
+                                  MessageIncubatingAttributes.MESSAGE_ID, clientMessageId)));
+      serverEvents.add(
+          event ->
+              assertThat(event)
+                  .hasName("message")
+                  .hasAttributesSatisfying(
+                      attrs ->
+                          assertThat(attrs)
+                              .hasSize(2)
+                              .containsEntry(MessageIncubatingAttributes.MESSAGE_TYPE, "RECEIVED")
+                              .containsEntry(
+                                  MessageIncubatingAttributes.MESSAGE_ID, clientMessageId)));
+
+      for (long j = 0; j < serverMessageCount; j++) {
+        long serverMessageId = i * serverMessageCount + j + 1;
+        clientEvents.add(
+            event ->
+                assertThat(event)
+                    .hasName("message")
+                    .hasAttributesSatisfying(
+                        attrs ->
+                            assertThat(attrs)
+                                .hasSize(2)
+                                .containsEntry(MessageIncubatingAttributes.MESSAGE_TYPE, "RECEIVED")
+                                .containsEntry(
+                                    MessageIncubatingAttributes.MESSAGE_ID, serverMessageId)));
+        serverEvents.add(
+            event ->
+                assertThat(event)
+                    .hasName("message")
+                    .hasAttributesSatisfying(
+                        attrs ->
+                            assertThat(attrs)
+                                .hasSize(2)
+                                .containsEntry(MessageIncubatingAttributes.MESSAGE_TYPE, "SENT")
+                                .containsEntry(
+                                    MessageIncubatingAttributes.MESSAGE_ID, serverMessageId)));
+      }
     }
 
     testing()
@@ -190,6 +226,12 @@ public abstract class AbstractGrpcStreamingTest {
                             .hasNoParent()
                             .hasAttributesSatisfyingExactly(
                                 addExtraClientAttributes(
+                                    experimentalSatisfies(
+                                        GRPC_RECEIVED_MESSAGE_COUNT,
+                                        v -> assertThat(v).isGreaterThan(0)),
+                                    experimentalSatisfies(
+                                        GRPC_SENT_MESSAGE_COUNT,
+                                        v -> assertThat(v).isGreaterThan(0)),
                                     equalTo(RPC_SYSTEM, "grpc"),
                                     equalTo(RPC_SERVICE, "example.Greeter"),
                                     equalTo(RPC_METHOD, "Conversation"),
@@ -199,12 +241,17 @@ public abstract class AbstractGrpcStreamingTest {
                             .satisfies(
                                 spanData ->
                                     assertThat(spanData.getEvents())
-                                        .satisfiesExactlyInAnyOrder(toArray(events))),
+                                        .satisfiesExactlyInAnyOrder(toArray(clientEvents))),
                     span ->
                         span.hasName("example.Greeter/Conversation")
                             .hasKind(SpanKind.SERVER)
                             .hasParent(trace.getSpan(0))
                             .hasAttributesSatisfyingExactly(
+                                experimentalSatisfies(
+                                    GRPC_RECEIVED_MESSAGE_COUNT,
+                                    v -> assertThat(v).isGreaterThan(0)),
+                                experimentalSatisfies(
+                                    GRPC_SENT_MESSAGE_COUNT, v -> assertThat(v).isGreaterThan(0)),
                                 equalTo(RPC_SYSTEM, "grpc"),
                                 equalTo(RPC_SERVICE, "example.Greeter"),
                                 equalTo(RPC_METHOD, "Conversation"),
@@ -213,11 +260,16 @@ public abstract class AbstractGrpcStreamingTest {
                                 equalTo(SERVER_PORT, server.getPort()),
                                 equalTo(NETWORK_TYPE, "ipv4"),
                                 equalTo(NETWORK_PEER_ADDRESS, "127.0.0.1"),
-                                satisfies(NETWORK_PEER_PORT, val -> assertThat(val).isNotNull()))
+                                experimentalSatisfies(
+                                    GRPC_RECEIVED_MESSAGE_COUNT,
+                                    v -> assertThat(v).isGreaterThan(0)),
+                                experimentalSatisfies(
+                                    GRPC_SENT_MESSAGE_COUNT, v -> assertThat(v).isGreaterThan(0)),
+                                satisfies(NETWORK_PEER_PORT, val -> val.isNotNull()))
                             .satisfies(
                                 spanData ->
                                     assertThat(spanData.getEvents())
-                                        .satisfiesExactlyInAnyOrder(toArray(events)))));
+                                        .satisfiesExactlyInAnyOrder(toArray(serverEvents)))));
     testing()
         .waitAndAssertMetrics(
             "io.opentelemetry.grpc-1.6",

@@ -6,6 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.spring.data;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.code.SemconvCodeStabilityUtil.codeFunctionAssertions;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
@@ -28,7 +29,6 @@ import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtens
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.sdk.testing.assertj.TraceAssert;
 import io.opentelemetry.sdk.trace.data.StatusData;
-import io.opentelemetry.semconv.incubating.CodeIncubatingAttributes;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Version;
@@ -82,15 +82,13 @@ public abstract class AbstractSpringJpaTest<
         span ->
             span.hasName("JpaCustomerRepository.save")
                 .hasKind(SpanKind.INTERNAL)
-                .hasAttributesSatisfyingExactly(
-                    equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                    equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "save")),
+                .hasAttributesSatisfyingExactly(codeFunctionAssertions(repoClassName, "save")),
         span ->
             span.hasName("INSERT test.JpaCustomer")
                 .hasKind(SpanKind.CLIENT)
                 .hasParent(trace.getSpan(0))
                 .hasAttributesSatisfyingExactly(
-                    equalTo(DB_SYSTEM, "hsqldb"),
+                    equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                     equalTo(maybeStable(DB_NAME), "test"),
                     equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                     equalTo(
@@ -106,14 +104,12 @@ public abstract class AbstractSpringJpaTest<
         span ->
             span.hasName("JpaCustomerRepository.save")
                 .hasKind(SpanKind.INTERNAL)
-                .hasAttributesSatisfyingExactly(
-                    equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                    equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "save")),
+                .hasAttributesSatisfyingExactly(codeFunctionAssertions(repoClassName, "save")),
         span ->
             span.hasName("CALL test")
                 .hasKind(SpanKind.CLIENT)
                 .hasAttributesSatisfyingExactly(
-                    equalTo(DB_SYSTEM, "hsqldb"),
+                    equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                     equalTo(maybeStable(DB_NAME), "test"),
                     equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                     equalTo(
@@ -126,7 +122,7 @@ public abstract class AbstractSpringJpaTest<
                 .hasKind(SpanKind.CLIENT)
                 .hasParent(trace.getSpan(0))
                 .hasAttributesSatisfyingExactly(
-                    equalTo(DB_SYSTEM, "hsqldb"),
+                    equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                     equalTo(maybeStable(DB_NAME), "test"),
                     equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                     equalTo(
@@ -155,14 +151,13 @@ public abstract class AbstractSpringJpaTest<
                     span.hasName("JpaCustomerRepository.findAll")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "findAll")),
+                            codeFunctionAssertions(repoClassName, "findAll")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -193,14 +188,13 @@ public abstract class AbstractSpringJpaTest<
                     span.hasName("JpaCustomerRepository.save")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "save")),
+                            codeFunctionAssertions(repoClassName, "save")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -214,7 +208,7 @@ public abstract class AbstractSpringJpaTest<
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -233,14 +227,13 @@ public abstract class AbstractSpringJpaTest<
                     span.hasName("JpaCustomerRepository.findByLastName")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "findByLastName")),
+                            codeFunctionAssertions(repoClassName, "findByLastName")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -259,14 +252,13 @@ public abstract class AbstractSpringJpaTest<
                     span.hasName("JpaCustomerRepository.delete")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "delete")),
+                            codeFunctionAssertions(repoClassName, "delete")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -280,7 +272,7 @@ public abstract class AbstractSpringJpaTest<
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -307,15 +299,13 @@ public abstract class AbstractSpringJpaTest<
                     span.hasName("JpaCustomerRepository.findSpecialCustomers")
                         .hasKind(SpanKind.INTERNAL)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(
-                                CodeIncubatingAttributes.CODE_FUNCTION, "findSpecialCustomers")),
+                            codeFunctionAssertions(repoClassName, "findSpecialCustomers")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(
@@ -355,14 +345,13 @@ public abstract class AbstractSpringJpaTest<
                         .hasStatus(StatusData.error())
                         .hasException(expectedException)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(CodeIncubatingAttributes.CODE_NAMESPACE, repoClassName),
-                            equalTo(CodeIncubatingAttributes.CODE_FUNCTION, "findOneByLastName")),
+                            codeFunctionAssertions(repoClassName, "findOneByLastName")),
                 span ->
                     span.hasName("SELECT test.JpaCustomer")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "hsqldb"),
+                            equalTo(maybeStable(DB_SYSTEM), "hsqldb"),
                             equalTo(maybeStable(DB_NAME), "test"),
                             equalTo(DB_USER, emitStableDatabaseSemconv() ? null : "sa"),
                             equalTo(

@@ -39,6 +39,8 @@ public abstract class HttpClientTestOptions {
   public static final BiFunction<URI, String, String> DEFAULT_EXPECTED_CLIENT_SPAN_NAME_MAPPER =
       (uri, method) -> HttpConstants._OTHER.equals(method) ? "HTTP" : method;
 
+  public static final Function<URI, String> DEFAULT_EXPECTED_URL_TEMPLATE_MAPPER = URI::getPath;
+
   public static final int FOUND_STATUS_CODE = HttpStatus.FOUND.code();
 
   public abstract Function<URI, Set<AttributeKey<?>>> getHttpAttributes();
@@ -55,6 +57,8 @@ public abstract class HttpClientTestOptions {
   public abstract BiFunction<String, Integer, SingleConnection> getSingleConnectionFactory();
 
   public abstract BiFunction<URI, String, String> getExpectedClientSpanNameMapper();
+
+  public abstract Function<URI, String> getExpectedUrlTemplateMapper();
 
   abstract HttpClientInstrumentationType getInstrumentationType();
 
@@ -89,7 +93,13 @@ public abstract class HttpClientTestOptions {
 
   public abstract boolean getTestNonStandardHttpMethod();
 
+  public abstract boolean getTestCaptureHttpHeaders();
+
+  public abstract boolean getHasSendRequest();
+
   public abstract Function<URI, String> getHttpProtocolVersion();
+
+  public abstract boolean getHasUrlTemplate();
 
   @Nullable
   abstract SpanEndsAfterType getSpanEndsAfterType();
@@ -116,6 +126,7 @@ public abstract class HttpClientTestOptions {
           .setClientSpanErrorMapper((uri, exception) -> exception)
           .setSingleConnectionFactory((host, port) -> null)
           .setExpectedClientSpanNameMapper(DEFAULT_EXPECTED_CLIENT_SPAN_NAME_MAPPER)
+          .setExpectedUrlTemplateMapper(DEFAULT_EXPECTED_URL_TEMPLATE_MAPPER)
           .setInstrumentationType(HttpClientInstrumentationType.HIGH_LEVEL)
           .setSpanEndsAfterType(SpanEndsAfterType.HEADERS)
           .setTestWithClientParent(true)
@@ -131,8 +142,13 @@ public abstract class HttpClientTestOptions {
           .setTestCallbackWithParent(true)
           .setTestErrorWithCallback(true)
           .setTestNonStandardHttpMethod(true)
+          .setTestCaptureHttpHeaders(true)
+          .setHasSendRequest(true)
+          .setHasUrlTemplate(false)
           .setHttpProtocolVersion(uri -> "1.1");
     }
+
+    Builder setTestCaptureHttpHeaders(boolean value);
 
     Builder setHttpAttributes(Function<URI, Set<AttributeKey<?>>> value);
 
@@ -143,6 +159,8 @@ public abstract class HttpClientTestOptions {
     Builder setSingleConnectionFactory(BiFunction<String, Integer, SingleConnection> value);
 
     Builder setExpectedClientSpanNameMapper(BiFunction<URI, String, String> value);
+
+    Builder setExpectedUrlTemplateMapper(Function<URI, String> value);
 
     Builder setInstrumentationType(HttpClientInstrumentationType instrumentationType);
 
@@ -173,6 +191,10 @@ public abstract class HttpClientTestOptions {
     Builder setTestErrorWithCallback(boolean value);
 
     Builder setTestNonStandardHttpMethod(boolean value);
+
+    Builder setHasSendRequest(boolean value);
+
+    Builder setHasUrlTemplate(boolean value);
 
     Builder setHttpProtocolVersion(Function<URI, String> value);
 
@@ -249,6 +271,11 @@ public abstract class HttpClientTestOptions {
     @CanIgnoreReturnValue
     default Builder spanEndsAfterBody() {
       return setSpanEndsAfterType(SpanEndsAfterType.BODY);
+    }
+
+    @CanIgnoreReturnValue
+    default Builder enableUrlTemplate() {
+      return setHasUrlTemplate(true);
     }
 
     HttpClientTestOptions build();

@@ -33,10 +33,10 @@ sourceSets {
 dependencies {
   // these are needed for compileGwt task
   if (findProperty("testLatestDeps") as Boolean) {
-    compileOnly("org.gwtproject:gwt-user:+")
-    compileOnly("org.gwtproject:gwt-dev:+")
-    compileOnly("org.gwtproject:gwt-servlet:+")
-    testImplementation("org.gwtproject:gwt-servlet:+")
+    compileOnly("org.gwtproject:gwt-user:latest.release")
+    compileOnly("org.gwtproject:gwt-dev:latest.release")
+    compileOnly("org.gwtproject:gwt-servlet:latest.release")
+    testImplementation("org.gwtproject:gwt-servlet:latest.release")
   } else {
     compileOnly("com.google.gwt:gwt-user:2.0.0")
     compileOnly("com.google.gwt:gwt-dev:2.0.0")
@@ -120,4 +120,5 @@ tasks.withType<Test>().configureEach {
   // required on jdk17
   jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
   jvmArgs("-XX:+IgnoreUnrecognizedVMOptions")
+  systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
 }

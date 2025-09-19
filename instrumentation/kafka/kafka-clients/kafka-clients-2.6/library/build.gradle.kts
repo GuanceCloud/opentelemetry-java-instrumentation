@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-  implementation(project(":instrumentation:kafka:kafka-clients:kafka-clients-common:library"))
+  implementation(project(":instrumentation:kafka:kafka-clients:kafka-clients-common-0.11:library"))
   library("org.apache.kafka:kafka-clients:2.6.0")
 
   testImplementation(project(":instrumentation:kafka:kafka-clients:kafka-clients-0.11:testing"))
@@ -23,6 +23,8 @@ tasks {
   }
 
   val testReceiveSpansDisabled by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     filter {
       includeTestsMatching("InterceptorsSuppressReceiveSpansTest")
       includeTestsMatching("WrapperSuppressReceiveSpansTest")
@@ -36,9 +38,19 @@ tasks {
       excludeTestsMatching("WrapperSuppressReceiveSpansTest")
     }
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
+    systemProperty("otel.instrumentation.messaging.experimental.capture-headers", "Test-Message-Header")
   }
 
   check {
     dependsOn(testReceiveSpansDisabled)
+  }
+}
+
+val latestDepTest = findProperty("testLatestDeps") as Boolean
+
+// kafka 4.1 requires java 11
+if (latestDepTest) {
+  otelJava {
+    minJavaVersionSupported.set(JavaVersion.VERSION_11)
   }
 }

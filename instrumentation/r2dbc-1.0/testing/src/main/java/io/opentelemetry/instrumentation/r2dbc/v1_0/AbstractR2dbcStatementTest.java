@@ -17,6 +17,7 @@ import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_SQL_
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_STATEMENT;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_SYSTEM;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_USER;
+import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
@@ -141,6 +142,7 @@ public abstract class AbstractR2dbcStatementTest {
                 .option(USER, USER_DB)
                 .option(PASSWORD, PW_DB)
                 .option(DATABASE, DB)
+                .option(CONNECT_TIMEOUT, Duration.ofSeconds(30))
                 .build());
 
     getTesting()
@@ -173,7 +175,7 @@ public abstract class AbstractR2dbcStatementTest {
                                     emitStableDatabaseSemconv()
                                         ? null
                                         : parameter.system + "://localhost:" + port),
-                                equalTo(DB_SYSTEM, parameter.system),
+                                equalTo(maybeStable(DB_SYSTEM), parameter.system),
                                 equalTo(maybeStable(DB_NAME), DB),
                                 equalTo(DB_USER, emitStableDatabaseSemconv() ? null : USER_DB),
                                 equalTo(maybeStable(DB_STATEMENT), parameter.expectedStatement),
@@ -236,14 +238,14 @@ public abstract class AbstractR2dbcStatementTest {
 
   private static class Parameter {
 
-    public final String system;
-    public final String statement;
-    public final String expectedStatement;
-    public final String spanName;
-    public final String table;
-    public final String operation;
+    final String system;
+    final String statement;
+    final String expectedStatement;
+    final String spanName;
+    final String table;
+    final String operation;
 
-    public Parameter(
+    Parameter(
         String system,
         String statement,
         String expectedStatement,
@@ -260,19 +262,19 @@ public abstract class AbstractR2dbcStatementTest {
   }
 
   private static class DbSystemProps {
-    public final String system;
-    public final String image;
-    public final int port;
-    public final Map<String, String> envVariables = new HashMap<>();
+    final String system;
+    final String image;
+    final int port;
+    final Map<String, String> envVariables = new HashMap<>();
 
-    public DbSystemProps(String system, String image, int port) {
+    DbSystemProps(String system, String image, int port) {
       this.system = system;
       this.image = image;
       this.port = port;
     }
 
     @CanIgnoreReturnValue
-    public DbSystemProps envVariables(String... keyValues) {
+    DbSystemProps envVariables(String... keyValues) {
       for (int i = 0; i < keyValues.length / 2; i++) {
         envVariables.put(keyValues[2 * i], keyValues[2 * i + 1]);
       }

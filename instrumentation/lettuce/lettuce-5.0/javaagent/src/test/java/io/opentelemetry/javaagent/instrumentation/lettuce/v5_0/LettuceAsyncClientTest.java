@@ -9,6 +9,7 @@ import static io.opentelemetry.api.common.AttributeKey.booleanKey;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
+import static io.opentelemetry.semconv.ErrorAttributes.ERROR_TYPE;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_OPERATION;
@@ -32,10 +33,15 @@ import io.lettuce.core.protocol.AsyncCommand;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.instrumentation.api.internal.SemconvStability;
 import io.opentelemetry.instrumentation.test.utils.PortUtils;
+import io.opentelemetry.sdk.testing.assertj.AttributeAssertion;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -46,7 +52,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import org.assertj.core.api.AbstractAssert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -108,7 +113,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
             new Utf8StringCodec(), new RedisURI(host, port, 3, TimeUnit.SECONDS));
     StatefulRedisConnection<String, String> connection1 = connectionFuture.get();
     cleanup.deferCleanup(connection1);
-    cleanup.deferCleanup(testConnectionClient::shutdown);
+    cleanup.deferCleanup(() -> shutdown(testConnectionClient));
 
     assertThat(connection1).isNotNull();
 
@@ -121,7 +126,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasAttributesSatisfyingExactly(
                             equalTo(SERVER_ADDRESS, host),
                             equalTo(SERVER_PORT, port),
-                            equalTo(DB_SYSTEM, "redis"))));
+                            equalTo(maybeStable(DB_SYSTEM), "redis"))));
   }
 
   @SuppressWarnings("deprecation") // RedisURI constructor
@@ -152,7 +157,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasAttributesSatisfyingExactly(
                             equalTo(SERVER_ADDRESS, host),
                             equalTo(SERVER_PORT, incorrectPort),
-                            equalTo(DB_SYSTEM, "redis"))
+                            equalTo(maybeStable(DB_SYSTEM), "redis"))
                         .hasEventsSatisfyingExactly(
                             event ->
                                 event
@@ -171,7 +176,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                                                 + incorrectPort),
                                         satisfies(
                                             AttributeKey.stringKey("exception.stacktrace"),
-                                            AbstractAssert::isNotNull)))));
+                                            val -> val.isNotNull())))));
   }
 
   @Test
@@ -189,7 +194,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                     span.hasName("SET")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SET TESTSETKEY ?"),
                             equalTo(maybeStable(DB_OPERATION), "SET"))));
   }
@@ -221,7 +226,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "GET TESTKEY"),
                             equalTo(maybeStable(DB_OPERATION), "GET")),
                 span ->
@@ -278,7 +283,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "GET NON_EXISTENT_KEY"),
                             equalTo(maybeStable(DB_OPERATION), "GET")),
                 span ->
@@ -321,7 +326,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "RANDOMKEY"),
                             equalTo(maybeStable(DB_OPERATION), "RANDOMKEY")),
                 span ->
@@ -367,7 +372,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                     span.hasName("HMSET")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(
                                 maybeStable(DB_STATEMENT),
                                 "HMSET TESTHM firstname ? lastname ? age ?"),
@@ -378,7 +383,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                     span.hasName("HGETALL")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "HGETALL TESTHM"),
                             equalTo(maybeStable(DB_OPERATION), "HGETALL"))));
   }
@@ -412,6 +417,17 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
               assertThat(completedExceptionally).isTrue();
             });
 
+    List<AttributeAssertion> assertions =
+        new ArrayList<>(
+            Arrays.asList(
+                equalTo(maybeStable(DB_SYSTEM), "redis"),
+                equalTo(maybeStable(DB_STATEMENT), "DEL key1 key2"),
+                equalTo(maybeStable(DB_OPERATION), "DEL")));
+
+    if (SemconvStability.emitStableDatabaseSemconv()) {
+      assertions.add(equalTo(ERROR_TYPE, "java.lang.IllegalStateException"));
+    }
+
     testing.waitAndAssertTraces(
         trace ->
             trace.hasSpansSatisfyingExactly(
@@ -420,10 +436,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasKind(SpanKind.CLIENT)
                         .hasStatus(StatusData.error())
                         .hasException(new IllegalStateException("TestException"))
-                        .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
-                            equalTo(maybeStable(DB_STATEMENT), "DEL key1 key2"),
-                            equalTo(maybeStable(DB_OPERATION), "DEL"))));
+                        .hasAttributesSatisfyingExactly(assertions)));
   }
 
   @Test
@@ -459,7 +472,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SADD SKEY ? ?"),
                             equalTo(maybeStable(DB_OPERATION), "SADD"),
                             equalTo(booleanKey("lettuce.command.cancelled"), true)),
@@ -484,7 +497,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                     span.hasName("DEBUG")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "DEBUG SEGFAULT"),
                             equalTo(maybeStable(DB_OPERATION), "DEBUG"))));
   }
@@ -504,7 +517,7 @@ class LettuceAsyncClientTest extends AbstractLettuceClientTest {
                     span.hasName("SHUTDOWN")
                         .hasKind(SpanKind.CLIENT)
                         .hasAttributesSatisfyingExactly(
-                            equalTo(DB_SYSTEM, "redis"),
+                            equalTo(maybeStable(DB_SYSTEM), "redis"),
                             equalTo(maybeStable(DB_STATEMENT), "SHUTDOWN NOSAVE"),
                             equalTo(maybeStable(DB_OPERATION), "SHUTDOWN"))));
   }

@@ -8,11 +8,11 @@ package io.opentelemetry.javaagent.instrumentation.akkaactor;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
-import io.opentelemetry.context.Context;
-import io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.asm.Advice.AssignReturned;
+import net.bytebuddy.asm.Advice.AssignReturned.ToArguments.ToArgument;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
@@ -43,22 +43,20 @@ public class AkkaScheduleInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class ScheduleAdvice {
 
+    @AssignReturned.ToArguments(@ToArgument(2))
     @Advice.OnMethodEnter(suppress = Throwable.class)
-    public static void enterSchedule(
-        @Advice.Argument(value = 2, readOnly = false) Runnable runnable) {
-      Context context = Java8BytecodeBridge.currentContext();
-      runnable = context.wrap(runnable);
+    public static Runnable enterSchedule(@Advice.Argument(2) Runnable runnable) {
+      return AkkaSchedulerTaskWrapper.wrap(runnable);
     }
   }
 
   @SuppressWarnings("unused")
   public static class ScheduleOnceAdvice {
 
+    @AssignReturned.ToArguments(@ToArgument(1))
     @Advice.OnMethodEnter(suppress = Throwable.class)
-    public static void enterScheduleOnce(
-        @Advice.Argument(value = 1, readOnly = false) Runnable runnable) {
-      Context context = Java8BytecodeBridge.currentContext();
-      runnable = context.wrap(runnable);
+    public static Runnable enterScheduleOnce(@Advice.Argument(1) Runnable runnable) {
+      return AkkaSchedulerTaskWrapper.wrap(runnable);
     }
   }
 }

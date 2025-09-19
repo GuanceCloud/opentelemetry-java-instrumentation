@@ -8,13 +8,13 @@ The version is specified in [version.gradle.kts](version.gradle.kts).
 
 Every successful CI build of the main branch automatically executes `./gradlew publishToSonatype`
 as the last step, which publishes a snapshot build to
-[Sonatype OSS snapshots repository](https://oss.sonatype.org/content/repositories/snapshots/io/opentelemetry/).
+[Sonatype snapshot repository](https://central.sonatype.com/service/rest/repository/browse/maven-snapshots/io/opentelemetry/).
 
 ## Release cadence
 
-This repository roughly targets monthly minor releases from the `main` branch on the Thursday after
-the second Monday of the month (roughly a couple of days after the monthly minor release of
-[opentelemetry-java-contrib](https://github.com/open-telemetry/opentelemetry-java-contrib)).
+This repository roughly targets monthly minor releases from the `main` branch on the Wednesday after
+the second Monday of the month (roughly a few days after the monthly minor release of
+[opentelemetry-java](https://github.com/open-telemetry/opentelemetry-java)).
 
 ## Preparing a new major or minor release
 
@@ -49,7 +49,7 @@ and deadlocks.
   - Review and merge the backport pull request that it generates.
   - Note: if the PR contains any changes to workflow files, it will have to be manually backported,
     because the default `GITHUB_TOKEN` does not have permission to update workflow files (and the
-    `opentelemetrybot` token doesn't have write permission to this repository at all, so while it
+    `otelbot` token doesn't have write permission to this repository at all, so while it
     can be used to open a PR, it can't be used to push to a local branch).
 - Merge a pull request to the release branch updating the `CHANGELOG.md`.
   - The heading for the unreleased entries should be `## Unreleased`.

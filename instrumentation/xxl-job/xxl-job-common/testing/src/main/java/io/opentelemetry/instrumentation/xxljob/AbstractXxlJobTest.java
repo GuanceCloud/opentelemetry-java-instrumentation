@@ -17,6 +17,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
+import io.opentelemetry.instrumentation.testing.junit.code.SemconvCodeStabilityUtil;
 import io.opentelemetry.sdk.testing.assertj.AttributeAssertion;
 import io.opentelemetry.sdk.trace.data.StatusData;
 import java.util.ArrayList;
@@ -143,12 +144,12 @@ public abstract class AbstractXxlJobTest {
       String spanName,
       StatusData statusData,
       GlueTypeEnum glueType,
-      String codeNamespace,
-      String codeFunction) {
+      String codeClass,
+      String codeMethod) {
     List<AttributeAssertion> attributeAssertions = new ArrayList<>();
     attributeAssertions.addAll(attributeAssertions(glueType));
-    attributeAssertions.add(equalTo(AttributeKey.stringKey("code.namespace"), codeNamespace));
-    attributeAssertions.add(equalTo(AttributeKey.stringKey("code.function"), codeFunction));
+    attributeAssertions.addAll(
+        SemconvCodeStabilityUtil.codeFunctionAssertions(codeClass, codeMethod));
 
     checkXxlJob(spanName, statusData, attributeAssertions);
   }

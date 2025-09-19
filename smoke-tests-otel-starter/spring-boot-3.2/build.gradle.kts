@@ -22,6 +22,13 @@ dependencies {
 
   implementation(project(":smoke-tests-otel-starter:spring-boot-common"))
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+  val testLatestDeps = gradle.startParameter.projectProperties["testLatestDeps"] == "true"
+  if (testLatestDeps) {
+    // with spring boot 3.5.0 versions of org.mongodb:mongodb-driver-sync and org.mongodb:mongodb-driver-core
+    // are not in sync
+    testImplementation("org.mongodb:mongodb-driver-sync:latest.release")
+  }
 }
 
 springBoot {
@@ -49,6 +56,9 @@ tasks {
   checkstyleAotTest {
     isEnabled = false
   }
+  bootJar {
+    enabled = false
+  }
 }
 
 // To be able to execute the tests as GraalVM native executables
@@ -59,12 +69,6 @@ configurations.configureEach {
 }
 
 graalvmNative {
-  binaries.all {
-    // Workaround for https://github.com/junit-team/junit5/issues/3405
-    buildArgs.add("--initialize-at-build-time=org.junit.platform.launcher.core.LauncherConfig")
-    buildArgs.add("--initialize-at-build-time=org.junit.jupiter.engine.config.InstantiatingConfigurationParameterConverter")
-  }
-
   // See https://github.com/graalvm/native-build-tools/issues/572
   metadataRepository {
     enabled.set(false)
@@ -74,4 +78,10 @@ graalvmNative {
     useJUnitPlatform()
     setForkEvery(1)
   }
+}
+
+// Disable collectReachabilityMetadata task to avoid configuration isolation issues
+// See https://github.com/gradle/gradle/issues/17559
+tasks.named("collectReachabilityMetadata").configure {
+  enabled = false
 }

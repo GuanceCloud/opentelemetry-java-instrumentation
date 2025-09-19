@@ -20,16 +20,19 @@ dependencies {
   testLibrary("com.amazonaws:aws-java-sdk-sqs:1.11.106")
 
   // last version that does not use json protocol
-  latestDepTestLibrary("com.amazonaws:aws-java-sdk-sqs:1.12.583")
+  latestDepTestLibrary("com.amazonaws:aws-java-sdk-sqs:1.12.583") // documented limitation
 }
 
 tasks {
   withType<Test>().configureEach {
     systemProperty("otel.instrumentation.aws-sdk.experimental-span-attributes", "true")
-    systemProperty("otel.instrumentation.messaging.experimental.capture-headers", "test-message-header")
+    systemProperty("otel.instrumentation.messaging.experimental.capture-headers", "Test-Message-Header")
   }
 
   val testReceiveSpansDisabled by registering(Test::class) {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
     filter {
       includeTestsMatching("SqsSuppressReceiveSpansTest")
     }
