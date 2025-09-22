@@ -68,7 +68,7 @@ public final class JdbcInstrumenterFactory {
       boolean enabled,
       boolean statementSanitizationEnabled,
       boolean captureQueryParameters) {
-    setArgs = new DbSetArgs(new HashMap<>());
+   // setArgs = new DbSetArgs(new HashMap<>());
     return Instrumenter.<DbRequest, Void>builder(
             openTelemetry,
             INSTRUMENTATION_NAME,
@@ -81,7 +81,6 @@ public final class JdbcInstrumenterFactory {
         .addAttributesExtractor(ServerAttributesExtractor.create(netAttributesGetter))
         .addAttributesExtractors(extractors)
         .addOperationMetrics(DbClientMetrics.get())
-        .addAttributesExtractor(JdbcAttributes.create(setArgs))
         .setEnabled(enabled)
         .buildInstrumenter(SpanKindExtractor.alwaysClient());
   }

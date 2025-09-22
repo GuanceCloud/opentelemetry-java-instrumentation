@@ -1,4 +1,4 @@
-# 观测云二次开发
+# 二次开发
 
 
 ## 分支和版本
@@ -13,7 +13,7 @@ guance 分支不在进行功能上的开发，仅仅修复已知bug即可。
 git add .
 git commit -m "commit_message"
 # 打tag之后推送到github
-git tag -a "v2.x.x-guance" -m "v2.x.x-guance"
+git tag -a "v2.x.x-ext" -m "v2.x.x-ext"
 git push 
 git push --tag
 ```
@@ -25,4 +25,4 @@ git push --tag
 
 ### v2.11.0-guance
 
-增加sql脱敏功能，可以通过环境变量开启：`-Dotel.jdbc.sql.obfuscation=true`
+增加sql脱敏功能，可以通过环境变量开启：`-Dotel.jdbc.sql.obfuscation=true` 

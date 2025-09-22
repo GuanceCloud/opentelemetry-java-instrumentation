@@ -10,8 +10,8 @@ import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.CAPTURE_QUERY_PARAMETERS;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.statementInstrumenter;
-import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.resetArgs;
-import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
+//import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.resetArgs;
+//import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -26,7 +26,7 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcData;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
-import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
+//import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import java.net.URL;
@@ -63,10 +63,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
             .and(isPublic()),
         PreparedStatementInstrumentation.class.getName() + "$PreparedStatementAdvice");
     transformer.applyAdviceToMethod(
-<<<<<<< HEAD
-        nameStartsWith("set").and(isPublic()).and(takesArguments(2)),
-        PreparedStatementInstrumentation.class.getName() + "$SetStringAdvice");
-=======
+
         named("addBatch").and(takesNoArguments()).and(isPublic()),
         PreparedStatementInstrumentation.class.getName() + "$AddBatchAdvice");
     transformer.applyAdviceToMethod(
@@ -107,7 +104,6 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         named("clearParameters").and(takesNoArguments()).and(isPublic()),
         PreparedStatementInstrumentation.class.getName() + "$ClearParametersAdvice");
->>>>>>> v2200
   }
 
   @SuppressWarnings("unused")
@@ -164,36 +160,10 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
       if (scope != null) {
         scope.close();
         statementInstrumenter().end(context, request, null, throwable);
-        resetArgs();
+        //resetArgs();
       }
     }
   }
-/*<<<<<<< HEAD
-  @SuppressWarnings("unused")
-  public static class SetStringAdvice {
-    @Advice.OnMethodEnter(suppress = Throwable.class)
-    public static void onEnter(
-        @Advice.AllArguments Object[] args, @Advice.This Statement statement) {
-
-      int index = 0;
-      String arg = "";
-      if (args.length != 2) {
-        return;
-      }
-
-      if (args[0] instanceof Integer) {
-        index = (Integer) args[0];
-      }
-      arg = args[1].toString();
-
-      if (AgentInstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation", false)) {
-        setArg(index, arg);
-      }
-    }
-
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
-    public static void stopSpan(@Advice.Thrown Throwable throwable) {}
-=======*/
 
   @SuppressWarnings("unused")
   public static class AddBatchAdvice {
@@ -298,6 +268,5 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
     public static void clearBatch(@Advice.This PreparedStatement statement) {
       JdbcData.clearParameters(statement);
     }
-//>>>>>>> v2200
   }
 }
