@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - guance-test
       - release/*
   workflow_dispatch:
 
@@ -16,6 +17,8 @@ jobs:
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       FLAKY_TEST_REPORTER_ACCESS_KEY: ${{ secrets.FLAKY_TEST_REPORTER_ACCESS_KEY }}
+    with:
+      linux-runner: ${{ github.ref_name == 'guance-test' && 'guance-runner' || 'ubuntu-latest' }}
 
   test-latest-deps:
     # release branches are excluded
@@ -23,6 +26,8 @@ jobs:
     # which requires unnecessary release branch maintenance, especially for patches
     if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-test-latest-deps.yml
+    with:
+      linux-runner: ${{ github.ref_name == 'guance-test' && 'guance-runner' || 'ubuntu-latest' }}
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       FLAKY_TEST_REPORTER_ACCESS_KEY: ${{ secrets.FLAKY_TEST_REPORTER_ACCESS_KEY }}
@@ -33,6 +38,8 @@ jobs:
     # which requires unnecessary release branch maintenance, especially for patches
     if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-muzzle.yml
+    with:
+      linux-runner: ${{ github.ref_name == 'guance-test' && 'guance-runner' || 'ubuntu-latest' }}
 
   link-check:
     # release branches are excluded to avoid unnecessary maintenance if external links break
@@ -40,8 +47,12 @@ jobs:
     #  before the release download has been published)
     if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-link-check.yml
+    with:
+      linux-runner: ${{ github.ref_name == 'guance-test' && 'guance-runner' || 'ubuntu-latest' }}
 
   markdown-lint-check:
     # release branches are excluded
     if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-markdown-lint-check.yml
+    with:
+      linux-runner: ${{ github.ref_name == 'guance-test' && 'guance-runner' || 'ubuntu-latest' }}
