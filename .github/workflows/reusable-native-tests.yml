@@ -20,7 +20,7 @@ permissions:
 jobs:
   graalvm-native-tests:
     if: "!inputs.skip-native-tests"
-    runs-on: ${{ inputs.linux-runner }}
+    runs-on: ${{ startsWith(inputs.linux-runner, '[') && fromJSON(inputs.linux-runner) || inputs.linux-runner }}
     strategy:
       matrix:
         test-java-version:
