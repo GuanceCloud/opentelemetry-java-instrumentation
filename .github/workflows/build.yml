@@ -21,11 +21,16 @@ jobs:
       - name: Free disk space
         run: .github/scripts/gha-free-disk-space.sh
 
-      - name: Set up JDK for running Gradle
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
-        with:
-          distribution: temurin
-          java-version-file: .java-version
+      - name: Use preinstalled JDK
+        run: |
+          echo "JAVA_HOME=${JAVA_HOME:-<unset>}"
+          command -v java
+          java -version
+          if [ -z "${JAVA_HOME:-}" ]; then
+            JAVA_BIN=$(readlink -f "$(command -v java)")
+            JAVA_HOME=$(dirname "$(dirname "$JAVA_BIN")")
+            echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          fi
 
       - name: Increase gradle daemon heap size
         run: |
