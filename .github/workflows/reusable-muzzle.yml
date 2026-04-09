@@ -3,6 +3,10 @@ name: Reusable - Muzzle
 on:
   workflow_call:
     inputs:
+      linux-runner:
+        type: string
+        required: false
+        default: ubuntu-latest
       cache-read-only:
         type: boolean
         required: false
@@ -12,7 +16,7 @@ permissions:
 
 jobs:
   muzzle:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     strategy:
       matrix:
         task:

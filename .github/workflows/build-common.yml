@@ -3,6 +3,10 @@ name: Reusable - Common
 on:
   workflow_call:
     inputs:
+      linux-runner:
+        type: string
+        required: false
+        default: ubuntu-latest
       cache-read-only:
         type: boolean
         required: false
@@ -26,7 +30,7 @@ permissions:
 
 jobs:
   spotless:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -50,7 +54,7 @@ jobs:
         run: ./gradlew spotlessCheck ${{ inputs.no-build-cache && '--no-build-cache' || '' }}
 
   license-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -91,7 +95,7 @@ jobs:
           fi
 
   fossa-configuration-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -130,7 +134,7 @@ jobs:
   # this is needed because we don't auto-update dependencies in instrumentation/**
   # and so we want to enforce that all "real" dependencies are dependency managed
   extra-dependency-management-enforcement:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -154,28 +158,28 @@ jobs:
           fi
 
   check-javaagent-suppression-keys:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - run: .github/scripts/check-javaagent-suppression-keys.sh
 
   check-latest-dep-test-overrides:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - run: .github/scripts/check-latest-dep-test-overrides.sh
 
   check-package-names:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - run: .github/scripts/check-package-names.sh
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -238,7 +242,7 @@ jobs:
 
   test:
     name: test${{ matrix.test-partition }} (${{ matrix.test-java-version }}, ${{ matrix.vm }}, indy ${{ matrix.test-indy }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     strategy:
       matrix:
         test-java-version:
@@ -405,12 +409,12 @@ jobs:
           if-no-files-found: ignore
 
   smoke-test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'windows-latest' && 'windows-latest' || inputs.linux-runner }}
     strategy:
       matrix:
         os:
           - windows-latest
-          - ubuntu-latest
+          - linux
         smoke-test-suite:
           - jetty
           - liberty
@@ -484,7 +488,7 @@ jobs:
           if-no-files-found: ignore
 
   gradle-plugins:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -507,7 +511,7 @@ jobs:
         working-directory: gradle-plugins
 
   examples:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

@@ -2,13 +2,18 @@ name: Reusable - Link check
 
 on:
   workflow_call:
+    inputs:
+      linux-runner:
+        type: string
+        required: false
+        default: ubuntu-latest
 
 permissions:
   contents: read
 
 jobs:
   link-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.linux-runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
