@@ -33,7 +33,7 @@ public final class RuntimeMetrics implements AutoCloseable {
    * @param openTelemetry the {@link OpenTelemetry} instance used to record telemetry
    */
   public static RuntimeMetrics create(OpenTelemetry openTelemetry) {
-    return new RuntimeMetricsBuilder(openTelemetry).build();
+    return builder(openTelemetry).build();
   }
 
   /**
@@ -57,7 +57,7 @@ public final class RuntimeMetrics implements AutoCloseable {
     }
   }
 
-  /** Stop recording JFR events. */
+  /** Stop recording metrics. */
   @Override
   public void close() {
     delegate.close();

@@ -5,7 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.rocketmqclient.v4_8;
 
-import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+import static io.opentelemetry.javaagent.instrumentation.rocketmqclient.v4_8.RocketMqSingletons.sendMessageHook;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
@@ -17,7 +17,7 @@ import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.rocketmq.client.impl.producer.DefaultMQProducerImpl;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 
-public class RocketMqProducerInstrumentation implements TypeInstrumentation {
+class RocketMqProducerInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -27,8 +27,7 @@ public class RocketMqProducerInstrumentation implements TypeInstrumentation {
   @Override
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
-        isMethod().and(named("start")).and(takesArguments(0)),
-        RocketMqProducerInstrumentation.class.getName() + "$StartAdvice");
+        named("start").and(takesArguments(0)), getClass().getName() + "$StartAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -37,7 +36,7 @@ public class RocketMqProducerInstrumentation implements TypeInstrumentation {
     public static void onEnter(
         @Advice.FieldValue(value = "defaultMQProducerImpl", declaringType = DefaultMQProducer.class)
             DefaultMQProducerImpl defaultMqProducerImpl) {
-      defaultMqProducerImpl.registerSendMessageHook(RocketMqClientHooks.SEND_MESSAGE_HOOK);
+      defaultMqProducerImpl.registerSendMessageHook(sendMessageHook());
     }
   }
 }

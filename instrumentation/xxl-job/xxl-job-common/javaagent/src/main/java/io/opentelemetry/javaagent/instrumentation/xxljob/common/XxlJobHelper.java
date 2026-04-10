@@ -11,21 +11,9 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 
-public final class XxlJobHelper {
+public class XxlJobHelper {
   private final Instrumenter<XxlJobProcessRequest, Void> instrumenter;
   private final Predicate<Object> failedStatusPredicate;
-
-  public static class XxlJobScope {
-    private final XxlJobProcessRequest request;
-    private final Context context;
-    private final Scope scope;
-
-    private XxlJobScope(XxlJobProcessRequest request, Context context, Scope scope) {
-      this.request = request;
-      this.context = context;
-      this.scope = scope;
-    }
-  }
 
   private XxlJobHelper(
       Instrumenter<XxlJobProcessRequest, Void> instrumenter,
@@ -60,5 +48,17 @@ public final class XxlJobHelper {
     }
     scope.scope.close();
     instrumenter.end(scope.context, scope.request, null, throwable);
+  }
+
+  public static class XxlJobScope {
+    private final XxlJobProcessRequest request;
+    private final Context context;
+    private final Scope scope;
+
+    private XxlJobScope(XxlJobProcessRequest request, Context context, Scope scope) {
+      this.request = request;
+      this.context = context;
+      this.scope = scope;
+    }
   }
 }

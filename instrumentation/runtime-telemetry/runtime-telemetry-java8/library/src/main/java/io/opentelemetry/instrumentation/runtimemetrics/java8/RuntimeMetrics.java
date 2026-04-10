@@ -34,7 +34,7 @@ public final class RuntimeMetrics implements AutoCloseable {
    */
   @Deprecated
   public static RuntimeMetrics create(OpenTelemetry openTelemetry) {
-    return new RuntimeMetricsBuilder(openTelemetry).build();
+    return builder(openTelemetry).build();
   }
 
   /**
@@ -49,7 +49,7 @@ public final class RuntimeMetrics implements AutoCloseable {
     return new RuntimeMetricsBuilder(openTelemetry);
   }
 
-  /** Stop recording JMX metrics. */
+  /** Stop recording runtime metrics. */
   @Override
   public void close() {
     delegate.close();
