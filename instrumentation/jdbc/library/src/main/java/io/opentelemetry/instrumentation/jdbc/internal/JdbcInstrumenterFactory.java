@@ -32,11 +32,12 @@ public final class JdbcInstrumenterFactory {
 
   @SuppressWarnings("deprecation") // using deprecated config property
   public static boolean captureQueryParameters(OpenTelemetry openTelemetry) {
+    boolean legacyCaptureQueryParameters =
+        ConfigPropertiesUtil.getBoolean(
+                "otel.instrumentation.jdbc.experimental.capture-query-parameters", false)
+            || ConfigPropertiesUtil.getBoolean("otel.jdbc.sql.obfuscation", false);
     return DeclarativeConfigUtil.getInstrumentationConfig(openTelemetry, "jdbc")
-        .getBoolean(
-            "capture_query_parameters/development",
-            ConfigPropertiesUtil.getBoolean(
-                "otel.instrumentation.jdbc.experimental.capture-query-parameters", false));
+        .getBoolean("capture_query_parameters/development", legacyCaptureQueryParameters);
   }
 
   public static Instrumenter<DbRequest, Void> createStatementInstrumenter(

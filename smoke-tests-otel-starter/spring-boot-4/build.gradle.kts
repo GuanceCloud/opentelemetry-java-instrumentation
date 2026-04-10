@@ -104,7 +104,7 @@ plugins.withId("org.graalvm.buildtools.native") {
 
   // Disable collectReachabilityMetadata task to avoid configuration isolation issues
   // See https://github.com/gradle/gradle/issues/17559
-  tasks.named("collectReachabilityMetadata").configure {
+  tasks.matching { it.name == "collectReachabilityMetadata" }.configureEach {
     enabled = false
   }
 }

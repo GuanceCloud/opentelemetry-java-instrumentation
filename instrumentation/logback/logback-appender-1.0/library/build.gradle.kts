@@ -60,9 +60,8 @@ graalvmNative {
 
 // Disable collectReachabilityMetadata task to avoid configuration isolation issues
 // See https://github.com/gradle/gradle/issues/17559
-tasks.named("collectReachabilityMetadata").configure {
+tasks.matching { it.name == "collectReachabilityMetadata" }.configureEach {
   enabled = false
-<<<<<<< HEAD
 }
 
 // To be able to execute the tests as GraalVM native executables
@@ -70,8 +69,6 @@ configurations.configureEach {
   exclude("org.apache.groovy", "groovy")
   exclude("org.apache.groovy", "groovy-json")
   exclude("org.spockframework", "spock-core")
-=======
->>>>>>> main
 }
 
 testing {
