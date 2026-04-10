@@ -20,18 +20,12 @@ import io.opentelemetry.instrumentation.api.internal.cache.Cache;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcAttributesGetter;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcInstrumenterFactory;
-import io.opentelemetry.instrumentation.jdbc.internal.JdbcNetworkAttributesGetter;
-import io.opentelemetry.javaagent.bootstrap.internal.AgentCommonConfig;
 import io.opentelemetry.javaagent.bootstrap.jdbc.DbInfo;
-import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
 import io.opentelemetry.javaagent.bootstrap.internal.sqlcommenter.SqlCommenterCustomizerHolder;
-import io.opentelemetry.javaagent.bootstrap.jdbc.DbInfo;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Wrapper;
-import javax.sql.DataSource;
-import java.util.Collections;
 import javax.sql.DataSource;
 
 public class JdbcSingletons {
@@ -42,19 +36,13 @@ public class JdbcSingletons {
   private static final SqlCommenter sqlCommenter = configureSqlCommenter();
   public static final boolean CAPTURE_QUERY_PARAMETERS;
 
-
   static {
     AttributesExtractor<DbRequest, Void> servicePeerExtractor =
         ServicePeerAttributesExtractor.create(
             new JdbcAttributesGetter(), GlobalOpenTelemetry.get());
 
     CAPTURE_QUERY_PARAMETERS =
-        DeclarativeConfigUtil.getInstrumentationConfig(GlobalOpenTelemetry.get(), "jdbc")
-            .getBoolean("capture_query_parameters/development", false);
-
-//        AgentInstrumentationConfig.get()
-//            .getBoolean("otel.instrumentation.jdbc.experimental.capture-query-parameters",
-//                AgentInstrumentationConfig.get().getBoolean("otel.jdbc.sql.obfuscation", false));
+        JdbcInstrumenterFactory.captureQueryParameters(GlobalOpenTelemetry.get());
 
     statementInstrumenter =
         JdbcInstrumenterFactory.createStatementInstrumenter(

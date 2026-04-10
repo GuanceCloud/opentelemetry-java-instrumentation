@@ -5,8 +5,6 @@
 
 package io.opentelemetry.instrumentation.jdbc.internal;
 
-import static io.opentelemetry.instrumentation.api.internal.AttributesExtractorUtil.internalSet;
-
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.context.Context;
@@ -49,7 +47,7 @@ public final class JdbcAttributes<REQUEST, RESPONSE> implements AttributesExtrac
           append(entry.getValue()).
           append(", ");
     }
-    internalSet(attributes, AttributeKey.stringKey("db_args"),sb.toString());
+    attributes.put(AttributeKey.stringKey("db_args"), sb.toString());
   }
 
   @Override
