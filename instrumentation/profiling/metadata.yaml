@@ -1,0 +1,61 @@
+description: >
+  EXPERIMENTAL: This instrumentation enables JVM profiling using Java Flight Recorder (Java 11+)
+  and can periodically emit profiling snapshots.
+library_link: https://github.com/open-telemetry/opentelemetry-java-instrumentation/tree/main/instrumentation/profiling
+configurations:
+  - name: otel.profiling.enabled
+    description: Enables Java profiling. Environment variable: OTEL_PROFILING_ENABLED.
+    type: boolean
+    default: false
+  - name: otel.profiling.interval
+    description: Interval between profiling snapshots. Environment variable: OTEL_PROFILING_INTERVAL.
+    type: string
+    default: 1m
+  - name: otel.profiling.startup-delay
+    description: Delay before profiling starts. Environment variable: OTEL_PROFILING_STARTUP_DELAY.
+    type: string
+    default: 0s
+  - name: otel.profiling.max-age
+    description: Maximum retention window for the active JFR recording. Environment variable: OTEL_PROFILING_MAX_AGE.
+    type: string
+    default: 5m
+  - name: otel.profiling.stack-depth
+    description: Max JFR stack depth. Environment variable: OTEL_PROFILING_STACK_DEPTH.
+    type: int
+    default: 64
+  - name: otel.profiling.max-size
+    description: Max recording size in bytes. Set to 0 to leave JFR default. Environment variable: OTEL_PROFILING_MAX_SIZE.
+    type: int
+    default: 0
+  - name: otel.profiling.temp-dir
+    description: Temporary directory for intermediate profiling files. Environment variable: OTEL_PROFILING_TEMP_DIR.
+    type: string
+    default: null
+  - name: otel.profiling.memory.enabled
+    description: Enables memory-focused JFR overrides on top of the built-in profile template. Environment variable: OTEL_PROFILING_MEMORY_ENABLED.
+    type: boolean
+    default: false
+  - name: otel.profiling.memory.allocation-sampling
+    description: Overrides allocation sampling events (ObjectAllocation*). Environment variable: OTEL_PROFILING_MEMORY_ALLOCATION_SAMPLING.
+    type: boolean
+    default: null
+  - name: otel.profiling.memory.old-object-sampling
+    description: Overrides OldObjectSample. Environment variable: OTEL_PROFILING_MEMORY_OLD_OBJECT_SAMPLING.
+    type: boolean
+    default: null
+  - name: otel.profiling.exporter
+    description: Profiling exporter implementation. Supported values are none, file, and datakit. Environment variable: OTEL_PROFILING_EXPORTER.
+    type: string
+    default: none
+  - name: otel.profiling.datakit.endpoint
+    description: Datakit profile receiver endpoint. Environment variable: OTEL_PROFILING_ENDPOINT. Compatibility alias: OTEL_PROFILING_DATAKIT_ENDPOINT.
+    type: string
+    default: http://localhost:9529/profiling/v1/input
+  - name: otel.profiling.datakit.timeout
+    description: Timeout for Datakit profile uploads. Environment variable: OTEL_PROFILING_DATAKIT_TIMEOUT.
+    type: string
+    default: 10s
+  - name: otel.profiling.experimental.file-export.path
+    description: Directory used by the experimental file exporter. Environment variable: OTEL_PROFILING_EXPERIMENTAL_FILE_EXPORT_PATH.
+    type: string
+    default: null
