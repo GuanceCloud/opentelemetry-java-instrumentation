@@ -20,7 +20,6 @@ jobs:
   common:
     uses: ./.github/workflows/build-common.yml
     with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
       # it's rare for only the openj9 tests or the windows smoke tests to break
       skip-openj9-tests: ${{ !contains(github.event.pull_request.labels.*.name, 'test openj9') }}
       skip-windows-smoke-tests: ${{ !contains(github.event.pull_request.labels.*.name, 'test windows') }}
@@ -29,19 +28,16 @@ jobs:
   test-latest-deps:
     uses: ./.github/workflows/reusable-test-latest-deps.yml
     with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
       cache-read-only: true
 
   test-native:
     uses: ./.github/workflows/reusable-native-tests.yml
     with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
       skip-native-tests: ${{ !contains(github.event.pull_request.labels.*.name, 'test native') }}
 
   muzzle:
     uses: ./.github/workflows/reusable-muzzle.yml
     with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
       cache-read-only: true
 
   # this is not a required check to avoid blocking pull requests if external links break
@@ -50,13 +46,9 @@ jobs:
     # on release branches before the release download has been published
     if: "!startsWith(github.ref_name, 'release/') && !startsWith(github.base_ref, 'release/')"
     uses: ./.github/workflows/reusable-link-check.yml
-    with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
 
   markdown-lint-check:
     uses: ./.github/workflows/reusable-markdown-lint-check.yml
-    with:
-      linux-runner: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
 
   required-status-check:
     # test-latest-deps is not included in the required status checks
@@ -72,7 +64,7 @@ jobs:
       - common
       - muzzle
       - markdown-lint-check
-    runs-on: ${{ github.base_ref == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     if: always()
     steps:
       - if: |
