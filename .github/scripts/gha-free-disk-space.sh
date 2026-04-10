@@ -4,16 +4,9 @@
 # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
 
 df -h
-
-# Self-hosted runners may not have passwordless sudo, and often have ample disk space already.
-if ! sudo -n true 2>/dev/null; then
-  echo "Skipping disk cleanup: passwordless sudo is unavailable on this runner."
-  exit 0
-fi
-
-sudo -n rm -rf /usr/local/lib/android
-sudo -n rm -rf /usr/share/dotnet
-sudo -n rm -rf /usr/local/julia*
-sudo -n rm -rf /usr/share/swift
-sudo -n rm -rf /usr/local/.ghcup
+sudo rm -rf /usr/local/lib/android
+sudo rm -rf /usr/share/dotnet
+sudo rm -rf /usr/local/julia*
+sudo rm -rf /usr/share/swift
+sudo rm -rf /usr/local/.ghcup
 df -h

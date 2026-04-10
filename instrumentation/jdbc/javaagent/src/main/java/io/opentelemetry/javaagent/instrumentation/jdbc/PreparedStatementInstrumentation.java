@@ -8,6 +8,8 @@ package io.opentelemetry.javaagent.instrumentation.jdbc;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.CAPTURE_QUERY_PARAMETERS;
+//import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.resetArgs;
+//import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -19,6 +21,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesNoArguments;
 
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcData;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
+//import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import java.net.URL;
@@ -34,7 +37,7 @@ import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-public class PreparedStatementInstrumentation implements TypeInstrumentation {
+class PreparedStatementInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<ClassLoader> classLoaderOptimization() {
@@ -55,6 +58,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
             .and(isPublic()),
         getClass().getName() + "$PreparedStatementAdvice");
     transformer.applyAdviceToMethod(
+
         named("addBatch").and(takesNoArguments()).and(isPublic()),
         getClass().getName() + "$AddBatchAdvice");
     transformer.applyAdviceToMethod(
@@ -102,7 +106,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
   public static class PreparedStatementAdvice {
 
     @Nullable
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static JdbcAdviceScope onEnter(@Advice.This PreparedStatement statement) {
       // skip prepared statements without attached sql, probably a wrapper around the actual
       // prepared statement
@@ -116,7 +120,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
       return JdbcAdviceScope.startPreparedStatement(CallDepth.forClass(Statement.class), statement);
     }
 
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
     public static void stopSpan(
         @Advice.Thrown @Nullable Throwable throwable,
         @Advice.Enter @Nullable JdbcAdviceScope adviceScope) {
@@ -129,7 +133,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class AddBatchAdvice {
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void addBatch(@Advice.This PreparedStatement statement) {
       if (JdbcSingletons.isWrapper(statement, Statement.class)) {
         return;
@@ -141,7 +145,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
 
   @SuppressWarnings("unused")
   public static class SetParameter2Advice {
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void onExit(
         @Advice.This PreparedStatement statement,
         @Advice.Argument(0) int index,
@@ -175,7 +179,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
 
   @SuppressWarnings("unused")
   public static class SetParameter3Advice {
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void onExit(
         @Advice.This PreparedStatement statement,
         @Advice.Argument(0) int index,
@@ -210,7 +214,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
 
   @SuppressWarnings("unused")
   public static class SetTimeParameter3Advice {
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void onExit(
         @Advice.This PreparedStatement statement,
         @Advice.Argument(0) int index,
@@ -238,7 +242,7 @@ public class PreparedStatementInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class ClearParametersAdvice {
 
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static void clearBatch(@Advice.This PreparedStatement statement) {
       JdbcData.clearParameters(statement);
     }

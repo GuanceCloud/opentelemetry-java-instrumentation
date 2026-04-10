@@ -10,7 +10,7 @@ otelJava {
   minJavaVersionSupported.set(JavaVersion.VERSION_11)
   maxJavaVersionForTests.set(JavaVersion.VERSION_11)
 }
-val dockerJavaVersion = "3.7.0"
+val dockerJavaVersion = "3.7.1"
 dependencies {
   compileOnly("com.google.auto.value:auto-value-annotations")
   annotationProcessor("com.google.auto.value:auto-value")
@@ -23,7 +23,7 @@ dependencies {
   implementation("io.opentelemetry.proto:opentelemetry-proto")
   implementation("org.testcontainers:testcontainers")
   implementation("com.fasterxml.jackson.core:jackson-databind")
-  implementation("com.google.protobuf:protobuf-java-util:4.34.0")
+  implementation("com.google.protobuf:protobuf-java-util:4.34.1")
   implementation("io.grpc:grpc-netty-shaded")
   implementation("io.grpc:grpc-protobuf")
   implementation("io.grpc:grpc-stub")
@@ -54,6 +54,7 @@ tasks {
     )
 
     val smokeTestSuite: String? by project
+    val skipOpenJ9SmokeTests = (findProperty("skipOpenJ9SmokeTests") as String?) == "true"
     if (smokeTestSuite != null) {
       val suite = suites[smokeTestSuite]
       if (suite != null) {
@@ -69,6 +70,10 @@ tasks {
       } else {
         throw GradleException("Unknown smoke test suite: $smokeTestSuite")
       }
+    }
+
+    if (skipOpenJ9SmokeTests) {
+      exclude("**/*Openj9*.*")
     }
 
     val shadowTask = project(":javaagent").tasks.named<Jar>("shadowJar")

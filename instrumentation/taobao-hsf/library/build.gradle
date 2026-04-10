@@ -1,0 +1,10 @@
+plugins {
+  id("otel.library-instrumentation")
+}
+
+dependencies {
+  compileOnly("com.google.auto.value:auto-value-annotations")
+  annotationProcessor("com.google.auto.value:auto-value")
+  library("com.alibaba.middleware:hsf-sdk:2.2.8.2--2019-06-stable")
+
+}

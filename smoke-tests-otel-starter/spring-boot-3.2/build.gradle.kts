@@ -26,8 +26,7 @@ dependencies {
   implementation(project(":smoke-tests-otel-starter:spring-boot-common"))
   testImplementation("org.springframework.boot:spring-boot-starter-test")
 
-  val testLatestDeps = gradle.startParameter.projectProperties["testLatestDeps"] == "true"
-  if (testLatestDeps) {
+  if (otelProps.testLatestDeps) {
     // with spring boot 3.5.0 versions of org.mongodb:mongodb-driver-sync and org.mongodb:mongodb-driver-core
     // are not in sync
     testImplementation("org.mongodb:mongodb-driver-sync:latest.release")
@@ -79,7 +78,13 @@ plugins.withId("org.graalvm.buildtools.native") {
 
   // Disable collectReachabilityMetadata task to avoid configuration isolation issues
   // See https://github.com/gradle/gradle/issues/17559
-  tasks.named("collectReachabilityMetadata").configure {
+  tasks.matching { it.name == "collectReachabilityMetadata" }.configureEach {
     enabled = false
   }
+}
+
+// Disable collectReachabilityMetadata task to avoid configuration isolation issues
+// See https://github.com/gradle/gradle/issues/17559
+tasks.matching { it.name == "collectReachabilityMetadata" }.configureEach {
+  enabled = false
 }

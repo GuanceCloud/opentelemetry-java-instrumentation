@@ -35,7 +35,7 @@ public class ReactorNettyInstrumentationModule extends InstrumentationModule
 
   @Override
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
-    // Introduced in 1.0.0
+    // added in 1.0.0
     return hasClassesNamed("reactor.netty.transport.AddressUtils");
   }
 

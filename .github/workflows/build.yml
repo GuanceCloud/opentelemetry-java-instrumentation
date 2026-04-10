@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - guance-test
       - release/*
   workflow_dispatch:
 
@@ -12,55 +11,18 @@ permissions:
   contents: read
 
 jobs:
-  compile-only:
-    if: github.ref_name == 'guance-test'
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Free disk space
-        run: .github/scripts/gha-free-disk-space.sh
-
-      - name: Use preinstalled JDK
-        run: |
-          echo "JAVA_HOME=${JAVA_HOME:-<unset>}"
-          command -v java
-          java -version
-          if [ -z "${JAVA_HOME:-}" ]; then
-            JAVA_BIN=$(readlink -f "$(command -v java)")
-            JAVA_HOME=$(dirname "$(dirname "$JAVA_BIN")")
-            echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
-          fi
-
-      - name: Increase gradle daemon heap size
-        run: |
-          sed -i "s/org.gradle.jvmargs=/org.gradle.jvmargs=-Xmx3g /" gradle.properties
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
-
-      - name: Assemble
-        env:
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: ./gradlew assemble
-
   common:
-    if: github.ref_name != 'guance-test'
     uses: ./.github/workflows/build-common.yml
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       FLAKY_TEST_REPORTER_ACCESS_KEY: ${{ secrets.FLAKY_TEST_REPORTER_ACCESS_KEY }}
-    with:
-      linux-runner: ${{ github.ref_name == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
 
   test-latest-deps:
     # release branches are excluded
     # because any time a new library version is released to maven central it can fail
     # which requires unnecessary release branch maintenance, especially for patches
-    if: github.ref_name != 'guance-test' && !startsWith(github.ref_name, 'release/')
+    if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-test-latest-deps.yml
-    with:
-      linux-runner: ${{ github.ref_name == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       FLAKY_TEST_REPORTER_ACCESS_KEY: ${{ secrets.FLAKY_TEST_REPORTER_ACCESS_KEY }}
@@ -69,23 +31,17 @@ jobs:
     # release branches are excluded
     # because any time a new library version is released to maven central it can fail
     # which requires unnecessary release branch maintenance, especially for patches
-    if: github.ref_name != 'guance-test' && !startsWith(github.ref_name, 'release/')
+    if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-muzzle.yml
-    with:
-      linux-runner: ${{ github.ref_name == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
 
   link-check:
     # release branches are excluded to avoid unnecessary maintenance if external links break
     # (and also because the README.md javaagent download link has to be updated on release branches
     #  before the release download has been published)
-    if: github.ref_name != 'guance-test' && !startsWith(github.ref_name, 'release/')
+    if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-link-check.yml
-    with:
-      linux-runner: ${{ github.ref_name == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}
 
   markdown-lint-check:
     # release branches are excluded
-    if: github.ref_name != 'guance-test' && !startsWith(github.ref_name, 'release/')
+    if: "!startsWith(github.ref_name, 'release/')"
     uses: ./.github/workflows/reusable-markdown-lint-check.yml
-    with:
-      linux-runner: ${{ github.ref_name == 'guance-test' && 'self-hosted' || 'ubuntu-latest' }}

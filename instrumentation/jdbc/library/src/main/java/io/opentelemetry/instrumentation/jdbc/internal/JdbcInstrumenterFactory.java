@@ -8,6 +8,7 @@ package io.opentelemetry.instrumentation.jdbc.internal;
 import static java.util.Collections.emptyList;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.instrumentation.api.incubator.config.internal.DbConfig;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.DeclarativeConfigUtil;
 import io.opentelemetry.instrumentation.api.incubator.semconv.code.CodeAttributesExtractor;
 import io.opentelemetry.instrumentation.api.incubator.semconv.code.CodeSpanNameExtractor;
@@ -31,11 +32,12 @@ public final class JdbcInstrumenterFactory {
 
   @SuppressWarnings("deprecation") // using deprecated config property
   public static boolean captureQueryParameters(OpenTelemetry openTelemetry) {
+    boolean legacyCaptureQueryParameters =
+        ConfigPropertiesUtil.getBoolean(
+                "otel.instrumentation.jdbc.experimental.capture-query-parameters", false)
+            || ConfigPropertiesUtil.getBoolean("otel.jdbc.sql.obfuscation", false);
     return DeclarativeConfigUtil.getInstrumentationConfig(openTelemetry, "jdbc")
-        .getBoolean(
-            "capture_query_parameters/development",
-            ConfigPropertiesUtil.getBoolean(
-                "otel.instrumentation.jdbc.experimental.capture-query-parameters", false));
+        .getBoolean("capture_query_parameters/development", legacyCaptureQueryParameters);
   }
 
   public static Instrumenter<DbRequest, Void> createStatementInstrumenter(
@@ -47,13 +49,12 @@ public final class JdbcInstrumenterFactory {
       OpenTelemetry openTelemetry, boolean captureQueryParameters) {
     @SuppressWarnings("deprecation") // using deprecated config property
     boolean querySanitizationEnabled =
-        DeclarativeConfigUtil.getInstrumentationConfig(openTelemetry, "common")
-            .get("database")
-            .get("statement_sanitizer")
-            .getBoolean(
-                "enabled",
+        DbConfig.isCommonQuerySanitizationEnabled(
+            openTelemetry,
+            ConfigPropertiesUtil.getBoolean(
+                "otel.instrumentation.common.db.query-sanitization.enabled",
                 ConfigPropertiesUtil.getBoolean(
-                    "otel.instrumentation.common.db-statement-sanitizer.enabled", true));
+                    "otel.instrumentation.common.db-statement-sanitizer.enabled", true)));
     return createStatementInstrumenter(
         openTelemetry, emptyList(), true, querySanitizationEnabled, captureQueryParameters);
   }
@@ -73,7 +74,10 @@ public final class JdbcInstrumenterFactory {
       boolean enabled,
       boolean querySanitizationEnabled,
       boolean captureQueryParameters) {
+   // setArgs = new DbSetArgs(new HashMap<>());
+
     JdbcAttributesGetter getter = new JdbcAttributesGetter();
+
     return Instrumenter.<DbRequest, Void>builder(
             openTelemetry, INSTRUMENTATION_NAME, DbClientSpanNameExtractor.create(getter))
         .addAttributesExtractor(

@@ -12,6 +12,7 @@ import io.opentelemetry.instrumentation.api.incubator.config.internal.Declarativ
 import io.opentelemetry.instrumentation.jdbc.datasource.JdbcTelemetry;
 import io.opentelemetry.instrumentation.jdbc.datasource.JdbcTelemetryBuilder;
 import io.opentelemetry.instrumentation.jdbc.datasource.internal.Experimental;
+import io.opentelemetry.instrumentation.jdbc.internal.JdbcInstrumenterFactory;
 import io.opentelemetry.instrumentation.spring.autoconfigure.internal.properties.InstrumentationConfigUtil;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -41,7 +42,7 @@ final class DataSourcePostProcessor implements BeanPostProcessor, Ordered {
   private static Class<?> getRoutingDataSourceClass() {
     try {
       return Class.forName("org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource");
-    } catch (ClassNotFoundException exception) {
+    } catch (ClassNotFoundException ignored) {
       return null;
     }
   }
@@ -66,12 +67,12 @@ final class DataSourcePostProcessor implements BeanPostProcessor, Ordered {
               .setQuerySanitizationEnabled(
                   InstrumentationConfigUtil.isQuerySanitizationEnabled(openTelemetry, "jdbc"))
               .setCaptureQueryParameters(
-                  config.getBoolean("capture_query_parameters/development", false))
+                  JdbcInstrumenterFactory.captureQueryParameters(openTelemetry))
               .setTransactionInstrumenterEnabled(
                   config.get("transaction/development").getBoolean("enabled", false))
               .setDataSourceInstrumenterEnabled(
                   config.get("datasource/development").getBoolean("enabled", false));
-      Experimental.setEnableSqlCommenter(
+      Experimental.setSqlCommenterEnabled(
           builder, config.get("sqlcommenter/development").getBoolean("enabled", false));
       DataSource otelDataSource = builder.build().wrap(dataSource);
 
