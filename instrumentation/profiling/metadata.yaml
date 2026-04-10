@@ -1,5 +1,5 @@
 description: >
-  EXPERIMENTAL: This instrumentation enables JVM profiling using Java Flight Recorder (Java 17+)
+  EXPERIMENTAL: This instrumentation enables JVM profiling using Java Flight Recorder (Java 11+)
   and can periodically emit profiling snapshots.
 library_link: https://github.com/open-telemetry/opentelemetry-java-instrumentation/tree/main/instrumentation/profiling
 configurations:

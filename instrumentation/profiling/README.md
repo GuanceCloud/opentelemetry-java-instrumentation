@@ -1,6 +1,6 @@
 # Settings for the Profiling instrumentation
 
-This instrumentation is experimental and currently targets Java 17+ JVMs with JFR available.
+This instrumentation is experimental and currently targets Java 11+ JVMs with JFR available.
 
 The first implementation focuses on:
 

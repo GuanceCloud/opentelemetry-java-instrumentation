@@ -1,10 +1,19 @@
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JavaToolchainService
+
 plugins {
   id("otel.library-instrumentation")
 }
 
-val mrJarVersions = listOf(17)
+val mrJarVersions = listOf(11, 17)
+val javaToolchainService = project.extensions.getByType(JavaToolchainService::class.java)
 
 sourceSets {
+  create("testJava11") {
+    java {
+      setSrcDirs(listOf("src/testJava11/java"))
+    }
+  }
   create("testJava17") {
     java {
       setSrcDirs(listOf("src/testJava17/java"))
@@ -44,6 +53,12 @@ for (version in mrJarVersions) {
 }
 
 configurations {
+  named("testJava11Implementation") {
+    extendsFrom(configurations["testImplementation"])
+  }
+  named("testJava11RuntimeOnly") {
+    extendsFrom(configurations["testRuntimeOnly"])
+  }
   named("testJava17Implementation") {
     extendsFrom(configurations["testImplementation"])
   }
@@ -53,12 +68,23 @@ configurations {
 }
 
 dependencies {
+  add("testJava11Implementation", sourceSets.test.get().output)
+  add("testJava11Implementation", sourceSets["java11"].output)
+  add("testJava11Implementation", sourceSets.main.get().output)
   add("testJava17Implementation", sourceSets.test.get().output)
+  add("testJava17Implementation", sourceSets["java11"].output)
   add("testJava17Implementation", sourceSets["java17"].output)
   add("testJava17Implementation", sourceSets.main.get().output)
 }
 
 tasks {
+  named<JavaCompile>("compileTestJava11Java") {
+    dependsOn("compileJava11Java")
+    sourceCompatibility = "11"
+    targetCompatibility = "11"
+    options.release.set(11)
+  }
+
   named<JavaCompile>("compileTestJava17Java") {
     dependsOn("compileJava17Java")
     sourceCompatibility = "17"
@@ -83,15 +109,36 @@ tasks {
     manifest.attributes("Multi-Release" to "true")
   }
 
+  val testJava11 by registering(Test::class) {
+    dependsOn("compileTestJava11Java")
+    testClassesDirs = sourceSets["testJava11"].output.classesDirs
+    classpath = sourceSets["testJava11"].runtimeClasspath
+    javaLauncher.set(
+      javaToolchainService.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(11))
+      }
+    )
+  }
+
   val testJava17 by registering(Test::class) {
     dependsOn("compileTestJava17Java")
     testClassesDirs = sourceSets["testJava17"].output.classesDirs
     classpath = sourceSets["testJava17"].runtimeClasspath
+    javaLauncher.set(
+      javaToolchainService.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(17))
+      }
+    )
   }
 
   val testJavaVersion =
     gradle.startParameter.projectProperties.get("testJavaVersion")?.let(JavaVersion::toVersion)
       ?: JavaVersion.current()
+  if (!testJavaVersion.isCompatibleWith(JavaVersion.VERSION_11)) {
+    named("testJava11", Test::class).configure {
+      enabled = false
+    }
+  }
   if (!testJavaVersion.isCompatibleWith(JavaVersion.VERSION_17)) {
     named("testJava17", Test::class).configure {
       enabled = false
@@ -99,6 +146,7 @@ tasks {
   }
 
   check {
+    dependsOn(testJava11)
     dependsOn(testJava17)
   }
 }

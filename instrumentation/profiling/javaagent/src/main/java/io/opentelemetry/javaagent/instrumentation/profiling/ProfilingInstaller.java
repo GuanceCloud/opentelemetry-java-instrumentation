@@ -40,7 +40,7 @@ public class ProfilingInstaller implements AgentListener {
     }
     if (!JfrSupport.isJfrAvailable()) {
       logger.warning(
-          "Profiling is enabled but JFR is unavailable. Profiling currently requires Java 17+ with JFR available.");
+          "Profiling is enabled but JFR is unavailable. Profiling currently requires Java 11+ with JFR available.");
       return;
     }
 
