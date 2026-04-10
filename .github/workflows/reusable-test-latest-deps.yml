@@ -3,10 +3,6 @@ name: Reusable - Test latest deps
 on:
   workflow_call:
     inputs:
-      linux-runner:
-        type: string
-        required: false
-        default: ubuntu-latest
       cache-read-only:
         type: boolean
         required: false
@@ -25,7 +21,7 @@ permissions:
 jobs:
   test-latest-deps:
     name: testLatestDeps${{ matrix.test-partition }}
-    runs-on: ${{ inputs.linux-runner }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         test-partition:
