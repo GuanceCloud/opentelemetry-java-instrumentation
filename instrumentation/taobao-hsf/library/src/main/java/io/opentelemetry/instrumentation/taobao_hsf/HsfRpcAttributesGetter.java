@@ -2,7 +2,7 @@ package io.opentelemetry.instrumentation.taobao_hsf;
 
 import io.opentelemetry.instrumentation.api.incubator.semconv.rpc.RpcAttributesGetter;
 
-enum HsfRpcAttributesGetter implements RpcAttributesGetter<HsfRequest> {
+enum HsfRpcAttributesGetter implements RpcAttributesGetter<HsfRequest, Void> {
   INSTANCE;
   @Override
   public String getSystem(HsfRequest request) {

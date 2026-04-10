@@ -14,7 +14,6 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcUtils;
-import io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
 import io.opentelemetry.javaagent.bootstrap.jdbc.DbInfo;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
@@ -24,7 +23,6 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
-import io.opentelemetry.javaagent.bootstrap.jdbc.DbInfo;
 import net.bytebuddy.matcher.ElementMatcher;
 
 class DataSourceInstrumentation implements TypeInstrumentation {

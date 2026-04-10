@@ -8,7 +8,6 @@ package io.opentelemetry.javaagent.instrumentation.jdbc;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
 import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.CAPTURE_QUERY_PARAMETERS;
-import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.statementInstrumenter;
 //import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.resetArgs;
 //import static io.opentelemetry.javaagent.instrumentation.jdbc.JdbcSingletons.setArg;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;

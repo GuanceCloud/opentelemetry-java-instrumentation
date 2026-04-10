@@ -56,6 +56,7 @@ public final class ThriftAsyncMethodCallInstrumentation implements TypeInstrumen
       }
     }
 
+    // Thrift stores the callback in a raw field, so this cast is the only practical option here.
     @SuppressWarnings({"unchecked"})
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void methodExit(
@@ -75,6 +76,7 @@ public final class ThriftAsyncMethodCallInstrumentation implements TypeInstrumen
     }
   }
 
+  // Advice methods are invoked reflectively and the callback field is raw in Thrift internals.
   @SuppressWarnings({"unused", "unchecked"})
   public static class ConstructorAdvice {
 

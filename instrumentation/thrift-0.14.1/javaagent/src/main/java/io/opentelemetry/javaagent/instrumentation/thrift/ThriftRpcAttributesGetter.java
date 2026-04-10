@@ -8,7 +8,7 @@ package io.opentelemetry.javaagent.instrumentation.thrift;
 import io.opentelemetry.instrumentation.api.incubator.semconv.rpc.RpcAttributesGetter;
 import javax.annotation.Nullable;
 
-enum ThriftRpcAttributesGetter implements RpcAttributesGetter<ThriftRequest> {
+enum ThriftRpcAttributesGetter implements RpcAttributesGetter<ThriftRequest, Integer> {
   INSTANCE;
 
   @Override

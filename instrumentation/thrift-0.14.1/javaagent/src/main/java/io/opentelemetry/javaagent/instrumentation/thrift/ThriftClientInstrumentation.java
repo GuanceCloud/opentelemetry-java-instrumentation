@@ -47,6 +47,7 @@ public final class ThriftClientInstrumentation implements TypeInstrumentation {
         ThriftClientInstrumentation.class.getName() + "$ClientOneWayAdvice");
   }
 
+  // Thrift exposes request arguments through raw generic APIs, so the cast is unavoidable here.
   @SuppressWarnings({"unchecked"})
   public static class ClientSendAdvice {
     @Advice.OnMethodEnter(suppress = Throwable.class)
