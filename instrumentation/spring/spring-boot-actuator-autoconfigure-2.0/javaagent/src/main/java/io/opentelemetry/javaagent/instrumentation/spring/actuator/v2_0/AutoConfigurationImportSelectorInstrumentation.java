@@ -17,7 +17,7 @@ import net.bytebuddy.asm.Advice.AssignReturned;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-public class AutoConfigurationImportSelectorInstrumentation implements TypeInstrumentation {
+class AutoConfigurationImportSelectorInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -35,11 +35,15 @@ public class AutoConfigurationImportSelectorInstrumentation implements TypeInstr
   public static class GetCandidateConfigurationsAdvice {
 
     @AssignReturned.ToReturned
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static List<String> onExit(@Advice.Return List<String> originalConfigurations) {
       List<String> configurations = originalConfigurations;
       if (configurations.contains(
-          "org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration")) {
+              // Spring Boot 2.x-3.x location
+              "org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration")
+          || configurations.contains(
+              // Spring Boot 4.x location
+              "org.springframework.boot.micrometer.metrics.autoconfigure.MetricsAutoConfiguration")) {
         List<String> configs = new ArrayList<>(configurations.size() + 1);
         configs.addAll(configurations);
         // using class reference here so that muzzle will consider it a dependency of this advice

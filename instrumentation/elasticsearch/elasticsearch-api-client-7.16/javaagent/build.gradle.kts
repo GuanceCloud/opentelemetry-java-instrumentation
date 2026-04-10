@@ -40,12 +40,11 @@ dependencies {
   testInstrumentation(project(":instrumentation:apache-httpasyncclient-4.1:javaagent"))
 
   testImplementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
-  testImplementation("org.testcontainers:elasticsearch")
+  testImplementation("org.testcontainers:testcontainers-elasticsearch")
 
   latestDepTestLibrary("co.elastic.clients:elasticsearch-java:7.17.19") // native on-by-default instrumentation after this version
 }
 
-val latestDepTest = findProperty("testLatestDeps") as Boolean
 testing {
   suites {
     val version8Test by registering(JvmTestSuite::class) {
@@ -60,9 +59,9 @@ testing {
         }
 
         implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
-        implementation("org.testcontainers:elasticsearch")
+        implementation("org.testcontainers:testcontainers-elasticsearch")
 
-        if (latestDepTest) {
+        if (otelProps.testLatestDeps) {
           // 8.10+ has native, on-by-default opentelemetry instrumentation
           implementation("co.elastic.clients:elasticsearch-java:8.9.+")
         } else {
@@ -75,10 +74,9 @@ testing {
 
 tasks {
   withType<Test>().configureEach {
-    jvmArgs("-Dotel.instrumentation.common.experimental.controller-telemetry.enabled=true")
     usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
 
-    systemProperty("collectMetadata", findProperty("collectMetadata")?.toString() ?: "false")
+    systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
   val testStableSemconv by registering(Test::class) {

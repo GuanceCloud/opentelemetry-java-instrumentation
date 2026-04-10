@@ -7,16 +7,16 @@ package io.opentelemetry.javaagent.instrumentation.opentelemetryapi;
 
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
-import application.io.opentelemetry.context.Context;
 import io.opentelemetry.api.internal.InstrumentationUtil;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.context.AgentContextStorage;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.asm.Advice.AssignReturned;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-public class TestInstrumentation implements TypeInstrumentation {
+class TestInstrumentation implements TypeInstrumentation {
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
     return named("io.opentelemetry.javaagent.instrumentation.opentelemetryapi.TestClass");
@@ -25,18 +25,18 @@ public class TestInstrumentation implements TypeInstrumentation {
   @Override
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
-        named("shouldSuppressInstrumentation"), this.getClass().getName() + "$TestAdvice");
+        named("shouldSuppressInstrumentation"), getClass().getName() + "$TestAdvice");
   }
 
   @SuppressWarnings("unused")
   public static class TestAdvice {
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
-    public static void onExit(
-        @Advice.Argument(0) Context context, @Advice.Return(readOnly = false) boolean result) {
-      result =
-          InstrumentationUtil.shouldSuppressInstrumentation(
-              AgentContextStorage.getAgentContext(context));
+    @AssignReturned.ToReturned
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
+    public static boolean onExit(
+        @Advice.Argument(0) application.io.opentelemetry.context.Context context) {
+      return InstrumentationUtil.shouldSuppressInstrumentation(
+          AgentContextStorage.getAgentContext(context));
     }
   }
 }

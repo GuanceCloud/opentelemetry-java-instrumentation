@@ -23,6 +23,7 @@ import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.cert.Certificate;
 import java.util.Enumeration;
+import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -43,8 +44,16 @@ public class AgentClassLoader extends URLClassLoader {
     ClassLoader.registerAsParallelCapable();
   }
 
-  private static final String AGENT_INITIALIZER_JAR =
-      System.getProperty("otel.javaagent.experimental.initializer.jar", "");
+  @Nullable private static final String AGENT_INITIALIZER_JAR = initializerJar();
+
+  @Nullable
+  private static String initializerJar() {
+    String value = System.getProperty("otel.javaagent.experimental.initializer.jar");
+    if (value != null) {
+      return value;
+    }
+    return System.getenv("OTEL_JAVAAGENT_EXPERIMENTAL_INITIALIZER_JAR");
+  }
 
   private static final String META_INF = "META-INF/";
   private static final String META_INF_VERSIONS = META_INF + "versions/";
@@ -113,7 +122,6 @@ public class AgentClassLoader extends URLClassLoader {
     }
 
     this.isSecurityManagerSupportEnabled = isSecurityManagerSupportEnabled;
-    bootstrapProxy = new BootstrapClassLoaderProxy(this);
 
     jarEntryPrefix =
         internalJarFileName
@@ -131,7 +139,21 @@ public class AgentClassLoader extends URLClassLoader {
       throw new IllegalStateException("Unable to open agent jar", e);
     }
 
-    if (!AGENT_INITIALIZER_JAR.isEmpty()) {
+    bootstrapProxy =
+        new BootstrapClassLoaderProxy(
+            // this call deliberately uses anonymous class instead of lambda because using lambdas
+            // too early on early jdk8 causes jvm to crash. See CrashEarlyJdk8Test.
+            new Function<String, URL>() {
+              @Nullable
+              @Override
+              public URL apply(String resourceName) {
+                JarEntry jarEntry = jarFile.getJarEntry(resourceName);
+                AgentJarResource jarResource = AgentJarResource.create(resourceName, jarEntry);
+                return getAgentJarResourceUrl(jarResource);
+              }
+            });
+
+    if (AGENT_INITIALIZER_JAR != null && !AGENT_INITIALIZER_JAR.isEmpty()) {
       URL url;
       try {
         url = new File(AGENT_INITIALIZER_JAR).toURI().toURL();
@@ -147,6 +169,7 @@ public class AgentClassLoader extends URLClassLoader {
     }
   }
 
+  @Nullable
   private static ClassLoader getParentClassLoader() {
     if (JAVA_VERSION > 8) {
       return new PlatformDelegatingClassLoader();
@@ -188,14 +211,15 @@ public class AgentClassLoader extends URLClassLoader {
     }
   }
 
+  @Nullable
   private Class<?> findAgentClass(String name) throws ClassNotFoundException {
     AgentJarResource jarResource = findAgentJarResource(name.replace('.', '/') + ".class");
     if (jarResource != null) {
       byte[] bytes;
       try {
         bytes = getJarEntryBytes(jarResource.getJarEntry());
-      } catch (IOException exception) {
-        throw new ClassNotFoundException(name, exception);
+      } catch (IOException e) {
+        throw new ClassNotFoundException(name, e);
       }
 
       definePackageIfNeeded(name);
@@ -243,19 +267,21 @@ public class AgentClassLoader extends URLClassLoader {
     if (getPackage(packageName) == null) {
       try {
         definePackage(packageName, manifest, codeSource.getLocation());
-      } catch (IllegalArgumentException exception) {
+      } catch (IllegalArgumentException e) {
         if (getPackage(packageName) == null) {
-          throw new IllegalStateException("Failed to define package", exception);
+          throw new IllegalStateException("Failed to define package", e);
         }
       }
     }
   }
 
+  @Nullable
   private static String getPackageName(String className) {
     int index = className.lastIndexOf('.');
     return index == -1 ? null : className.substring(0, index);
   }
 
+  @Nullable
   private AgentJarResource findAgentJarResource(String name) {
     // shading renames .class to .classdata
     boolean isClass = name.endsWith(".class");
@@ -278,8 +304,9 @@ public class AgentClassLoader extends URLClassLoader {
     return "data";
   }
 
+  @Nullable
   private AgentJarResource findVersionedAgentJarResource(
-      AgentJarResource jarResource, String name) {
+      @Nullable AgentJarResource jarResource, String name) {
     // same logic as in JarFile.getVersionedEntry
     if (!name.startsWith(META_INF)) {
       // search for versioned entry by looping over possible versions form high to low
@@ -300,7 +327,7 @@ public class AgentClassLoader extends URLClassLoader {
   @Override
   public URL getResource(String resourceName) {
     URL bootstrapResource = bootstrapProxy.getResource(resourceName);
-    if (null == bootstrapResource) {
+    if (bootstrapResource == null) {
       return super.getResource(resourceName);
     } else {
       return bootstrapResource;
@@ -318,12 +345,14 @@ public class AgentClassLoader extends URLClassLoader {
     return super.findResource(name);
   }
 
+  @Nullable
   private URL findJarResource(String name) {
     AgentJarResource jarResource = findAgentJarResource(name);
     return getAgentJarResourceUrl(jarResource);
   }
 
-  private URL getAgentJarResourceUrl(AgentJarResource jarResource) {
+  @Nullable
+  private URL getAgentJarResourceUrl(@Nullable AgentJarResource jarResource) {
     if (jarResource != null) {
       try {
         return new URL(jarBase, jarResource.getName());
@@ -376,18 +405,19 @@ public class AgentClassLoader extends URLClassLoader {
    * <p>This class is thread safe.
    */
   public static final class BootstrapClassLoaderProxy extends ClassLoader {
-    private final AgentClassLoader agentClassLoader;
+    private final Function<String, URL> getResourceFunction;
 
     static {
       ClassLoader.registerAsParallelCapable();
     }
 
-    public BootstrapClassLoaderProxy(AgentClassLoader agentClassLoader) {
+    public BootstrapClassLoaderProxy(Function<String, URL> getResourceFunction) {
       super(null);
-      this.agentClassLoader = agentClassLoader;
+      this.getResourceFunction = getResourceFunction;
     }
 
     @Override
+    @Nullable
     public URL getResource(String resourceName) {
       // find resource from boot loader
       URL url = super.getResource(resourceName);
@@ -395,12 +425,7 @@ public class AgentClassLoader extends URLClassLoader {
         return url;
       }
       // find from agent jar
-      if (agentClassLoader != null) {
-        JarEntry jarEntry = agentClassLoader.jarFile.getJarEntry(resourceName);
-        AgentJarResource jarResource = AgentJarResource.create(resourceName, jarEntry);
-        return agentClassLoader.getAgentJarResourceUrl(jarResource);
-      }
-      return null;
+      return getResourceFunction.apply(resourceName);
     }
 
     @Override
@@ -426,6 +451,7 @@ public class AgentClassLoader extends URLClassLoader {
       return jarEntry;
     }
 
+    @Nullable
     static AgentJarResource create(String name, JarEntry jarEntry) {
       return jarEntry != null ? new AgentJarResource(name, jarEntry) : null;
     }
@@ -492,6 +518,7 @@ public class AgentClassLoader extends URLClassLoader {
     }
 
     @Override
+    @Nullable
     public Permission getPermission() {
       return null;
     }
@@ -549,10 +576,8 @@ public class AgentClassLoader extends URLClassLoader {
       try {
         Method method = ClassLoader.class.getDeclaredMethod("getPlatformClassLoader");
         return (ClassLoader) method.invoke(null);
-      } catch (InvocationTargetException
-          | NoSuchMethodException
-          | IllegalAccessException exception) {
-        throw new IllegalStateException(exception);
+      } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+        throw new IllegalStateException(e);
       }
     }
   }

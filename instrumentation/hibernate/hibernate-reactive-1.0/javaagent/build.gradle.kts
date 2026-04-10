@@ -25,14 +25,12 @@ dependencies {
   testLibrary("io.vertx:vertx-codegen:4.4.2")
 }
 
-val latestDepTest = findProperty("testLatestDeps") as Boolean
-
 testing {
   suites {
     val hibernateReactive1Test by registering(JvmTestSuite::class) {
       dependencies {
         implementation("org.testcontainers:testcontainers")
-        if (latestDepTest) {
+        if (otelProps.testLatestDeps) {
           implementation("org.hibernate.reactive:hibernate-reactive-core:1.+")
           implementation("io.vertx:vertx-pg-client:4.+")
         } else {
@@ -47,7 +45,7 @@ testing {
       dependencies {
         implementation("org.testcontainers:testcontainers")
         implementation(project(":instrumentation:hibernate:hibernate-reactive-1.0:hibernate-reactive-2.0-testing"))
-        if (latestDepTest) {
+        if (otelProps.testLatestDeps) {
           implementation("org.hibernate.reactive:hibernate-reactive-core:3.+")
           implementation("io.vertx:vertx-pg-client:4.+")
         } else {
@@ -62,7 +60,7 @@ testing {
       dependencies {
         implementation("org.testcontainers:testcontainers")
         implementation(project(":instrumentation:hibernate:hibernate-reactive-1.0:hibernate-reactive-2.0-testing"))
-        if (latestDepTest) {
+        if (otelProps.testLatestDeps) {
           implementation("org.hibernate.reactive:hibernate-reactive-core:latest.release")
           implementation("io.vertx:vertx-pg-client:latest.release")
         } else {
@@ -85,14 +83,12 @@ tasks {
   named("compileHibernateReactive4TestJava", JavaCompile::class).configure {
     options.release.set(17)
   }
-  val testJavaVersion =
-    gradle.startParameter.projectProperties.get("testJavaVersion")?.let(JavaVersion::toVersion)
-      ?: JavaVersion.current()
+  val testJavaVersion = otelProps.testJavaVersion ?: JavaVersion.current()
   if (testJavaVersion.isJava8) {
     named("hibernateReactive2Test", Test::class).configure {
       enabled = false
     }
-    if (latestDepTest) {
+    if (otelProps.testLatestDeps) {
       named("hibernateReactive1Test", Test::class).configure {
         enabled = false
       }
@@ -104,19 +100,38 @@ tasks {
     }
   }
 
-  val testStableSemconv by registering(Test::class) {
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
+  val stableSemconvSuites = testing.suites.withType(JvmTestSuite::class)
+    .map { suite ->
+      register<Test>("${suite.name}StableSemconv") {
+        testClassesDirs = suite.sources.output.classesDirs
+        classpath = suite.sources.runtimeClasspath
 
-    jvmArgs("-Dotel.semconv-stability.opt-in=database")
+        jvmArgs("-Dotel.semconv-stability.opt-in=database,service.peer")
+      }
+    }
+
+  if (testJavaVersion.isJava8) {
+    named("hibernateReactive2TestStableSemconv", Test::class).configure {
+      enabled = false
+    }
+    if (otelProps.testLatestDeps) {
+      named("hibernateReactive1TestStableSemconv", Test::class).configure {
+        enabled = false
+      }
+    }
+  }
+  if (testJavaVersion.isJava8 || testJavaVersion.isJava11) {
+    named("hibernateReactive4TestStableSemconv", Test::class).configure {
+      enabled = false
+    }
   }
 
   check {
-    dependsOn(testing.suites, testStableSemconv)
+    dependsOn(testing.suites, stableSemconvSuites)
   }
 }
 
-if (!latestDepTest) {
+if (!otelProps.testLatestDeps) {
   // https://bugs.openjdk.org/browse/JDK-8320431
   otelJava {
     maxJavaVersionForTests.set(JavaVersion.VERSION_21)

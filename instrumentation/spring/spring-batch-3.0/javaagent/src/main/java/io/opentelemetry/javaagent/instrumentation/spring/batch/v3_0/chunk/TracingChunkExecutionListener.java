@@ -7,6 +7,7 @@ package io.opentelemetry.javaagent.instrumentation.spring.batch.v3_0.chunk;
 
 import static io.opentelemetry.javaagent.instrumentation.spring.batch.v3_0.SpringBatchInstrumentationConfig.shouldCreateRootSpanForChunk;
 import static io.opentelemetry.javaagent.instrumentation.spring.batch.v3_0.chunk.ChunkSingletons.chunkInstrumenter;
+import static java.util.Objects.requireNonNull;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
@@ -17,11 +18,11 @@ import org.springframework.batch.core.ChunkListener;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.core.Ordered;
 
-public final class TracingChunkExecutionListener implements ChunkListener, Ordered {
+public class TracingChunkExecutionListener implements ChunkListener, Ordered {
   private static final VirtualField<ChunkContext, ContextAndScope> CONTEXT_AND_SCOPE =
       VirtualField.find(ChunkContext.class, ContextAndScope.class);
   private final Class<?> builderClass;
-  private ChunkContextAndBuilder chunkContextAndBuilder;
+  @Nullable private ChunkContextAndBuilder chunkContextAndBuilder;
 
   public TracingChunkExecutionListener(Class<?> builderClass) {
     this.builderClass = builderClass;
@@ -61,7 +62,9 @@ public final class TracingChunkExecutionListener implements ChunkListener, Order
 
     CONTEXT_AND_SCOPE.set(chunkContext, null);
     contextAndScope.closeScope();
-    chunkInstrumenter().end(contextAndScope.getContext(), chunkContextAndBuilder, null, throwable);
+    // chunkContextAndBuilder is set in beforeChunk
+    chunkInstrumenter()
+        .end(contextAndScope.getContext(), requireNonNull(chunkContextAndBuilder), null, throwable);
   }
 
   @Override

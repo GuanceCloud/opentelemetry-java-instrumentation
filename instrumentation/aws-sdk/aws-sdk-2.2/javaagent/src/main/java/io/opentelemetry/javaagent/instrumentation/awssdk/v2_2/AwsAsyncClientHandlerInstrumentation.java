@@ -12,10 +12,11 @@ import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import java.util.concurrent.CompletableFuture;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.asm.Advice.AssignReturned;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-public class AwsAsyncClientHandlerInstrumentation implements TypeInstrumentation {
+class AwsAsyncClientHandlerInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -29,16 +30,18 @@ public class AwsAsyncClientHandlerInstrumentation implements TypeInstrumentation
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
         named("execute").and(returns(CompletableFuture.class)),
-        this.getClass().getName() + "$WrapFutureAdvice");
+        getClass().getName() + "$WrapFutureAdvice");
   }
 
   @SuppressWarnings("unused")
   public static class WrapFutureAdvice {
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
-    public static void methodExit(@Advice.Return(readOnly = false) CompletableFuture<?> future) {
+    @AssignReturned.ToReturned
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
+    public static CompletableFuture<?> methodExit(@Advice.Return CompletableFuture<?> future) {
+
       // propagate context into CompletableFuture returned from aws async client methods
-      future = CompletableFutureWrapper.wrap(future);
+      return CompletableFutureWrapper.wrap(future);
     }
   }
 }

@@ -49,7 +49,7 @@ public final class SpringKafkaTelemetryBuilder {
    * connecting it to the producer trace.
    */
   @CanIgnoreReturnValue
-  public SpringKafkaTelemetryBuilder setMessagingReceiveInstrumentationEnabled(
+  public SpringKafkaTelemetryBuilder setMessagingReceiveTelemetryEnabled(
       boolean messagingReceiveInstrumentationEnabled) {
     this.messagingReceiveInstrumentationEnabled = messagingReceiveInstrumentationEnabled;
     return this;
@@ -64,8 +64,8 @@ public final class SpringKafkaTelemetryBuilder {
         new KafkaInstrumenterFactory(openTelemetry, INSTRUMENTATION_NAME)
             .setCapturedHeaders(capturedHeaders)
             .setCaptureExperimentalSpanAttributes(captureExperimentalSpanAttributes)
-            .setMessagingReceiveInstrumentationEnabled(messagingReceiveInstrumentationEnabled)
-            .setErrorCauseExtractor(SpringKafkaErrorCauseExtractor.INSTANCE);
+            .setMessagingReceiveTelemetryEnabled(messagingReceiveInstrumentationEnabled)
+            .setErrorCauseExtractor(new SpringKafkaErrorCauseExtractor());
 
     return new SpringKafkaTelemetry(
         factory.createConsumerProcessInstrumenter(), factory.createBatchProcessInstrumenter());

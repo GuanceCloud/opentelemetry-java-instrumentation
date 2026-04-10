@@ -6,16 +6,21 @@
 package io.opentelemetry.javaagent.instrumentation.openai.v1_1;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.instrumentation.api.incubator.config.internal.DeclarativeConfigUtil;
 import io.opentelemetry.instrumentation.openai.v1_1.OpenAITelemetry;
-import io.opentelemetry.javaagent.bootstrap.internal.AgentInstrumentationConfig;
 
-public final class OpenAiSingletons {
-  public static final OpenAITelemetry TELEMETRY =
+public class OpenAiSingletons {
+  private static final OpenAITelemetry telemetry =
       OpenAITelemetry.builder(GlobalOpenTelemetry.get())
           .setCaptureMessageContent(
-              AgentInstrumentationConfig.get()
-                  .getBoolean("otel.instrumentation.genai.capture-message-content", false))
+              DeclarativeConfigUtil.getInstrumentationConfig(GlobalOpenTelemetry.get(), "common")
+                  .get("gen_ai")
+                  .getBoolean("capture_message_content", false))
           .build();
+
+  public static OpenAITelemetry telemetry() {
+    return telemetry;
+  }
 
   private OpenAiSingletons() {}
 }

@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.spring.webmvc.v5_3.internal;
 
 import io.opentelemetry.instrumentation.api.incubator.builder.internal.DefaultHttpServerInstrumenterBuilder;
+import io.opentelemetry.instrumentation.api.internal.Initializer;
 import io.opentelemetry.instrumentation.spring.webmvc.v5_3.SpringWebMvcTelemetryBuilder;
 import java.util.function.Function;
 import javax.servlet.http.HttpServletRequest;
@@ -16,8 +17,6 @@ import javax.servlet.http.HttpServletResponse;
  * any time.
  */
 public final class SpringMvcBuilderUtil {
-  private SpringMvcBuilderUtil() {}
-
   // allows access to the private field for the spring starter
   private static Function<
           SpringWebMvcTelemetryBuilder,
@@ -31,6 +30,7 @@ public final class SpringMvcBuilderUtil {
     return builderExtractor;
   }
 
+  @Initializer
   public static void setBuilderExtractor(
       Function<
               SpringWebMvcTelemetryBuilder,
@@ -38,4 +38,6 @@ public final class SpringMvcBuilderUtil {
           builderExtractor) {
     SpringMvcBuilderUtil.builderExtractor = builderExtractor;
   }
+
+  private SpringMvcBuilderUtil() {}
 }

@@ -23,7 +23,7 @@ import net.bytebuddy.matcher.ElementMatcher;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
-public class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
+class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -36,21 +36,21 @@ public class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
         named("handler")
             .and(takesArguments(1))
             .and(takesArgument(0, named("io.vertx.core.Handler"))),
-        this.getClass().getName() + "$HandlerAdvice");
+        getClass().getName() + "$HandlerAdvice");
     transformer.applyAdviceToMethod(
         named("batchHandler")
             .and(takesArguments(1))
             .and(takesArgument(0, named("io.vertx.core.Handler"))),
-        this.getClass().getName() + "$BatchHandlerAdvice");
+        getClass().getName() + "$BatchHandlerAdvice");
     transformer.applyAdviceToMethod(
-        named("run").and(isPrivate()), this.getClass().getName() + "$RunAdvice");
+        named("run").and(isPrivate()), getClass().getName() + "$RunAdvice");
   }
 
   @SuppressWarnings("unused")
   public static class HandlerAdvice {
 
     @AssignReturned.ToArguments(@ToArgument(0))
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static <K, V> Handler<ConsumerRecord<K, V>> onEnter(
         @Advice.This KafkaReadStreamImpl<K, V> readStream,
         @Advice.Argument(0) Handler<ConsumerRecord<K, V>> handler) {
@@ -63,7 +63,7 @@ public class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
   public static class BatchHandlerAdvice {
 
     @AssignReturned.ToArguments(@ToArgument(0))
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static <K, V> Handler<ConsumerRecords<K, V>> onEnter(
         @Advice.This KafkaReadStreamImpl<K, V> readStream,
         @Advice.Argument(0) Handler<ConsumerRecords<K, V>> handler) {
@@ -76,12 +76,12 @@ public class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class RunAdvice {
 
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static boolean onEnter() {
       return KafkaClientsConsumerProcessTracing.setEnabled(false);
     }
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
     public static void onExit(@Advice.Enter boolean previousValue) {
       KafkaClientsConsumerProcessTracing.setEnabled(previousValue);
     }

@@ -6,7 +6,6 @@
 package io.opentelemetry.javaagent.instrumentation.spring.kafka.v2_7;
 
 import static io.opentelemetry.javaagent.instrumentation.spring.kafka.v2_7.SpringKafkaSingletons.telemetry;
-import static net.bytebuddy.matcher.ElementMatchers.isProtected;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
@@ -19,7 +18,7 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import org.springframework.kafka.listener.RecordInterceptor;
 
-public class AbstractMessageListenerContainerInstrumentation implements TypeInstrumentation {
+class AbstractMessageListenerContainerInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -35,17 +34,16 @@ public class AbstractMessageListenerContainerInstrumentation implements TypeInst
     // and failure methods on a batch interceptor
     transformer.applyAdviceToMethod(
         named("getRecordInterceptor")
-            .and(isProtected())
             .and(takesArguments(0))
             .and(returns(named("org.springframework.kafka.listener.RecordInterceptor"))),
-        this.getClass().getName() + "$GetRecordInterceptorAdvice");
+        getClass().getName() + "$GetRecordInterceptorAdvice");
   }
 
   @SuppressWarnings("unused")
   public static class GetRecordInterceptorAdvice {
 
     @AssignReturned.ToReturned
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static <K, V> RecordInterceptor<K, V> onExit(
         @Advice.Return RecordInterceptor<K, V> originalInterceptor) {
       RecordInterceptor<K, V> interceptor = originalInterceptor;

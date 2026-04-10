@@ -13,7 +13,6 @@ import io.opentelemetry.javaagent.bootstrap.internal.AgentCommonConfig;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
-import io.opentelemetry.sdk.autoconfigure.spi.ConfigProperties;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
@@ -30,8 +29,8 @@ public class SpringSecurityConfigServletInstrumentationModule extends Instrument
   }
 
   @Override
-  public boolean defaultEnabled(ConfigProperties config) {
-    return super.defaultEnabled(config)
+  public boolean defaultEnabled() {
+    return super.defaultEnabled()
         /*
          * Since the only thing this module currently does is capture enduser attributes,
          * the module can be completely disabled if enduser attributes are disabled.
@@ -49,6 +48,7 @@ public class SpringSecurityConfigServletInstrumentationModule extends Instrument
      * since Spring Security >= 6.0 uses Jakarta EE rather than Java EE,
      * and this instrumentation module uses Jakarta EE.
      */
+    // added in 6.0
     return hasClassesNamed(
         "org.springframework.security.authentication.ObservationAuthenticationManager");
   }

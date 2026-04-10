@@ -5,9 +5,8 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.rmi.v4_0.server;
 
-import static io.opentelemetry.javaagent.bootstrap.rmi.ThreadLocalContext.THREAD_LOCAL_CONTEXT;
 import static io.opentelemetry.javaagent.instrumentation.spring.rmi.v4_0.SpringRmiSingletons.serverInstrumenter;
-import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+import static java.util.Objects.requireNonNull;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
@@ -15,6 +14,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.api.incubator.semconv.util.ClassAndMethod;
 import io.opentelemetry.javaagent.bootstrap.CallDepth;
+import io.opentelemetry.javaagent.bootstrap.rmi.ThreadLocalContext;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import javax.annotation.Nullable;
@@ -34,10 +34,9 @@ public class ServerInstrumentation implements TypeInstrumentation {
   @Override
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
-        isMethod()
-            .and(named("invoke"))
+        named("invoke")
             .and(takesArgument(0, named("org.springframework.remoting.support.RemoteInvocation"))),
-        this.getClass().getName() + "$InvokeMethodAdvice");
+        getClass().getName() + "$InvokeMethodAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -45,12 +44,15 @@ public class ServerInstrumentation implements TypeInstrumentation {
 
     public static class AdviceScope {
       private final CallDepth callDepth;
-      private final ClassAndMethod request;
-      private final Context context;
-      private final Scope scope;
+      @Nullable private final ClassAndMethod request;
+      @Nullable private final Context context;
+      @Nullable private final Scope scope;
 
       private AdviceScope(
-          CallDepth callDepth, ClassAndMethod request, Context context, Scope scope) {
+          CallDepth callDepth,
+          @Nullable ClassAndMethod request,
+          @Nullable Context context,
+          @Nullable Scope scope) {
         this.callDepth = callDepth;
         this.request = request;
         this.context = context;
@@ -63,7 +65,11 @@ public class ServerInstrumentation implements TypeInstrumentation {
           return new AdviceScope(callDepth, null, null, null);
         }
 
-        Context parentContext = THREAD_LOCAL_CONTEXT.getAndResetContext();
+        Context parentContext = ThreadLocalContext.INSTANCE.getAndResetContext();
+        if (parentContext == null) {
+          return new AdviceScope(callDepth, null, null, null);
+        }
+
         Class<?> serverClass = rmiExporter.getService().getClass();
         String methodName = remoteInvocation.getMethodName();
         ClassAndMethod request = ClassAndMethod.create(serverClass, methodName);
@@ -81,21 +87,25 @@ public class ServerInstrumentation implements TypeInstrumentation {
           return;
         }
         scope.close();
-        serverInstrumenter().end(context, request, null, throwable);
+        // scope non-null implies context and request are both non-null (see enter method above)
+        serverInstrumenter().end(requireNonNull(context), requireNonNull(request), null, throwable);
       }
     }
 
     @Nullable
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static AdviceScope onEnter(
         @Advice.This RmiBasedExporter thisObject, @Advice.Argument(0) RemoteInvocation remoteInv) {
       return AdviceScope.enter(CallDepth.forClass(RmiBasedExporter.class), thisObject, remoteInv);
     }
 
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
+    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
     public static void stopSpan(
-        @Advice.Thrown @Nullable Throwable throwable, @Advice.Enter AdviceScope adviceScope) {
-      adviceScope.exit(throwable);
+        @Advice.Thrown @Nullable Throwable throwable,
+        @Advice.Enter @Nullable AdviceScope adviceScope) {
+      if (adviceScope != null) {
+        adviceScope.exit(throwable);
+      }
     }
   }
 }

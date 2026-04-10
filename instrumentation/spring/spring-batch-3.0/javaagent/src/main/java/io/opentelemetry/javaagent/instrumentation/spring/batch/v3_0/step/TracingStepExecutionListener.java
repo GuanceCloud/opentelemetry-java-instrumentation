@@ -17,7 +17,7 @@ import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.core.Ordered;
 
-public final class TracingStepExecutionListener implements StepExecutionListener, Ordered {
+public class TracingStepExecutionListener implements StepExecutionListener, Ordered {
   private static final VirtualField<StepExecution, ContextAndScope> CONTEXT_AND_SCOPE =
       VirtualField.find(StepExecution.class, ContextAndScope.class);
 
@@ -37,6 +37,7 @@ public final class TracingStepExecutionListener implements StepExecutionListener
   }
 
   @Override
+  @Nullable
   public ExitStatus afterStep(StepExecution stepExecution) {
     ContextAndScope contextAndScope = CONTEXT_AND_SCOPE.get(stepExecution);
     if (contextAndScope == null) {

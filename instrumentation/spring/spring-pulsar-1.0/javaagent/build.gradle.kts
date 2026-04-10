@@ -1,5 +1,6 @@
 plugins {
   id("otel.javaagent-instrumentation")
+  id("otel.nullaway-conventions")
 }
 
 muzzle {
@@ -22,10 +23,11 @@ dependencies {
 
   testLibrary("org.springframework.boot:spring-boot-starter-test:3.2.4")
   testLibrary("org.springframework.boot:spring-boot-starter:3.2.4")
-}
 
-val latestDepTest = findProperty("testLatestDeps") as Boolean
-val collectMetadata = findProperty("collectMetadata")?.toString() ?: "false"
+  if (otelProps.testLatestDeps) {
+    testLibrary("org.springframework.boot:spring-boot-starter-pulsar:latest.release")
+  }
+}
 
 testing {
   suites {
@@ -33,8 +35,8 @@ testing {
       dependencies {
         implementation(project(":instrumentation:spring:spring-pulsar-1.0:testing"))
 
-        if (latestDepTest) {
-          implementation("org.springframework.pulsar:spring-pulsar:latest.release")
+        if (otelProps.testLatestDeps) {
+          implementation("org.springframework.boot:spring-boot-starter-pulsar:latest.release")
           implementation("org.springframework.boot:spring-boot-starter-test:latest.release")
           implementation("org.springframework.boot:spring-boot-starter:latest.release")
         } else {
@@ -47,8 +49,6 @@ testing {
       targets {
         all {
           testTask.configure {
-            usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
-
             jvmArgs("-Dotel.instrumentation.pulsar.experimental-span-attributes=true")
             jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
           }
@@ -59,17 +59,24 @@ testing {
 }
 
 tasks {
-  test {
+  withType<Test>().configureEach {
     usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
+    systemProperty("collectMetadata", otelProps.collectMetadata)
+  }
 
+  test {
     jvmArgs("-Dotel.instrumentation.pulsar.experimental-span-attributes=false")
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
-
-    systemProperty("collectMetadata", collectMetadata)
   }
 
   check {
     dependsOn(testing.suites)
+  }
+
+  if (otelProps.denyUnsafe) {
+    withType<Test>().configureEach {
+      enabled = false
+    }
   }
 }
 

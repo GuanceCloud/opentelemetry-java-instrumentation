@@ -17,6 +17,7 @@ import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
 import static io.opentelemetry.semconv.UrlAttributes.URL_FULL;
 import static io.opentelemetry.semconv.incubating.AwsIncubatingAttributes.AWS_REQUEST_ID;
 import static io.opentelemetry.semconv.incubating.AwsIncubatingAttributes.AWS_SNS_TOPIC_ARN;
+import static io.opentelemetry.semconv.incubating.AwsIncubatingAttributes.AWS_SQS_QUEUE_URL;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_MESSAGE_ID;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION;
@@ -34,6 +35,7 @@ import io.opentelemetry.sdk.testing.assertj.SpanDataAssert;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("deprecation") // using deprecated semconv
 class AwsSpanAssertions {
 
   private AwsSpanAssertions() {}
@@ -51,7 +53,6 @@ class AwsSpanAssertions {
     return sqs(span, spanName, queueUrl, queueName, CLIENT);
   }
 
-  @SuppressWarnings("deprecation") // using deprecated semconv
   static SpanDataAssert sqs(
       SpanDataAssert span, String spanName, String queueUrl, String queueName, SpanKind spanKind) {
 
@@ -76,7 +77,7 @@ class AwsSpanAssertions {
                         val.satisfiesAnyOf(
                             v -> assertThat(v).isEqualTo(queueName), v -> assertThat(v).isNull())),
                 satisfies(
-                    stringKey("aws.queue.url"),
+                    AWS_SQS_QUEUE_URL,
                     val ->
                         val.satisfiesAnyOf(
                             v -> assertThat(v).isEqualTo(queueUrl), v -> assertThat(v).isNull())),
@@ -84,7 +85,7 @@ class AwsSpanAssertions {
                 equalTo(HTTP_REQUEST_METHOD, "POST"),
                 equalTo(HTTP_RESPONSE_STATUS_CODE, 200),
                 satisfies(URL_FULL, val -> val.isInstanceOf(String.class)),
-                satisfies(SERVER_ADDRESS, stringAssert -> stringAssert.isInstanceOf(String.class)),
+                satisfies(SERVER_ADDRESS, val -> val.isInstanceOf(String.class)),
                 satisfies(
                     SERVER_PORT,
                     val ->
@@ -93,7 +94,7 @@ class AwsSpanAssertions {
                             v -> assertThat(v).isInstanceOf(Number.class))),
                 equalTo(NETWORK_PROTOCOL_VERSION, "1.1"),
                 equalTo(RPC_SYSTEM, "aws-api"),
-                satisfies(RPC_METHOD, stringAssert -> stringAssert.isEqualTo(rpcMethod)),
+                satisfies(RPC_METHOD, val -> val.isEqualTo(rpcMethod)),
                 equalTo(RPC_SERVICE, "AmazonSQS")));
 
     if (spanName.endsWith("receive")

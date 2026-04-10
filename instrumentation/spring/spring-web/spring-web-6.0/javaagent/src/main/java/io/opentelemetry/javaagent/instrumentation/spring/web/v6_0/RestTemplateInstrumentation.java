@@ -14,12 +14,12 @@ import io.opentelemetry.instrumentation.api.incubator.semconv.net.internal.UrlPa
 import io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
+import javax.annotation.Nullable;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
-import org.springframework.lang.Nullable;
 
-public class RestTemplateInstrumentation implements TypeInstrumentation {
+class RestTemplateInstrumentation implements TypeInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
@@ -30,13 +30,14 @@ public class RestTemplateInstrumentation implements TypeInstrumentation {
   public void transform(TypeTransformer transformer) {
     transformer.applyAdviceToMethod(
         named("doExecute").and(takesArgument(1, String.class)),
-        this.getClass().getName() + "$UrlTemplateAdvice");
+        getClass().getName() + "$UrlTemplateAdvice");
   }
 
   @SuppressWarnings("unused")
   public static class UrlTemplateAdvice {
 
     @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Nullable
     public static Scope onEnter(@Advice.Argument(1) String uriTemplate) {
       if (uriTemplate != null) {
         String path = UrlParser.getPath(uriTemplate);

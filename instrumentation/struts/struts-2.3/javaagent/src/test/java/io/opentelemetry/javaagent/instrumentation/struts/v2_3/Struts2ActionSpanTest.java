@@ -41,8 +41,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 class Struts2ActionSpanTest extends AbstractHttpServerTest<Server> {
 
   @RegisterExtension
-  public static final InstrumentationExtension testing =
-      HttpServerInstrumentationExtension.forAgent();
+  static final InstrumentationExtension testing = HttpServerInstrumentationExtension.forAgent();
 
   @Override
   @SuppressWarnings("unchecked")
@@ -70,7 +69,7 @@ class Struts2ActionSpanTest extends AbstractHttpServerTest<Server> {
       // struts 2.3
       strutsFilterClass =
           Class.forName("org.apache.struts2.dispatcher.ng.filter.StrutsPrepareAndExecuteFilter");
-    } catch (ClassNotFoundException exception) {
+    } catch (ClassNotFoundException ignored) {
       // struts 2.5
       strutsFilterClass =
           Class.forName("org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter");
@@ -130,7 +129,6 @@ class Struts2ActionSpanTest extends AbstractHttpServerTest<Server> {
     return span;
   }
 
-  @SuppressWarnings("deprecation") // using deprecated semconv
   @Override
   protected SpanDataAssert assertHandlerSpan(
       SpanDataAssert span, String method, ServerEndpoint endpoint) {

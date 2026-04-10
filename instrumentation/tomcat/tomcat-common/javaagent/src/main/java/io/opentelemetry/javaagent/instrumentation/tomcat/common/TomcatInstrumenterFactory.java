@@ -7,23 +7,20 @@ package io.opentelemetry.javaagent.instrumentation.tomcat.common;
 
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.internal.InstrumenterUtil;
+import io.opentelemetry.instrumentation.servlet.internal.ServletAccessor;
+import io.opentelemetry.instrumentation.servlet.internal.ServletErrorCauseExtractor;
 import io.opentelemetry.javaagent.bootstrap.internal.JavaagentHttpServerInstrumenters;
 import io.opentelemetry.javaagent.bootstrap.servlet.AppServerBridge;
-import io.opentelemetry.javaagent.instrumentation.servlet.ServletAccessor;
-import io.opentelemetry.javaagent.instrumentation.servlet.ServletErrorCauseExtractor;
 import org.apache.coyote.Request;
 import org.apache.coyote.Response;
 
-public final class TomcatInstrumenterFactory {
-
-  private TomcatInstrumenterFactory() {}
-
+public class TomcatInstrumenterFactory {
   public static <REQUEST, RESPONSE> Instrumenter<Request, Response> create(
       String instrumentationName, ServletAccessor<REQUEST, RESPONSE> accessor) {
     return JavaagentHttpServerInstrumenters.create(
         instrumentationName,
         new TomcatHttpAttributesGetter(),
-        TomcatRequestGetter.INSTANCE,
+        new TomcatRequestGetter(),
         builder ->
             InstrumenterUtil.propagateOperationListenersToOnEnd(
                 builder
@@ -35,4 +32,6 @@ public final class TomcatInstrumenterFactory {
                                 .recordException()
                                 .init(context))));
   }
+
+  private TomcatInstrumenterFactory() {}
 }

@@ -21,7 +21,7 @@ import net.bytebuddy.matcher.ElementMatcher;
 import org.jboss.resteasy.core.ResourceLocatorInvoker;
 import org.jboss.resteasy.core.ResourceMethodInvoker;
 
-public class ResteasyRootNodeTypeInstrumentation implements TypeInstrumentation {
+class ResteasyRootNodeTypeInstrumentation implements TypeInstrumentation {
   @Override
   public ElementMatcher<TypeDescription> typeMatcher() {
     return named("org.jboss.resteasy.core.registry.RootNode");
@@ -32,14 +32,14 @@ public class ResteasyRootNodeTypeInstrumentation implements TypeInstrumentation 
     transformer.applyAdviceToMethod(
         named("addInvoker")
             .and(takesArgument(0, String.class))
-            // package of ResourceInvoker was changed in reasteasy 4
+            // package of ResourceInvoker was changed in resteasy 4
             .and(
                 takesArgument(
                     1,
                     namedOneOf(
                         "org.jboss.resteasy.core.ResourceInvoker",
                         "org.jboss.resteasy.spi.ResourceInvoker"))),
-        ResteasyRootNodeTypeInstrumentation.class.getName() + "$AddInvokerAdvice");
+        getClass().getName() + "$AddInvokerAdvice");
   }
 
   @SuppressWarnings("unused")
