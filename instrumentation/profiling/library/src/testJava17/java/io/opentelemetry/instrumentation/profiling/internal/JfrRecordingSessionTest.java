@@ -52,6 +52,7 @@ class JfrRecordingSessionTest {
     try (JfrRecordingSession session = new JfrRecordingSession(config)) {
       session.start();
 
+      // Produce some work before taking the snapshot.
       for (int i = 0; i < 100_000; i++) {
         Math.log(i + 1);
       }

@@ -7,7 +7,6 @@ package io.opentelemetry.instrumentation.profiling.internal;
 
 import io.opentelemetry.instrumentation.profiling.ProfileExporterAdapter;
 import io.opentelemetry.instrumentation.profiling.RuntimeProfiling;
-import jdk.jfr.FlightRecorder;
 
 /**
  * This class is internal and experimental. Its APIs are unstable and can change at any time. Its
@@ -18,18 +17,11 @@ public final class JfrSupport {
 
   public static RuntimeProfiling build(
       ProfilingConfig config, ProfileExporterAdapter exporterAdapter) {
-    if (!isJfrAvailable()) {
-      return NoopRuntimeProfiling.INSTANCE;
-    }
-    return new JfrRuntimeProfiling(config, exporterAdapter);
+    return NoopRuntimeProfiling.INSTANCE;
   }
 
   public static boolean isJfrAvailable() {
-    try {
-      return FlightRecorder.isAvailable();
-    } catch (Throwable ignored) {
-      return false;
-    }
+    return false;
   }
 
   private JfrSupport() {}

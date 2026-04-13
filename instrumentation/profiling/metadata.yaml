@@ -47,8 +47,8 @@ configurations:
     description: Profiling exporter implementation. Supported values are none, file, and datakit. Environment variable: OTEL_PROFILING_EXPORTER.
     type: string
     default: none
-  - name: otel.profiling.datakit.endpoint
-    description: Datakit profile receiver endpoint. Environment variable: OTEL_PROFILING_ENDPOINT. Compatibility alias: OTEL_PROFILING_DATAKIT_ENDPOINT.
+  - name: otel.profiling.endpoint
+    description: Datakit profile receiver endpoint. Environment variable: OTEL_PROFILING_ENDPOINT. Compatibility aliases: otel.profiling.datakit.endpoint and OTEL_PROFILING_DATAKIT_ENDPOINT.
     type: string
     default: http://localhost:9529/profiling/v1/input
   - name: otel.profiling.datakit.timeout
