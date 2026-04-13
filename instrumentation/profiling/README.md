@@ -24,7 +24,7 @@ The `datakit` exporter uploads JFR snapshots to a Datakit profile receiver using
 | `otel.profiling.memory.allocation-sampling`            | `OTEL_PROFILING_MEMORY_ALLOCATION_SAMPLING`       | Boolean |         | Overrides allocation sampling events (`ObjectAllocation*`).           |
 | `otel.profiling.memory.old-object-sampling`            | `OTEL_PROFILING_MEMORY_OLD_OBJECT_SAMPLING`       | Boolean |         | Overrides `OldObjectSample`.                                          |
 | `otel.profiling.exporter`                              | `OTEL_PROFILING_EXPORTER`                         | String  | `none`  | Profiling exporter implementation. Supported values are `none,file,datakit`. |
-| `otel.profiling.datakit.endpoint`                      | `OTEL_PROFILING_ENDPOINT`                         | String  | `http://localhost:9529/profiling/v1/input` | Datakit profile receiver endpoint. |
+| `otel.profiling.endpoint`                              | `OTEL_PROFILING_ENDPOINT`                         | String  | `http://localhost:9529/profiling/v1/input` | Datakit profile receiver endpoint. |
 | `otel.profiling.datakit.timeout`                       | `OTEL_PROFILING_DATAKIT_TIMEOUT`                  | String  | `10s`   | Timeout for Datakit profile uploads.                                  |
 | `otel.profiling.experimental.file-export.path`         | `OTEL_PROFILING_EXPERIMENTAL_FILE_EXPORT_PATH`    | String  |         | Output directory used by the experimental `file` exporter.            |
 
@@ -32,7 +32,8 @@ Legacy `otel.instrumentation.profiling.*` keys are still accepted as compatibili
 new configuration should use `otel.profiling.*`.
 
 For Datakit endpoint, the legacy environment variable `OTEL_PROFILING_DATAKIT_ENDPOINT` is also
-accepted as a compatibility alias.
+accepted as a compatibility alias. The legacy property `otel.profiling.datakit.endpoint` is also
+accepted.
 
 Example for Datakit:
 
@@ -41,7 +42,7 @@ java \
   -javaagent:path/to/opentelemetry-javaagent.jar \
   -Dotel.profiling.enabled=true \
   -Dotel.profiling.exporter=datakit \
-  -Dotel.profiling.datakit.endpoint=http://localhost:9529/profiling/v1/input \
+  -Dotel.profiling.endpoint=http://localhost:9529/profiling/v1/input \
   -Dotel.service.name=checkout \
   -Dotel.service.version=1.2.3 \
   -Dotel.resource.attributes=deployment.environment.name=prod \
