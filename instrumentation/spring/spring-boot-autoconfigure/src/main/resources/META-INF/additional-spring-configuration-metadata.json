@@ -314,14 +314,8 @@
     {
       "name": "otel.instrumentation.http.client.emit-experimental-telemetry",
       "type": "java.lang.Boolean",
-      "description": "Enable the capture of experimental HTTP client telemetry. Add the <code>http.request.body.size</code> and <code>http.response.body.size> attributes to spans, and record the <code>http.client.request.size</code> and <code>http.client.response.size</code> metrics.",
+      "description": "Enable the capture of experimental HTTP client telemetry. Add the <code>http.request.body.size</code> and <code>http.response.body.size</code> attributes to spans, and record the <code>http.client.request.size</code> and <code>http.client.response.size</code> metrics.",
       "defaultValue": false
-    },
-    {
-      "name": "otel.instrumentation.http.client.experimental.redact-query-parameters",
-      "type": "java.lang.Boolean",
-      "description": "Redact sensitive URL parameters. See https://opentelemetry.io/docs/specs/semconv/http/http-spans.",
-      "defaultValue": true
     },
     {
       "name": "otel.instrumentation.http.known-methods",
@@ -568,6 +562,12 @@
       "type": "java.lang.Boolean",
       "description": "Prefer JFR over JMX for metrics available from both sources, on Java 17+.",
       "defaultValue": false
+    },
+    {
+      "name": "otel.instrumentation.sanitization.url.experimental.sensitive-query-parameters",
+      "type": "java.util.List<java.lang.String>",
+      "description": "List of URL query parameter names whose values are redacted in URL attributes. See https://opentelemetry.io/docs/specs/semconv/http/http-spans.",
+      "defaultValue": "AWSAccessKeyId,Signature,sig,X-Goog-Signature"
     },
     {
       "name": "otel.instrumentation.spring-web.enabled",

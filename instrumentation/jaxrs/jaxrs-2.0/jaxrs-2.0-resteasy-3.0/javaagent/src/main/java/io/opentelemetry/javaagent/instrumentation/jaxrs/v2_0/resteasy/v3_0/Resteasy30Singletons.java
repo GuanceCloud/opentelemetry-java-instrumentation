@@ -6,16 +6,16 @@
 package io.opentelemetry.javaagent.instrumentation.jaxrs.v2_0.resteasy.v3_0;
 
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.HandlerData;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.JaxrsInstrumenterFactory;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.common.HandlerData;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.common.JaxrsInstrumenterFactory;
 
 public class Resteasy30Singletons {
 
-  private static final Instrumenter<HandlerData, Void> INSTANCE =
+  private static final Instrumenter<HandlerData, Void> instrumenter =
       JaxrsInstrumenterFactory.createInstrumenter("io.opentelemetry.jaxrs-2.0-resteasy-3.0");
 
   public static Instrumenter<HandlerData, Void> instrumenter() {
-    return INSTANCE;
+    return instrumenter;
   }
 
   private Resteasy30Singletons() {}

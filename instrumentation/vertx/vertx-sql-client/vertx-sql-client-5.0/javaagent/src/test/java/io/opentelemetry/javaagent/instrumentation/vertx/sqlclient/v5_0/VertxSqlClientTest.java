@@ -26,6 +26,7 @@ import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DB_USER
 import static io.opentelemetry.semconv.incubating.DbIncubatingAttributes.DbSystemNameIncubatingValues.POSTGRESQL;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
@@ -48,7 +49,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -88,7 +88,9 @@ class VertxSqlClientTest {
             .withLogConsumer(new Slf4jLogConsumer(logger))
             .withStartupTimeout(Duration.ofMinutes(2));
     container.start();
+    cleanup.deferAfterAll(container::stop);
     vertx = Vertx.vertx();
+    cleanup.deferAfterAll(vertx::close);
     host = container.getHost();
     port = container.getMappedPort(5432);
     PgConnectOptions options =
@@ -99,6 +101,7 @@ class VertxSqlClientTest {
             .setUser(USER_DB)
             .setPassword(PW_DB);
     pool = Pool.pool(vertx, options, new PoolOptions().setMaxSize(4));
+    cleanup.deferAfterAll(pool::close);
     pool.query("create table test(id int primary key, name varchar(255))")
         .execute()
         .compose(
@@ -108,13 +111,6 @@ class VertxSqlClientTest {
         .toCompletionStage()
         .toCompletableFuture()
         .get(30, SECONDS);
-  }
-
-  @AfterAll
-  static void cleanUp() {
-    pool.close();
-    vertx.close();
-    container.stop();
   }
 
   @Test
@@ -195,7 +191,7 @@ class VertxSqlClientTest {
                       }
                     }));
 
-    latch.await(30, SECONDS);
+    assertThat(latch.await(30, SECONDS)).isTrue();
 
     testing.waitAndAssertTraces(
         trace ->
@@ -383,7 +379,7 @@ class VertxSqlClientTest {
                         latch.countDown();
                       }));
     }
-    latch.await(30, SECONDS);
+    assertThat(latch.await(30, SECONDS)).isTrue();
     for (CompletableFuture<Object> result : resultList) {
       result.get(10, SECONDS);
     }
@@ -460,7 +456,7 @@ class VertxSqlClientTest {
                             }));
           });
     }
-    latch.await(30, SECONDS);
+    assertThat(latch.await(30, SECONDS)).isTrue();
     for (CompletableFuture<Object> result : resultList) {
       result.get(10, SECONDS);
     }

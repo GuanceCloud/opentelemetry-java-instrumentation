@@ -38,6 +38,11 @@ interface in a non-stable (`-alpha`) module or in `javaagent-extension-api`
 - removal of a `default` method from an internal interface,
 - signature change even when the method never carried `@Deprecated`.
 
+Treat non-private `Experimental*` helpers in published `:library`
+artifacts as incubating public API even when their package name
+contains `.internal`; removals or binary-incompatible reshaping belong
+under Breaking.
+
 Emitted-attribute, attribute-value, or span-name changes are Breaking
 **only** when they ship unconditionally. If the change is gated behind
 `otel.instrumentation.common.v3-preview`,
@@ -92,6 +97,13 @@ behavior is a bug fix, not an enhancement — diffs that remove an
 over-restrictive condition, add a fallback branch, or invert an `&&`
 usually belong here. Describe the user-visible symptom.
 
+## metadata.yaml is documentation, not evidence
+
+`metadata.yaml` files are static documentation; they don't change
+runtime behavior. Treat any change to `metadata.yaml` as describing
+existing functionality. Don't emit an Enhancements bullet for a config
+property whose only diff evidence is a metadata.yaml entry.
+
 ## When to omit
 
 Omit only when the PR's `src/main` runtime changes are entirely limited
@@ -101,7 +113,12 @@ to one or more of:
 - test-only changes, cross-testing, moving tests out of default packages,
 - CI/build-tooling with no runtime effect,
 - renames of internal (not extension-API) fields, packages, or helpers,
-- new package-private, `internal`-package, or test-only methods.
+- new package-private, `internal`-package, or test-only methods,
+- `metadata.yaml` documentation (see section above).
+
+Do not use the internal-helper omit rule for non-private `Experimental*`
+classes in published artifacts; classify their
+removal or binary-incompatible reshaping under Breaking.
 
 Trivial omits (renovate bumps, all-test/docs/build paths, post-release
 version bumps) are handled by `classify.py --preclassify-only`.

@@ -20,14 +20,16 @@ dependencies {
   library("io.vertx:vertx-sql-client:$version")
   library("io.vertx:vertx-codegen:$version")
 
-  implementation(project(":instrumentation:vertx:vertx-sql-client:vertx-sql-client-common:javaagent"))
+  compileOnly(project(":muzzle")) // For @NoMuzzle
+
+  implementation(project(":instrumentation:vertx:vertx-sql-client:vertx-sql-client-common-4.0:javaagent"))
 
   testInstrumentation(project(":instrumentation:jdbc:javaagent"))
   testInstrumentation(project(":instrumentation:netty:netty-4.1:javaagent"))
   testInstrumentation(project(":instrumentation:vertx:vertx-sql-client:vertx-sql-client-4.0:javaagent"))
 
   testLibrary("io.vertx:vertx-pg-client:$version")
-  testImplementation("io.vertx:vertx-jdbc-client:$version")
+  testLibrary("io.vertx:vertx-jdbc-client:$version")
   testImplementation("io.agroal:agroal-pool:2.5")
   testImplementation("org.hsqldb:hsqldb:2.3.4")
 }

@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.vertx.httpclient.v3_0;
 
+import static io.opentelemetry.instrumentation.testing.util.TestLatestDeps.testLatestDeps;
 import static io.opentelemetry.semconv.NetworkAttributes.NETWORK_PROTOCOL_VERSION;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
@@ -28,6 +29,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class VertxHttpClientTest extends AbstractHttpClientTest<HttpClientRequest> {
@@ -35,13 +37,18 @@ class VertxHttpClientTest extends AbstractHttpClientTest<HttpClientRequest> {
   @RegisterExtension
   static final InstrumentationExtension testing = HttpClientInstrumentationExtension.forAgent();
 
-  private final HttpClient httpClient = buildClient();
+  private final Vertx vertx = Vertx.vertx(new VertxOptions());
+  private final HttpClient httpClient = buildClient(vertx);
 
-  private static HttpClient buildClient() {
-    Vertx vertx = Vertx.vertx(new VertxOptions());
+  private static HttpClient buildClient(Vertx vertx) {
     HttpClientOptions clientOptions =
         new HttpClientOptions().setConnectTimeout(Math.toIntExact(CONNECTION_TIMEOUT.toMillis()));
     return vertx.createHttpClient(clientOptions);
+  }
+
+  @AfterAll
+  void closeVertx() {
+    vertx.close();
   }
 
   @Override
@@ -103,7 +110,7 @@ class VertxHttpClientTest extends AbstractHttpClientTest<HttpClientRequest> {
   private static SingleConnection createSingleConnection(String host, int port) {
     // This test fails on Vert.x 3.0 and only works starting from 3.1
     // Most probably due to https://github.com/eclipse-vertx/vert.x/pull/1126
-    boolean shouldRun = Boolean.getBoolean("testLatestDeps");
+    boolean shouldRun = testLatestDeps();
     return shouldRun ? new VertxSingleConnection(host, port) : null;
   }
 }

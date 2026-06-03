@@ -11,6 +11,7 @@ import static java.util.Collections.emptyMap;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import net.bytebuddy.utility.JavaModule;
 
 /**
@@ -18,6 +19,12 @@ import net.bytebuddy.utility.JavaModule;
  * any time.
  */
 public interface ExperimentalInstrumentationModule {
+
+  /**
+   * Register virtual field. First argument for the consumer is dot class name of the type where the
+   * field is added and the second argument is the dot class name of the field type.
+   */
+  default void registerVirtualFields(BiConsumer<String, String> virtualFieldRegistrar) {}
 
   /**
    * Returns a list of helper classes that will be defined in the class loader of the instrumented
@@ -75,5 +82,35 @@ public interface ExperimentalInstrumentationModule {
    */
   default List<String> exposedClassNames() {
     return emptyList();
+  }
+
+  /**
+   * Allows instrumentation modules to choose whether the helper classes should be injected into the
+   * same class loader as the instrumented library, or into an isolated class loader.
+   */
+  default HelperClassStrategy helperClassStrategy() {
+    return HelperClassStrategy.DEFAULT;
+  }
+
+  /**
+   * This class is internal and is hence not for public use. Its APIs are unstable and can change at
+   * any time.
+   */
+  enum HelperClassStrategy {
+    /**
+     * Depending on whether the instrumentation uses inline advice or not, helper classes are either
+     * loaded in the same classloader as the instrumented library, or into an isolated classloader.
+     */
+    DEFAULT,
+    /**
+     * Helper classes are loaded in the same classloader as the instrumented library, and are
+     * visible to the application.
+     */
+    INJECTED,
+    /**
+     * Helper classes are loaded into an isolated classloader, and aren't visible to the
+     * application.
+     */
+    ISOLATED
   }
 }

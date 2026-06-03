@@ -352,8 +352,8 @@ class RabbitMqTest extends AbstractRabbitMqTest {
     Throwable thrown = null;
     try {
       callback.accept(channel);
-    } catch (RuntimeException re) {
-      thrown = re.getCause();
+    } catch (RuntimeException e) {
+      thrown = e.getCause();
       assertThat(thrown.getClass().getName()).contains(accessor.getString(1));
     }
 
@@ -439,10 +439,11 @@ class RabbitMqTest extends AbstractRabbitMqTest {
   }
 
   @Test
-  void captureMessageHeaderAsSpanAttributes() throws IOException, InterruptedException {
+  void captureMessageHeaderAsSpanAttributes() throws Exception {
     String queueName = channel.queueDeclare().getQueue();
     Map<String, Object> headers = new HashMap<>();
     headers.put("Test_Message_Header", "test");
+    headers.put("Uncaptured-Header", "password");
     AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder().headers(headers).build();
     channel.basicPublish(
         "", queueName, properties, "Hello, world!".getBytes(Charset.defaultCharset()));
@@ -617,7 +618,7 @@ class RabbitMqTest extends AbstractRabbitMqTest {
     span.hasName(spanName);
 
     String rabbitCommand = null;
-    if (EXPERIMENTAL_ATTRIBUTES_ENABLED) {
+    if (EXPERIMENTAL_ATTRIBUTES) {
       rabbitCommand = trace.getSpan(index).getAttributes().get(stringKey("rabbitmq.command"));
 
       SpanKind spanKind = captureSpanKind(rabbitCommand);
@@ -639,7 +640,7 @@ class RabbitMqTest extends AbstractRabbitMqTest {
           satisfies(
               longKey("rabbitmq.record.queue_time_ms"),
               val -> {
-                if (EXPERIMENTAL_ATTRIBUTES_ENABLED) {
+                if (EXPERIMENTAL_ATTRIBUTES) {
                   val.isNotNegative();
                 }
               }));

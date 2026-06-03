@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.kafkaclients.v0_11;
 
+import static io.opentelemetry.javaagent.instrumentation.kafkaclients.v0_11.KafkaSingletons.PRODUCER_PROPAGATION_ENABLED;
 import static io.opentelemetry.javaagent.instrumentation.kafkaclients.v0_11.KafkaSingletons.producerInstrumenter;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -73,14 +74,13 @@ class KafkaProducerInstrumentation implements TypeInstrumentation {
         return new AdviceScope(parentContext, request, context, context.makeCurrent());
       }
 
-      public Callback wrapCallback(Callback originalCallback) {
+      public Callback wrapCallback(@Nullable Callback originalCallback) {
         return new ProducerCallback(originalCallback, parentContext, context, request);
       }
 
       public ProducerRecord<?, ?> propagateContext(
           ApiVersions apiVersions, ProducerRecord<?, ?> record) {
-        if (KafkaSingletons.isProducerPropagationEnabled()
-            && KafkaPropagation.shouldPropagate(apiVersions)) {
+        if (PRODUCER_PROPAGATION_ENABLED && KafkaPropagation.shouldPropagate(apiVersions)) {
           return KafkaPropagation.propagateContext(context, record);
         }
         return record;
@@ -105,7 +105,7 @@ class KafkaProducerInstrumentation implements TypeInstrumentation {
         @Advice.FieldValue("clientId") String clientId,
         @Advice.FieldValue("producerConfig") ProducerConfig producerConfig,
         @Advice.Argument(0) ProducerRecord<?, ?> originalRecord,
-        @Advice.Argument(1) Callback originalCallback) {
+        @Advice.Argument(1) @Nullable Callback originalCallback) {
       ProducerRecord<?, ?> record = originalRecord;
       Callback callback = originalCallback;
 

@@ -21,7 +21,9 @@ import org.eclipse.aether.resolution.VersionRangeResult
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.transport.TransporterFactory
 import org.eclipse.aether.transport.http.HttpTransporterFactory
+import org.eclipse.aether.util.version.GenericVersionScheme
 import org.eclipse.aether.version.Version
+import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
 import java.util.stream.StreamSupport
@@ -33,6 +35,63 @@ plugins {
 
 // Select a random set of versions to test
 val RANGE_COUNT_LIMIT = Integer.getInteger("otel.javaagent.muzzle.versions.limit", 10)
+
+// Read pinned latest-dep versions to cap muzzle's open-ended version ranges,
+// preventing failures when new library versions are released to Maven Central.
+//
+// External users of the muzzle plugin may not have this pinned versions file in their project
+// layout. In that case, fall back to the old behavior and resolve versions directly from
+// configured repositories.
+val muzzlePinnedVersions: Map<String, String>? by lazy {
+  val file = generateSequence(rootProject.projectDir) { it.parentFile }
+    .flatMap {
+      sequenceOf(
+        File(it, ".github/config/latest-dep-versions.json"),
+        File(it, "config/latest-dep-versions.json")
+      )
+    }
+    .firstOrNull { it.exists() }
+  if (file == null) {
+    logger.info(
+      "Pinned latest-dep versions file is missing under ${rootProject.projectDir}; falling back to repository " +
+        "version resolution for muzzle checks."
+    )
+    null
+  } else {
+    logger.info("Using pinned latest-dep versions file: ${file}")
+    @Suppress("UNCHECKED_CAST")
+    groovy.json.JsonSlurper().parse(file) as Map<String, String>
+  }
+}
+
+/**
+ * Resolve the pinned upper bound as an Aether Version for a muzzle-checked artifact.
+ *
+ * <p>The pinned version limits which library versions muzzle will test against, preventing CI
+ * failures when new (potentially incompatible) versions are published to Maven Central.
+ *
+ * <p>Special value "0.0": used as a sentinel for artifacts that either don't exist on any
+ * accessible Maven repository, or whose muzzle directive is intentionally a no-op (e.g. a
+ * {@code fail} directive for a never-published artifact, or a {@code pass} directive where
+ * the agent uses shaded/in-repo classes rather than the external library). With "0.0" as the
+ * upper bound, {@code filterVersions} rejects all real versions (none are <= 0.0), so no
+ * muzzle tasks are created and the directive is silently skipped. To add a sentinel entry,
+ * manually add {@code "group:module#+": "0.0"} to the pinned latest-dep versions file.
+ *
+ * <p>Returns {@code null} when the pinned versions file is not present, which preserves the old
+ * behavior of resolving the full version range from configured repositories.
+ */
+fun resolveUpperBound(group: String, module: String): Version? {
+  val pinnedVersions = muzzlePinnedVersions ?: return null
+  val key = "$group:$module#+"
+  val pinnedVersion = pinnedVersions[key]
+    ?: throw GradleException(
+      "Pinned version missing for muzzle artifact \"$key\". " +
+        "Run ./gradlew resolveLatestDepVersions -PtestLatestDeps=true -PresolveLatestDeps=true " +
+        "to regenerate the pinned latest-dep versions file"
+    )
+  return GenericVersionScheme().parseVersion(pinnedVersion)
+}
 
 val muzzleConfig = extensions.create<MuzzleExtension>("muzzle")
 
@@ -160,9 +219,12 @@ tasks.register("printMuzzleReferences") {
 val hasRelevantTask = gradle.startParameter.taskNames.any {
   // removing leading ':' if present
   val taskName = it.removePrefix(":")
-  val projectPath = project.path.substring(1)
+  val projectPath = project.path.removePrefix(":")
+  val muzzleTaskName = if (projectPath.isEmpty()) "muzzle" else "$projectPath:muzzle"
   // Either the specific muzzle task in this project or a top level muzzle task.
-  taskName == "${projectPath}:muzzle" || taskName.startsWith("instrumentation:muzzle") ||
+  taskName == muzzleTaskName ||
+    taskName.startsWith("instrumentation:muzzle") ||
+    taskName.startsWith("muzzle-Assert") ||
     taskName.contains(":muzzle-Assert")
 }
 
@@ -356,15 +418,18 @@ fun createClassLoaderForTask(muzzleTaskFiles: FileCollection, muzzleBootstrapSha
 fun inverseOf(muzzleDirective: MuzzleDirective, system: RepositorySystem, session: RepositorySystemSession, repos: List<RemoteRepository>): Set<MuzzleDirective> {
   val inverseDirectives = mutableSetOf<MuzzleDirective>()
 
+  val directiveGroup = muzzleDirective.group.get()
+  val directiveModule = muzzleDirective.module.get()
+  val upperBound = resolveUpperBound(directiveGroup, directiveModule)
   val allVersionsArtifact = DefaultArtifact(
-    muzzleDirective.group.get(),
-    muzzleDirective.module.get(),
+    directiveGroup,
+    directiveModule,
     muzzleDirective.classifier.get(),
     "jar",
     "[,)")
   val directiveArtifact = DefaultArtifact(
-    muzzleDirective.group.get(),
-    muzzleDirective.module.get(),
+    directiveGroup,
+    directiveModule,
     muzzleDirective.classifier.get(),
     "jar",
     muzzleDirective.versions.get())
@@ -383,7 +448,7 @@ fun inverseOf(muzzleDirective: MuzzleDirective, system: RepositorySystem, sessio
 
   allRangeResult.versions.removeAll(rangeResult.versions)
 
-  for (version in filterVersions(allRangeResult, muzzleDirective.normalizedSkipVersions)) {
+  for (version in filterVersions(allRangeResult, muzzleDirective.normalizedSkipVersions, upperBound)) {
     val inverseDirective = objects.newInstance(MuzzleDirective::class).apply {
       name.set(muzzleDirective.name)
       group.set(muzzleDirective.group)
@@ -401,27 +466,32 @@ fun inverseOf(muzzleDirective: MuzzleDirective, system: RepositorySystem, sessio
   return inverseDirectives
 }
 
-fun filterVersions(range: VersionRangeResult, skipVersions: Set<String>) = sequence {
+fun filterVersions(range: VersionRangeResult, skipVersions: Set<String>, upperBound: Version?) = sequence {
   val predicate = AcceptableVersions(skipVersions)
-  if (predicate.test(range.lowestVersion)) {
+  fun accept(version: Version?): Boolean =
+    version != null && predicate.test(version) && (upperBound == null || version <= upperBound)
+  if (accept(range.lowestVersion)) {
     yield(range.lowestVersion.toString())
   }
-  if (predicate.test(range.highestVersion)) {
+  if (accept(range.highestVersion)) {
     yield(range.highestVersion.toString())
   }
 
   val copy: List<Version> = range.versions.shuffled()
   for (version in copy) {
-    if (predicate.test(version)) {
+    if (accept(version)) {
       yield(version.toString())
     }
   }
 }.distinct().take(RANGE_COUNT_LIMIT)
 
 fun muzzleDirectiveToArtifacts(muzzleDirective: MuzzleDirective, system: RepositorySystem, session: RepositorySystemSession, repos: List<RemoteRepository>) = sequence<Artifact> {
+  val group = muzzleDirective.group.get()
+  val module = muzzleDirective.module.get()
+  val upperBound = resolveUpperBound(group, module)
   val directiveArtifact: Artifact = DefaultArtifact(
-    muzzleDirective.group.get(),
-    muzzleDirective.module.get(),
+    group,
+    module,
     muzzleDirective.classifier.get(),
     "jar",
     muzzleDirective.versions.get())
@@ -432,7 +502,7 @@ fun muzzleDirectiveToArtifacts(muzzleDirective: MuzzleDirective, system: Reposit
   }
   val rangeResult = system.resolveVersionRange(session, rangeRequest)
 
-  val allVersionArtifacts = filterVersions(rangeResult, muzzleDirective.normalizedSkipVersions)
+  val allVersionArtifacts = filterVersions(rangeResult, muzzleDirective.normalizedSkipVersions, upperBound)
     .map {
       DefaultArtifact(
         muzzleDirective.group.get(),

@@ -5,8 +5,8 @@
 
 package io.opentelemetry.javaagent.instrumentation.elasticsearch.transport.v5_0;
 
-import io.opentelemetry.javaagent.instrumentation.elasticsearch.transport.ElasticTransportRequest;
-import io.opentelemetry.javaagent.instrumentation.elasticsearch.transport.ElasticsearchTransportAttributesGetter;
+import io.opentelemetry.javaagent.instrumentation.elasticsearch.transport.common.v5_0.ElasticTransportRequest;
+import io.opentelemetry.javaagent.instrumentation.elasticsearch.transport.common.v5_0.ElasticsearchTransportAttributesGetter;
 import javax.annotation.Nullable;
 import org.elasticsearch.action.ActionResponse;
 
@@ -22,8 +22,8 @@ final class Elasticsearch5TransportAttributesGetter extends ElasticsearchTranspo
     return null;
   }
 
-  @Nullable
   @Override
+  @Nullable
   public Integer getNetworkPeerPort(
       ElasticTransportRequest request, @Nullable ActionResponse response) {
     if (response != null && response.remoteAddress() != null) {

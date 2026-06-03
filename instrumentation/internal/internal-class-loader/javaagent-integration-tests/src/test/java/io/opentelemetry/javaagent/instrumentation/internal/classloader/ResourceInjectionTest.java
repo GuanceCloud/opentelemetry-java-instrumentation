@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.net.URL;
@@ -19,7 +20,6 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.SystemUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -30,23 +30,21 @@ class ResourceInjectionTest {
   private static final AutoCleanupExtension cleanup = AutoCleanupExtension.create();
 
   @Test
-  @SuppressWarnings("UnnecessaryAsync")
   void resourcesInjectedToNonDelegatingClassLoader() throws Exception {
     String resourceName = "test-resources/test-resource.txt";
     URL[] urls = {SystemUtils.class.getProtectionDomain().getCodeSource().getLocation()};
-    AtomicReference<URLClassLoader> emptyLoader =
-        new AtomicReference<>(new URLClassLoader(urls, null));
+    URLClassLoader emptyLoader = new URLClassLoader(urls, null);
 
-    Enumeration<URL> resourceUrls = emptyLoader.get().getResources(resourceName);
+    Enumeration<URL> resourceUrls = emptyLoader.getResources(resourceName);
     assertThat(resourceUrls.hasMoreElements()).isFalse();
     resourceUrls = null;
 
     URLClassLoader notInjectedLoader = new URLClassLoader(urls, null);
     cleanup.deferCleanup(notInjectedLoader);
     // this triggers resource injection
-    emptyLoader.get().loadClass(SystemUtils.class.getName());
+    emptyLoader.loadClass(SystemUtils.class.getName());
 
-    List<URL> resourceList = Collections.list(emptyLoader.get().getResources(resourceName));
+    List<URL> resourceList = Collections.list(emptyLoader.getResources(resourceName));
 
     assertThat(resourceList).hasSize(2);
     assertThat(readLine(resourceList.get(0))).isEqualTo("Hello world!");
@@ -55,16 +53,16 @@ class ResourceInjectionTest {
     assertThat(notInjectedLoader.getResources(resourceName).hasMoreElements()).isFalse();
 
     // references to emptyloader are gone
-    emptyLoader.get().close(); // cleanup
-    WeakReference<URLClassLoader> ref = new WeakReference<>(emptyLoader.get());
-    emptyLoader.set(null);
+    emptyLoader.close(); // cleanup
+    WeakReference<URLClassLoader> ref = new WeakReference<>(emptyLoader);
+    emptyLoader = null;
 
     awaitGc(ref, Duration.ofSeconds(10));
 
     assertThat(ref.get()).isNull();
   }
 
-  private static String readLine(URL url) throws Exception {
+  private static String readLine(URL url) throws IOException {
     try (BufferedReader reader =
         new BufferedReader(new InputStreamReader(url.openStream(), UTF_8))) {
       return reader.readLine().trim();

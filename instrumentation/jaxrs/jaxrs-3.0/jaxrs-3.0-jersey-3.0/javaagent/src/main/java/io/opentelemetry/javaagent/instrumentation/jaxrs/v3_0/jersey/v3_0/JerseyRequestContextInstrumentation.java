@@ -9,10 +9,10 @@ import static io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.jersey.v3_0.
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.JaxrsConstants;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.AbstractRequestContextInstrumentation;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.Jaxrs3HandlerData;
-import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.Jaxrs3RequestContextHelper;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.common.JaxrsConstants;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.common.AbstractRequestContextInstrumentation;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.common.Jaxrs3HandlerData;
+import io.opentelemetry.javaagent.instrumentation.jaxrs.v3_0.common.Jaxrs3RequestContextHelper;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.UriInfo;
@@ -29,7 +29,7 @@ import net.bytebuddy.asm.Advice;
  * <p>In the Jersey implementation, <code>UriInfo</code> implements <code>ResourceInfo</code>. The
  * matched resource method can be retrieved from that object
  */
-public class JerseyRequestContextInstrumentation extends AbstractRequestContextInstrumentation {
+class JerseyRequestContextInstrumentation extends AbstractRequestContextInstrumentation {
   @Override
   protected String abortAdviceName() {
     return getClass().getName() + "$ContainerRequestContextAdvice";

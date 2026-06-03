@@ -38,7 +38,7 @@ class VertxRxCircuitBreakerHttpServerTest extends AbstractVertxRxHttpServerTest 
   }
 
   public static class VertxRxCircuitBreakerWebTestServer extends AbstractVertxRxVerticle {
-    CircuitBreaker breaker;
+    private CircuitBreaker breaker;
 
     @Override
     void handle(RoutingContext ctx, ServerEndpoint endpoint, Runnable action) {
@@ -86,7 +86,15 @@ class VertxRxCircuitBreakerHttpServerTest extends AbstractVertxRxHttpServerTest 
       vertx
           .createHttpServer()
           .requestHandler(router::accept)
-          .listen(port, httpServerAsyncResult -> startFuture.complete());
+          .listen(
+              port,
+              httpServerAsyncResult -> {
+                if (httpServerAsyncResult.failed()) {
+                  startFuture.fail(httpServerAsyncResult.cause());
+                  return;
+                }
+                startFuture.complete();
+              });
     }
   }
 }

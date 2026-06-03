@@ -16,7 +16,7 @@ import static io.opentelemetry.semconv.HttpAttributes.HTTP_RESPONSE_STATUS_CODE;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
 import static io.opentelemetry.semconv.UrlAttributes.URL_FULL;
-import static org.assertj.core.api.Assertions.assertThat;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.kubernetes.client.openapi.ApiCallback;
 import io.kubernetes.client.openapi.ApiClient;
@@ -164,7 +164,7 @@ class KubernetesClientTest {
   }
 
   @Test
-  void asynchronousCall() throws ApiException, InterruptedException {
+  void asynchronousCall() throws Exception {
     mockWebServer.enqueue(HttpResponse.of(HttpStatus.OK, MediaType.PLAIN_TEXT_UTF_8, "42"));
 
     AtomicReference<String> responseBodyReference = new AtomicReference<>();
@@ -187,7 +187,7 @@ class KubernetesClientTest {
                   }
                 }));
 
-    countDownLatch.await();
+    assertThat(countDownLatch.await(10, SECONDS)).isTrue();
 
     assertThat(responseBodyReference.get()).isEqualTo("42");
     assertThat(mockWebServer.takeRequest().request().headers().get("traceparent")).isNotBlank();
@@ -222,7 +222,7 @@ class KubernetesClientTest {
   }
 
   @Test
-  void handleErrorsInAsynchronousCall() throws ApiException, InterruptedException {
+  void handleErrorsInAsynchronousCall() throws Exception {
 
     mockWebServer.enqueue(
         HttpResponse.of(HttpStatus.valueOf(451), MediaType.PLAIN_TEXT_UTF_8, "42"));
@@ -247,7 +247,7 @@ class KubernetesClientTest {
                   }
                 }));
 
-    countDownLatch.await();
+    assertThat(countDownLatch.await(10, SECONDS)).isTrue();
 
     assertThat(exceptionReference.get()).isNotNull();
     assertThat(mockWebServer.takeRequest().request().headers().get("traceparent")).isNotBlank();
