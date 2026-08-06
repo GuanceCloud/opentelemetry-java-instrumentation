@@ -1,0 +1,91 @@
+description: >
+  EXPERIMENTAL: This instrumentation embeds async-profiler into the OpenTelemetry Java agent on
+  Linux, writes profile data locally, and can export it through file, Datakit, or OTLP-based
+  flows.
+library_link: https://github.com/open-telemetry/opentelemetry-java-instrumentation/tree/main/instrumentation/async-profiler
+configurations:
+  - name: otel.profiling.enabled
+    description: Enables async-profiler integration. Environment variable: OTEL_PROFILING_ENABLED.
+    type: boolean
+    default: false
+  - name: otel.profiling.exporter
+    description: Export target, such as file, datakit, otlp, or pprof compatibility mode. Environment variable: OTEL_PROFILING_EXPORTER.
+    type: string
+    default: file
+  - name: otel.profiling.endpoint
+    description: Datakit profiling upload endpoint. Environment variable: OTEL_PROFILING_ENDPOINT.
+    type: string
+    default: http://localhost:9529/profiling/v1/input
+  - name: otel.profiling.sample-interval
+    description: Sampling interval for the primary event. Environment variable: OTEL_PROFILING_SAMPLE_INTERVAL.
+    type: string
+  - name: otel.profiling.export-interval
+    description: Rotation interval. Zero means export only on shutdown. Environment variable: OTEL_PROFILING_EXPORT_INTERVAL.
+    type: string
+    default: 60s
+  - name: otel.profiling.max-frames
+    description: Max stack depth forwarded as async-profiler jstackdepth. Environment variable: OTEL_PROFILING_MAX_FRAMES.
+    type: int
+  - name: otel.profiling.exception.enabled
+    description: Enables JFR exception events. Only supported for JFR output. Environment variable: OTEL_PROFILING_EXCEPTION_ENABLED.
+    type: boolean
+    default: false
+  - name: otel.profiling.exception.sampling-interval
+    description: Exception event threshold mapped to JFR threshold. Environment variable: OTEL_PROFILING_EXCEPTION_SAMPLING_INTERVAL.
+    type: string
+  - name: otel.profiling.exception.collect-message
+    description: Currently ignored because JFR exception events always include the message. Environment variable: OTEL_PROFILING_EXCEPTION_COLLECT_MESSAGE.
+    type: boolean
+    default: true
+  - name: otel.profiling.lock.enabled
+    description: Enables lock profiling. For non-JFR output it switches the primary event to lock. Environment variable: OTEL_PROFILING_LOCK_ENABLED.
+    type: boolean
+    default: true
+  - name: otel.profiling.memory.enabled
+    description: Enables continuous memory profiling. For JFR output it captures allocation events for each export interval. For non-JFR output it switches the primary event to alloc. Environment variable: OTEL_PROFILING_MEMORY_ENABLED.
+    type: boolean
+    default: true
+  - name: otel.profiling.memory.interval
+    description: Allocation sampling interval such as 128k. Environment variable: OTEL_PROFILING_MEMORY_INTERVAL.
+    type: string
+  - name: otel.profiling.memory.top-stats
+    description: For JFR output, values greater than zero additionally enable profiler.LiveObject events as a supplemental live-object view. Ignored for non-JFR output. Environment variable: OTEL_PROFILING_MEMORY_TOP_STATS.
+    type: int
+    default: 0
+  - name: otel.profiling.pprof.path
+    description: Output file for pprof compatibility mode. Environment variable: OTEL_PROFILING_PPROF_PATH.
+    type: string
+    default: ${java.io.tmpdir}/opentelemetry/profiles/profile-%p.pprof
+  - name: otel.profiling.pprof.upload-url
+    description: Upload URL for pprof compatibility mode. Environment variable: OTEL_PROFILING_PPROF_UPLOAD_URL.
+    type: string
+  - name: otel.profiling.pprof.headers
+    description: Comma-separated request headers for pprof compatibility mode. Environment variable: OTEL_PROFILING_PPROF_HEADERS.
+    type: string
+  - name: otel.profiling.async.event
+    description: Async-profiler event, such as cpu, wall, or alloc. Environment variable: OTEL_PROFILING_ASYNC_EVENT.
+    type: string
+    default: cpu
+  - name: otel.profiling.async.startup-delay
+    description: Delay before profiling starts. Environment variable: OTEL_PROFILING_ASYNC_STARTUP_DELAY.
+    type: string
+    default: 0s
+  - name: otel.profiling.async.output
+    description: Output JFR file pattern. Environment variable: OTEL_PROFILING_ASYNC_OUTPUT.
+    type: string
+    default: ${java.io.tmpdir}/opentelemetry/profiles/profile-%p.jfr
+  - name: otel.profiling.async.temp-dir
+    description: Temporary directory used to extract the native library. Environment variable: OTEL_PROFILING_ASYNC_TEMP_DIR.
+    type: string
+    default: ${java.io.tmpdir}/opentelemetry/async-profiler
+  - name: otel.exporter.otlp.profiles.protocol
+    description: OTLP profiles protocol. Only http/protobuf is supported. Environment variable: OTEL_EXPORTER_OTLP_PROFILES_PROTOCOL.
+    type: string
+    default: http/protobuf
+  - name: otel.exporter.otlp.profiles.endpoint
+    description: OTLP profiles endpoint. Environment variable: OTEL_EXPORTER_OTLP_PROFILES_ENDPOINT.
+    type: string
+    default: http://localhost:4318/v1/profiles
+  - name: otel.exporter.otlp.profiles.headers
+    description: Comma-separated OTLP profiles headers. Environment variable: OTEL_EXPORTER_OTLP_PROFILES_HEADERS.
+    type: string
