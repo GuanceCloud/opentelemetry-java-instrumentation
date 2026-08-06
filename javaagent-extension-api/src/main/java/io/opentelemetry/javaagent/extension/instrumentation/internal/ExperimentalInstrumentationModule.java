@@ -8,10 +8,9 @@ package io.opentelemetry.javaagent.extension.instrumentation.internal;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
-import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.ClassInjector;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import net.bytebuddy.utility.JavaModule;
 
 /**
@@ -21,36 +20,10 @@ import net.bytebuddy.utility.JavaModule;
 public interface ExperimentalInstrumentationModule {
 
   /**
-   * Only functional for Modules where {@link InstrumentationModule#isIndyModule()} returns {@code
-   * true}.
-   *
-   * <p>Normally, helper and advice classes are loaded in a child classloader of the instrumented
-   * classloader. This method allows to inject classes directly into the instrumented classloader
-   * instead.
-   *
-   * @param injector the builder for injecting classes
+   * Register virtual field. First argument for the consumer is dot class name of the type where the
+   * field is added and the second argument is the dot class name of the field type.
    */
-  default void injectClasses(ClassInjector injector) {}
-
-  /**
-   * Returns a list of helper classes that will be defined in the class loader of the instrumented
-   * library.
-   */
-  default List<String> injectedClassNames() {
-    return emptyList();
-  }
-
-  /**
-   * By default every InstrumentationModule is loaded by an isolated classloader, even if multiple
-   * modules instrument the same application classloader.
-   *
-   * <p>Sometimes this is not desired, e.g. when instrumenting modular libraries such as the AWS
-   * SDK. In such cases the {@link InstrumentationModule}s which want to share a classloader can
-   * return the same group name from this method.
-   */
-  default String getModuleGroup() {
-    return getClass().getName();
-  }
+  default void registerVirtualFields(BiConsumer<String, String> virtualFieldRegistrar) {}
 
   /**
    * Some instrumentations need to invoke classes which are present both in the agent classloader
@@ -77,12 +50,32 @@ public interface ExperimentalInstrumentationModule {
   }
 
   /**
-   * Signals that the advice in this module is ready to be used with indy instrumentation and the
-   * automatic advice conversion doesn't need to be applied.
-   *
-   * @return true if module is ready to be used with indy instrumentation.
+   * Allows instrumentation modules to choose whether the helper classes should be injected into the
+   * same class loader as the instrumented library, or into an isolated class loader.
    */
-  default boolean isIndyReady() {
-    return false;
+  default HelperClassStrategy helperClassStrategy() {
+    return HelperClassStrategy.DEFAULT;
+  }
+
+  /**
+   * This class is internal and is hence not for public use. Its APIs are unstable and can change at
+   * any time.
+   */
+  enum HelperClassStrategy {
+    /**
+     * Depending on whether the instrumentation uses inline advice or not, helper classes are either
+     * loaded in the same classloader as the instrumented library, or into an isolated classloader.
+     */
+    DEFAULT,
+    /**
+     * Helper classes are loaded in the same classloader as the instrumented library, and are
+     * visible to the application.
+     */
+    INJECTED,
+    /**
+     * Helper classes are loaded into an isolated classloader, and aren't visible to the
+     * application.
+     */
+    ISOLATED
   }
 }

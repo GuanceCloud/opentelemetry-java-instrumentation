@@ -7,7 +7,11 @@ package io.opentelemetry.javaagent.instrumentation.azurecore.v1_53;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
+import static io.opentelemetry.semconv.HttpAttributes.HTTP_REQUEST_METHOD;
 import static io.opentelemetry.semconv.HttpAttributes.HTTP_RESPONSE_STATUS_CODE;
+import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
+import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
+import static io.opentelemetry.semconv.UrlAttributes.URL_FULL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.azure.core.annotation.ExpectedResponses;
@@ -28,6 +32,8 @@ import com.azure.core.util.LibraryTelemetryOptions;
 import com.azure.core.util.TracingOptions;
 import com.azure.core.util.tracing.Tracer;
 import com.azure.core.util.tracing.TracerProvider;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.api.internal.SpanKey;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
@@ -75,6 +81,32 @@ class AzureSdkTest {
   }
 
   @Test
+  void testExplicitParentContextBridge() {
+    // Azure's bundled OpenTelemetryTracer expects the value stored under
+    // Tracer.PARENT_TRACE_CONTEXT_KEY to be the agent (shaded) Context.
+    // This test verifies our Context#getData instrumentation bridges an explicitly supplied
+    // application io.opentelemetry.context.Context into an agent io.opentelemetry.context.Context.
+    // The parent span is never made current, so correct parenting requires this bridge.
+    Tracer azTracer = createAzTracer();
+
+    Span parentSpan = GlobalOpenTelemetry.getTracer("test").spanBuilder("parent").startSpan();
+    // application (unshaded) context carrying the parent span, NOT made current
+    io.opentelemetry.context.Context parentContext =
+        io.opentelemetry.context.Context.root().with(parentSpan);
+
+    Context azContext = new Context(Tracer.PARENT_TRACE_CONTEXT_KEY, parentContext);
+    Context child = azTracer.start("child", azContext);
+    azTracer.end(null, null, child);
+    parentSpan.end();
+
+    testing.waitAndAssertTracesWithoutScopeVersionVerification(
+        trace ->
+            trace.hasSpansSatisfyingExactly(
+                span -> span.hasName("parent").hasNoParent(),
+                span -> span.hasName("child").hasParent(trace.getSpan(0))));
+  }
+
+  @Test
   void testPipelineAndSuppression() {
     AtomicBoolean hasClientAndHttpKeys = new AtomicBoolean(false);
 
@@ -105,7 +137,12 @@ class AzureSdkTest {
                     span.hasKind(SpanKind.CLIENT)
                         .hasName("GET")
                         .hasStatus(StatusData.unset())
-                        .hasAttribute(HTTP_RESPONSE_STATUS_CODE, 200L)));
+                        .hasAttributesSatisfyingExactly(
+                            equalTo(HTTP_REQUEST_METHOD, "GET"),
+                            equalTo(HTTP_RESPONSE_STATUS_CODE, 200L),
+                            equalTo(SERVER_ADDRESS, "azure.com"),
+                            equalTo(SERVER_PORT, 443),
+                            equalTo(URL_FULL, "https://azure.com/path"))));
   }
 
   @Test

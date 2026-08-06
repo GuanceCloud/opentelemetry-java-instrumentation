@@ -9,7 +9,7 @@ import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.
 import static net.bytebuddy.matcher.ElementMatchers.none;
 
 import com.google.auto.service.AutoService;
-import io.opentelemetry.instrumentation.awssdk.v2_2.internal.SnsAdviceBridge;
+import io.opentelemetry.instrumentation.awssdk.v2_2.internal.SnsImpl;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -24,6 +24,8 @@ public class SnsInstrumentationModule extends AbstractAwsSdkInstrumentationModul
 
   @Override
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
+    // this instrumentation module targets software.amazon.awssdk:sns
+    // added in 2.2.0
     return hasClassesNamed("software.amazon.awssdk.services.sns.SnsClient");
   }
 
@@ -34,11 +36,12 @@ public class SnsInstrumentationModule extends AbstractAwsSdkInstrumentationModul
 
   @SuppressWarnings("unused")
   public static class RegisterAdvice {
-    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
+    @Advice.OnMethodExit(inline = false)
     public static void onExit() {
-      // (indirectly) using SnsImpl class here to make sure it is available from SnsAccess
+      // using SnsImpl class here to make sure it is available from SnsAccess
       // (injected into app classloader) and checked by Muzzle
-      SnsAdviceBridge.referenceForMuzzleOnly();
+      throw new UnsupportedOperationException(
+          SnsImpl.class.getName() + " referencing for muzzle, should never be actually called");
     }
   }
 }

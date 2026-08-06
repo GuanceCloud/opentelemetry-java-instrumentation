@@ -8,12 +8,12 @@ package io.opentelemetry.instrumentation.spring.autoconfigure.internal.instrumen
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.incubator.config.DeclarativeConfigProperties;
+import io.opentelemetry.instrumentation.api.incubator.config.internal.DbConfig;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.DeclarativeConfigUtil;
 import io.opentelemetry.instrumentation.jdbc.datasource.JdbcTelemetry;
 import io.opentelemetry.instrumentation.jdbc.datasource.JdbcTelemetryBuilder;
 import io.opentelemetry.instrumentation.jdbc.datasource.internal.Experimental;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcInstrumenterFactory;
-import io.opentelemetry.instrumentation.spring.autoconfigure.internal.properties.InstrumentationConfigUtil;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -65,7 +65,7 @@ final class DataSourcePostProcessor implements BeanPostProcessor, Ordered {
       JdbcTelemetryBuilder builder =
           JdbcTelemetry.builder(openTelemetry)
               .setQuerySanitizationEnabled(
-                  InstrumentationConfigUtil.isQuerySanitizationEnabled(openTelemetry, "jdbc"))
+                  DbConfig.isQuerySanitizationEnabled(openTelemetry, "jdbc"))
               .setCaptureQueryParameters(
                   JdbcInstrumenterFactory.captureQueryParameters(openTelemetry))
               .setTransactionInstrumenterEnabled(

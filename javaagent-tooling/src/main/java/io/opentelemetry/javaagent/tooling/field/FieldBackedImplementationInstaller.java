@@ -6,7 +6,6 @@
 package io.opentelemetry.javaagent.tooling.field;
 
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasSuperType;
-import static io.opentelemetry.javaagent.tooling.field.FieldBackedImplementationConfiguration.fieldInjectionEnabled;
 import static io.opentelemetry.javaagent.tooling.field.GeneratedVirtualFieldNames.getFieldAccessorInterfaceName;
 import static java.util.logging.Level.FINEST;
 import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
@@ -28,6 +27,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.AsmVisitorWrapper;
@@ -73,13 +73,12 @@ final class FieldBackedImplementationInstaller implements VirtualFieldImplementa
   private final VirtualFieldImplementations virtualFieldImplementations;
   private final AgentBuilder.Transformer virtualFieldImplementationsInjector;
 
-  private final Instrumentation instrumentation;
+  @Nullable private final Instrumentation instrumentation;
 
   public FieldBackedImplementationInstaller(
       Class<?> instrumenterClass, VirtualFieldMappings virtualFieldMappings) {
     this.instrumenterClass = instrumenterClass;
     this.virtualFieldMappings = virtualFieldMappings;
-    // This class is used only when running with javaagent, thus this calls is safe
     this.instrumentation = InstrumentationHolder.getInstrumentation();
 
     ByteBuddy byteBuddy = new ByteBuddy();
@@ -154,13 +153,14 @@ final class FieldBackedImplementationInstaller implements VirtualFieldImplementa
           ClassLoader classLoader,
           JavaModule javaModule,
           ProtectionDomain protectionDomain) {
-        return injector.transform(
+        injector.transform(
             builder,
             typeDescription,
             // virtual field implementation classes will always go to the bootstrap
             null,
             javaModule,
             protectionDomain);
+        return builder;
       }
     };
   }
@@ -176,7 +176,7 @@ final class FieldBackedImplementationInstaller implements VirtualFieldImplementa
   public AgentBuilder.Identified.Extendable injectFields(
       AgentBuilder.Identified.Extendable builder) {
 
-    if (fieldInjectionEnabled) {
+    if (FieldBackedImplementationConfiguration.isFieldInjectionEnabled()) {
       for (Map.Entry<String, String> entry : virtualFieldMappings.entrySet()) {
         /*
          * For each virtual field defined in a current instrumentation we create an agent builder

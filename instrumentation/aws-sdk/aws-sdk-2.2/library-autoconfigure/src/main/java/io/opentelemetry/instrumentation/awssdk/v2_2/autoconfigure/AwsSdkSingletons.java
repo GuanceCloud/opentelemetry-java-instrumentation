@@ -8,11 +8,12 @@ package io.opentelemetry.instrumentation.awssdk.v2_2.autoconfigure;
 import io.opentelemetry.instrumentation.awssdk.v2_2.AwsSdkTelemetry;
 import io.opentelemetry.instrumentation.awssdk.v2_2.internal.AwsSdkTelemetryFactory;
 
-public final class AwsSdkSingletons {
+final class AwsSdkSingletons {
 
-  private static final AwsSdkTelemetry telemetry = AwsSdkTelemetryFactory.legacyLibraryTelemetry();
+  private static final AwsSdkTelemetry telemetry =
+      AwsSdkTelemetryFactory.telemetryForAutoconfigureModule();
 
-  public static AwsSdkTelemetry telemetry() {
+  static AwsSdkTelemetry telemetry() {
     return telemetry;
   }
 

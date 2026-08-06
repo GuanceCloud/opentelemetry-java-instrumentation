@@ -16,6 +16,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
@@ -25,12 +26,17 @@ class ClassLoaderMap {
   private static final Map<Object, Object> bootLoaderData = new ConcurrentHashMap<>();
   private static final HelperInjector helperInjector =
       HelperInjector.forDynamicTypes(ClassLoaderMap.class.getSimpleName(), emptyList(), null);
-  static Injector defaultInjector =
+  private static final Injector defaultInjector =
       (classLoader, className, bytes) -> {
         helperInjector.injectHelperClasses(classLoader, singletonMap(className, () -> bytes));
         return Class.forName(className, false, classLoader);
       };
 
+  static Injector defaultInjector() {
+    return defaultInjector;
+  }
+
+  @Nullable
   public static Object get(ClassLoader classLoader, Injector classInjector, Object key) {
     return getClassLoaderData(classLoader, classInjector, false).get(key);
   }

@@ -5,10 +5,10 @@
 
 package io.opentelemetry.instrumentation.api.incubator.semconv.db;
 
-import static io.opentelemetry.instrumentation.api.incubator.semconv.db.SqlDialect.DOUBLE_QUOTES_ARE_STRING_LITERALS;
 import static io.opentelemetry.instrumentation.api.internal.SupportabilityMetrics.CounterNames.SQL_SANITIZER_CACHE_MISS;
 
 import com.google.auto.value.AutoValue;
+import io.opentelemetry.instrumentation.api.internal.SemconvStability;
 import io.opentelemetry.instrumentation.api.internal.SupportabilityMetrics;
 import io.opentelemetry.instrumentation.api.internal.cache.Cache;
 import javax.annotation.Nullable;
@@ -34,15 +34,10 @@ public final class SqlQueryAnalyzer {
     this.querySanitizationEnabled = querySanitizationEnabled;
   }
 
-  /**
-   * @deprecated Use {@link #analyze(String, SqlDialect)} and pass an explicit dialect.
-   */
-  @Deprecated
-  public SqlQuery analyze(@Nullable String query) {
-    return analyze(query, DOUBLE_QUOTES_ARE_STRING_LITERALS);
-  }
-
   public SqlQuery analyze(@Nullable String query, SqlDialect dialect) {
+    if (SemconvStability.v3Preview()) {
+      return analyzeWithSummary(query, dialect);
+    }
     if (!querySanitizationEnabled || query == null) {
       return SqlQuery.create(query, null, null);
     }
@@ -61,17 +56,7 @@ public final class SqlQueryAnalyzer {
     return AutoSqlSanitizer.sanitize(query, dialect);
   }
 
-  /**
-   * Analyze and extract query summary.
-   *
-   * @deprecated Use {@link #analyzeWithSummary(String, SqlDialect)} and pass an explicit dialect.
-   */
-  @Deprecated
-  public SqlQuery analyzeWithSummary(@Nullable String query) {
-    return analyzeWithSummary(query, DOUBLE_QUOTES_ARE_STRING_LITERALS);
-  }
-
-  /** Analyze and extract query summary. */
+  // To be removed in 3.0 (or rather, inlined into analyze() above)
   public SqlQuery analyzeWithSummary(@Nullable String query, SqlDialect dialect) {
     if (!querySanitizationEnabled || query == null) {
       return SqlQuery.createWithSummary(query, null, null);

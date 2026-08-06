@@ -2,7 +2,7 @@ plugins {
   id("otel.javaagent-testing")
 }
 
-val testServer by configurations.creating
+val testServer = configurations.create("testServer")
 
 dependencies {
   testImplementation("javax:javaee-api:7.0")
@@ -12,7 +12,7 @@ dependencies {
 
   testInstrumentation(project(":instrumentation:servlet:servlet-3.0:javaagent"))
   testInstrumentation(project(":instrumentation:jaxws:jaxws-2.0:javaagent"))
-  testInstrumentation(project(":instrumentation:jaxws:jaxws-cxf-3.0:javaagent"))
+  testInstrumentation(project(":instrumentation:jaxws:jaxws-2.0-cxf-3.0:javaagent"))
   testInstrumentation(project(":instrumentation:jaxws:jaxws-jws-api-1.1:javaagent"))
 
   // wildfly version used to run tests
@@ -26,7 +26,7 @@ otelJava {
 
 tasks {
   // extract wildfly dist, path is used from arquillian.xml
-  val setupServer by registering(Copy::class) {
+  val setupServer = register<Copy>("setupServer") {
     inputs.files(testServer)
     from({
       zipTree(testServer.singleFile)
@@ -37,7 +37,7 @@ tasks {
   // logback-classic contains /META-INF/services/javax.servlet.ServletContainerInitializer
   // that breaks deploy on embedded wildfly
   // create a copy of logback-classic jar that does not have this file
-  val modifyLogbackJar by registering(Jar::class) {
+  val modifyLogbackJar = register<Jar>("modifyLogbackJar") {
     destinationDirectory.set(layout.buildDirectory.dir("tmp"))
     archiveFileName.set("logback-classic-modified.jar")
     exclude("/META-INF/services/javax.servlet.ServletContainerInitializer")
@@ -54,6 +54,10 @@ tasks {
 
     // needed for java 11 to avoid org.jboss.modules.ModuleNotFoundException: java.se
     jvmArgs("--add-modules=java.se")
+    // required on jdk17
+    jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
+    jvmArgs("-XX:+IgnoreUnrecognizedVMOptions")
+    jvmArgs("-Dotel.instrumentation.common.experimental.controller-telemetry.enabled=true")
     // add offset to default port values
     jvmArgs("-Djboss.socket.binding.port-offset=200")
 
@@ -62,11 +66,4 @@ tasks {
       !it.absolutePath.contains("logback-classic")
     }.plus(files(layout.buildDirectory.file("tmp/logback-classic-modified.jar")))
   }
-}
-
-tasks.withType<Test>().configureEach {
-  // required on jdk17
-  jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
-  jvmArgs("-XX:+IgnoreUnrecognizedVMOptions")
-  jvmArgs("-Dotel.instrumentation.common.experimental.controller-telemetry.enabled=true")
 }

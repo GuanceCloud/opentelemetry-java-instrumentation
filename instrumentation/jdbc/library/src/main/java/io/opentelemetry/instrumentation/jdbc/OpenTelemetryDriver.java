@@ -24,10 +24,12 @@ import static io.opentelemetry.instrumentation.jdbc.internal.JdbcInstrumenterFac
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.DbConfig;
+import io.opentelemetry.instrumentation.api.incubator.config.internal.DeclarativeConfigUtil;
 import io.opentelemetry.instrumentation.api.incubator.semconv.db.internal.SqlCommenter;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
-import io.opentelemetry.instrumentation.api.internal.ConfigPropertiesUtil;
 import io.opentelemetry.instrumentation.api.internal.EmbeddedInstrumentationProperties;
+import io.opentelemetry.instrumentation.api.internal.SemconvStability;
+import io.opentelemetry.instrumentation.api.internal.SystemProperty;
 import io.opentelemetry.instrumentation.jdbc.internal.DbRequest;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcConnectionUrlParser;
 import io.opentelemetry.instrumentation.jdbc.internal.JdbcInstrumenterFactory;
@@ -52,53 +54,52 @@ import javax.annotation.Nullable;
 /** JDBC driver for OpenTelemetry. */
 public final class OpenTelemetryDriver implements Driver {
 
-  private static final Logger logger = Logger.getLogger(OpenTelemetryDriver.class.getName());
+  private static final int MAJOR_VERSION;
+  private static final int MINOR_VERSION;
+
+  private static final String URL_PREFIX = "jdbc:otel:";
+  private static final AtomicBoolean registered = new AtomicBoolean();
+  private static final List<Driver> driverCandidates = new CopyOnWriteArrayList<>();
 
   // visible for testing
   static final OpenTelemetryDriver INSTANCE = new OpenTelemetryDriver();
 
   private volatile OpenTelemetry openTelemetry = OpenTelemetry.noop();
 
-  private static final int MAJOR_VERSION;
-  private static final int MINOR_VERSION;
+  private static boolean captureQueryParameters(OpenTelemetry openTelemetry) {
+    return JdbcInstrumenterFactory.captureQueryParameters(openTelemetry);
+  }
 
-  private static final String URL_PREFIX = "jdbc:otel:";
-  private static final AtomicBoolean REGISTERED = new AtomicBoolean();
-  private static final AtomicBoolean warnedDeprecatedCommonSqlCommenterProperty =
-      new AtomicBoolean();
-  private static final List<Driver> DRIVER_CANDIDATES = new CopyOnWriteArrayList<>();
+  private static boolean querySanitizationEnabled(OpenTelemetry openTelemetry) {
+    return DbConfig.isCommonQuerySanitizationEnabled(
+        openTelemetry,
+        SystemProperty.getBoolean(
+            "otel.instrumentation.common.db.query-sanitization.enabled",
+            SemconvStability.v3Preview()
+                ? true
+                : SystemProperty.getBoolean(
+                    "otel.instrumentation.common.db-statement-sanitizer.enabled", true)));
+  }
 
-  @SuppressWarnings("deprecation") // library flat config fallback remains supported until 3.0
+  private static boolean transactionEnabled(OpenTelemetry openTelemetry) {
+    return DeclarativeConfigUtil.getInstrumentationConfig(openTelemetry, "jdbc")
+        .get("transaction/development")
+        .getBoolean(
+            "enabled",
+            SystemProperty.getBoolean(
+                "otel.instrumentation.jdbc.experimental.transaction.enabled", false));
+  }
+
   private static SqlCommenter getSqlCommenter(OpenTelemetry openTelemetry) {
-    Boolean deprecatedCommonSqlCommenterEnabled = getDeprecatedCommonSqlCommenterEnabled();
     boolean enabled =
         DbConfig.isSqlCommenterEnabled(
             openTelemetry,
             "jdbc",
-            ConfigPropertiesUtil.getBoolean(
+            SystemProperty.getBoolean(
                 "otel.instrumentation.jdbc.experimental.sqlcommenter.enabled",
-                ConfigPropertiesUtil.getBoolean(
-                    "otel.instrumentation.common.db.experimental.sqlcommenter.enabled",
-                    deprecatedCommonSqlCommenterEnabled != null
-                        ? deprecatedCommonSqlCommenterEnabled
-                        : false)));
+                SystemProperty.getBoolean(
+                    "otel.instrumentation.common.db.experimental.sqlcommenter.enabled", false)));
     return SqlCommenter.builder().setEnabled(enabled).build();
-  }
-
-  @Nullable
-  @SuppressWarnings("deprecation") // library flat config fallback remains supported until 3.0
-  private static Boolean getDeprecatedCommonSqlCommenterEnabled() {
-    Boolean deprecatedValue =
-        ConfigPropertiesUtil.getBoolean(
-            "otel.instrumentation.common.experimental.db-sqlcommenter.enabled");
-    if (deprecatedValue != null
-        && warnedDeprecatedCommonSqlCommenterProperty.compareAndSet(false, true)) {
-      logger.warning(
-          "The otel.instrumentation.common.experimental.db-sqlcommenter.enabled system property"
-              + " is deprecated and will be removed in a future version. Use"
-              + " otel.instrumentation.common.db.experimental.sqlcommenter.enabled instead.");
-    }
-    return deprecatedValue;
   }
 
   static {
@@ -122,7 +123,7 @@ public final class OpenTelemetryDriver implements Driver {
    * @throws SQLException if registering the driver fails
    */
   public static void register() throws SQLException {
-    if (!REGISTERED.compareAndSet(false, true)) {
+    if (!registered.compareAndSet(false, true)) {
       throw new IllegalStateException(
           "Driver is already registered. It can only be registered once.");
     }
@@ -138,7 +139,7 @@ public final class OpenTelemetryDriver implements Driver {
    * @throws SQLException if deregistering the driver fails
    */
   public static void deregister() throws SQLException {
-    if (!REGISTERED.compareAndSet(true, false)) {
+    if (!registered.compareAndSet(true, false)) {
       throw new IllegalStateException(
           "Driver is not registered (or it has not been registered using Driver.register() method)");
     }
@@ -147,7 +148,7 @@ public final class OpenTelemetryDriver implements Driver {
 
   /** Returns {@code true} if the driver is registered against {@link DriverManager}. */
   public static boolean isRegistered() {
-    return REGISTERED.get();
+    return registered.get();
   }
 
   /**
@@ -161,7 +162,7 @@ public final class OpenTelemetryDriver implements Driver {
    */
   public static void addDriverCandidate(@Nullable Driver driver) {
     if (driver != null) {
-      DRIVER_CANDIDATES.add(driver);
+      driverCandidates.add(driver);
     }
   }
 
@@ -172,17 +173,17 @@ public final class OpenTelemetryDriver implements Driver {
    * @return true if the driver was unregistered
    */
   public static boolean removeDriverCandidate(Driver driver) {
-    return DRIVER_CANDIDATES.remove(driver);
+    return driverCandidates.remove(driver);
   }
 
   /**
-   * Find driver that accepts {@code realUrl}. Drivers registered against {@link #DRIVER_CANDIDATES}
+   * Find driver that accepts {@code realUrl}. Drivers registered against {@link #driverCandidates}
    * are preferred over {@link DriverManager} drivers.
    */
   static Driver findDriver(String realUrl) {
     Driver driver = null;
-    if (!DRIVER_CANDIDATES.isEmpty()) {
-      driver = findDriver(realUrl, DRIVER_CANDIDATES);
+    if (!driverCandidates.isEmpty()) {
+      driver = findDriver(realUrl, driverCandidates);
     }
     if (driver == null) {
       driver = findDriver(realUrl, Collections.list(DriverManager.getDrivers()));
@@ -264,7 +265,7 @@ public final class OpenTelemetryDriver implements Driver {
 
   @Nullable
   @Override
-  public Connection connect(String url, Properties info) throws SQLException {
+  public Connection connect(@Nullable String url, @Nullable Properties info) throws SQLException {
     if (url == null || url.trim().isEmpty()) {
       throw new IllegalArgumentException("url is required");
     }
@@ -282,12 +283,13 @@ public final class OpenTelemetryDriver implements Driver {
 
     DbInfo dbInfo = JdbcConnectionUrlParser.parse(realUrl, info);
 
+    boolean captureQueryParameters = captureQueryParameters(openTelemetry);
     Instrumenter<DbRequest, Void> statementInstrumenter =
-        JdbcInstrumenterFactory.createStatementInstrumenter(openTelemetry);
-
-    boolean captureQueryParameters = JdbcInstrumenterFactory.captureQueryParameters(openTelemetry);
+        JdbcInstrumenterFactory.createStatementInstrumenter(
+            openTelemetry, true, querySanitizationEnabled(openTelemetry), captureQueryParameters);
     Instrumenter<DbRequest, Void> transactionInstrumenter =
-        JdbcInstrumenterFactory.createTransactionInstrumenter(openTelemetry);
+        JdbcInstrumenterFactory.createTransactionInstrumenter(
+            openTelemetry, transactionEnabled(openTelemetry));
 
     return OpenTelemetryConnection.create(
         connection,
@@ -299,7 +301,7 @@ public final class OpenTelemetryDriver implements Driver {
   }
 
   @Override
-  public boolean acceptsURL(String url) {
+  public boolean acceptsURL(@Nullable String url) {
     if (url == null) {
       return false;
     }
@@ -307,7 +309,8 @@ public final class OpenTelemetryDriver implements Driver {
   }
 
   @Override
-  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+  public DriverPropertyInfo[] getPropertyInfo(@Nullable String url, @Nullable Properties info)
+      throws SQLException {
     if (url == null || url.trim().isEmpty()) {
       throw new IllegalArgumentException("url is required");
     }

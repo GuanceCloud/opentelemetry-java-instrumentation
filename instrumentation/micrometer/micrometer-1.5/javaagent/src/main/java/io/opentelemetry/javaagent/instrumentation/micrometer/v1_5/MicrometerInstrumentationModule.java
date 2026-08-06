@@ -7,19 +7,16 @@ package io.opentelemetry.javaagent.instrumentation.micrometer.v1_5;
 
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.ClassInjector;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.InjectionMode;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class MicrometerInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class MicrometerInstrumentationModule extends InstrumentationModule {
 
   public MicrometerInstrumentationModule() {
     super("micrometer", "micrometer-1.5");
@@ -43,11 +40,9 @@ public class MicrometerInstrumentationModule extends InstrumentationModule
   }
 
   @Override
-  public void injectClasses(ClassInjector injector) {
+  public List<String> exposedClassNames() {
     // we use asm to call a method in MicrometerSingletons
-    injector
-        .proxyBuilder(
-            "io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons")
-        .inject(InjectionMode.CLASS_ONLY);
+    return singletonList(
+        "io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons");
   }
 }

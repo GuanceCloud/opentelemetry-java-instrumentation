@@ -21,13 +21,14 @@ dependencies {
   testImplementation(project(":instrumentation:rxjava:rxjava-common-3.0:testing"))
 
   testInstrumentation(project(":instrumentation:opentelemetry-extension-annotations-1.0:javaagent"))
+  testInstrumentation(project(":instrumentation:rxjava:rxjava-2.0:javaagent"))
   testInstrumentation(project(":instrumentation:rxjava:rxjava-3.1.1:javaagent"))
 
   latestDepTestLibrary("io.reactivex.rxjava3:rxjava:3.1.0") // see rxjava-3.1.1 module
 }
 
 tasks {
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 

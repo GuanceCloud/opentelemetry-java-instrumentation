@@ -1,0 +1,34 @@
+name: Comment on test-* label
+
+# Posts a notice when a `test openj9` / `test windows` label is added,
+# explaining that `build-pull-request.yml` doesn't retrigger on `labeled`
+# events (see the design notes at the top of that file for the rationale).
+# This is conditional because labels can also be present when the PR is first
+# opened, in which case the initial build should already see them.
+#
+# Why `pull_request_target` is safe here: this workflow does NOT check out
+# or execute any PR code. Its only step is `gh pr comment`. Fork PRs
+# therefore can't influence what runs, so the secrets that
+# `pull_request_target` would normally expose are not reachable.
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [labeled]
+
+permissions:
+  pull-requests: write # zizmor: ignore[excessive-permissions]
+
+jobs:
+  comment:
+    if: |
+      github.event.label.name == 'test openj9' ||
+      github.event.label.name == 'test windows'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post explanatory comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LABEL: ${{ github.event.label.name }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "The \`$LABEL\` label is present on this PR. If it was added after the PR's current build started, that build will not pick it up because test-* labels are only read when the build naturally runs (PR opened / synchronize / reopened). Push another commit or close and reopen the PR to run with this label."

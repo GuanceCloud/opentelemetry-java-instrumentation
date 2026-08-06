@@ -73,102 +73,83 @@ configurations.configureEach {
 
 testing {
   suites {
-    val slf4j2ApiTest by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("slf4j2ApiTest") {
       dependencies {
         implementation(project(":instrumentation:logback:logback-appender-1.0:library"))
         implementation("io.opentelemetry:opentelemetry-sdk-testing")
 
-        if (otelProps.testLatestDeps) {
-          implementation("ch.qos.logback:logback-classic:latest.release")
-          implementation("org.slf4j:slf4j-api:latest.release")
-        } else {
-          implementation("ch.qos.logback:logback-classic") {
-            version {
-              strictly("1.3.0")
-            }
+        implementation("ch.qos.logback:logback-classic") {
+          version {
+            strictly(baseVersion("1.3.0").orLatest())
           }
-          implementation("org.slf4j:slf4j-api") {
-            version {
-              strictly("2.0.0")
-            }
+        }
+        implementation("org.slf4j:slf4j-api") {
+          version {
+            strictly(baseVersion("2.0.0").orLatest())
           }
         }
       }
     }
 
-    val logstashMarkerTest by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("logstashMarkerTest") {
       dependencies {
         implementation(project(":instrumentation:logback:logback-appender-1.0:library"))
         implementation("io.opentelemetry:opentelemetry-sdk-testing")
 
-        if (otelProps.testLatestDeps) {
-          implementation("ch.qos.logback:logback-classic:latest.release")
-          implementation("org.slf4j:slf4j-api:latest.release")
-          implementation("net.logstash.logback:logstash-logback-encoder:latest.release")
-        } else {
-          implementation("ch.qos.logback:logback-classic") {
-            version {
-              strictly("1.3.0")
-            }
+        implementation("ch.qos.logback:logback-classic") {
+          version {
+            strictly(baseVersion("1.3.0").orLatest())
           }
-          implementation("org.slf4j:slf4j-api") {
-            version {
-              strictly("2.0.0")
-            }
+        }
+        implementation("org.slf4j:slf4j-api") {
+          version {
+            strictly(baseVersion("2.0.0").orLatest())
           }
-          implementation("net.logstash.logback:logstash-logback-encoder") {
-            version {
-              strictly("3.0")
-            }
+        }
+        implementation("net.logstash.logback:logstash-logback-encoder") {
+          version {
+            strictly(baseVersion("3.0").orLatest())
           }
         }
       }
     }
 
-    val logstashStructuredArgsTest by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("logstashStructuredArgsTest") {
       dependencies {
         implementation(project(":instrumentation:logback:logback-appender-1.0:library"))
         implementation("io.opentelemetry:opentelemetry-sdk-testing")
 
-        if (otelProps.testLatestDeps) {
-          implementation("ch.qos.logback:logback-classic:latest.release")
-          implementation("org.slf4j:slf4j-api:latest.release")
-          implementation("net.logstash.logback:logstash-logback-encoder:latest.release")
-        } else {
-          implementation("ch.qos.logback:logback-classic") {
-            version {
-              strictly("1.3.0")
-            }
+        implementation("ch.qos.logback:logback-classic") {
+          version {
+            strictly(baseVersion("1.3.0").orLatest())
           }
-          implementation("org.slf4j:slf4j-api") {
-            version {
-              strictly("2.0.0")
-            }
+        }
+        implementation("org.slf4j:slf4j-api") {
+          version {
+            strictly(baseVersion("2.0.0").orLatest())
           }
-          implementation("net.logstash.logback:logstash-logback-encoder") {
-            version {
-              strictly("6.6")
-            }
+        }
+        implementation("net.logstash.logback:logstash-logback-encoder") {
+          version {
+            strictly(baseVersion("6.6").orLatest())
           }
         }
       }
     }
 
-    val asyncAppenderTest by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("asyncAppenderTest") {
       dependencies {
         implementation(project(":instrumentation:logback:logback-appender-1.0:library"))
         implementation("io.opentelemetry:opentelemetry-sdk-testing")
 
-        if (otelProps.testLatestDeps) {
-          implementation("ch.qos.logback:logback-classic:latest.release")
-        } else {
-          implementation("ch.qos.logback:logback-classic") {
-            version {
-              // 1.0.4 is the first version that has ch.qos.logback.classic.AsyncAppender
-              // we are using 1.0.7 because of https://jira.qos.ch/browse/LOGBACK-720
-              strictly("1.0.7")
-            }
+        implementation("ch.qos.logback:logback-classic") {
+          version {
+            // 1.0.4 is the first version that has ch.qos.logback.classic.AsyncAppender
+            // we are using 1.0.7 because of https://jira.qos.ch/browse/LOGBACK-720
+            strictly(baseVersion("1.0.7").orLatest())
           }
+        }
+        if (!otelProps.testLatestDeps) {
           implementation("org.slf4j:slf4j-api") {
             version {
               strictly("1.6.4")
@@ -182,13 +163,13 @@ testing {
 
 tasks {
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=code")
   }
 
-  val testBothSemconv by registering(Test::class) {
+  val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=code/dup")

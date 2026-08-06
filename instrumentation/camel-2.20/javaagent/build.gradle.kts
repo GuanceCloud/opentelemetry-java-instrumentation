@@ -8,8 +8,6 @@ muzzle {
     module.set("camel-core")
     versions.set("[2.19,3)")
     assertInverse.set(true)
-    // https://repo.maven.apache.org/maven2/org/apache/camel/core/4.12.0/core-4.12.0.pom is missing
-    skip("4.12.0")
   }
 }
 
@@ -87,7 +85,7 @@ tasks {
     usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
   }
 
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -95,7 +93,7 @@ tasks {
     systemProperty("metadataConfig", "otel.instrumentation.camel.experimental-span-attributes=true")
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 

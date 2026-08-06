@@ -34,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.LoggerContext;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.incubator.config.ConfigProvider;
+import io.opentelemetry.api.incubator.config.DeclarativeConfigProperties;
 import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.spring.autoconfigure.internal.properties.OtelResourceProperties;
@@ -84,6 +86,7 @@ abstract class AbstractOtelSpringStarterSmokeTest extends AbstractSpringStarterS
   @Autowired private OtelResourceProperties otelResourceProperties;
   @Autowired private OtlpExporterProperties otlpExporterProperties;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ConfigProvider configProvider;
 
   abstract void makeClientCall();
 
@@ -155,6 +158,14 @@ abstract class AbstractOtelSpringStarterSmokeTest extends AbstractSpringStarterS
     }
     LoggerContext loggerContext = (LoggerContext) loggerFactorySpi;
     loggerContext.reset();
+  }
+
+  @Test
+  void configProviderReflectsConfiguredProperties() {
+    // otel.instrumentation.kafka.experimental-span-attributes=true in application.yaml
+    DeclarativeConfigProperties kafkaConfig =
+        configProvider.getInstrumentationConfig().getStructured("java").getStructured("kafka");
+    assertThat(kafkaConfig.getBoolean("experimental_span_attributes/development")).isTrue();
   }
 
   @Test
@@ -291,6 +302,7 @@ abstract class AbstractOtelSpringStarterSmokeTest extends AbstractSpringStarterS
 
     double javaVersion = Double.parseDouble(System.getProperty("java.specification.version"));
     // JFR based metrics
+    // Note: jvm.network.io is intentionally omitted because it is flaky across all JDK versions.
     for (String metric :
         asList(
             "jvm.cpu.count",
@@ -303,7 +315,6 @@ abstract class AbstractOtelSpringStarterSmokeTest extends AbstractSpringStarterS
             "jvm.memory.init",
             "jvm.memory.used",
             "jvm.memory.allocation",
-            "jvm.network.io",
             "jvm.thread.count")) {
       // cpu longlock is missing on jdk 25
       if (javaVersion >= 25 && "jvm.cpu.longlock".equals(metric)) {

@@ -27,7 +27,7 @@ plugins {
 
 val LANGUAGES = listOf("java", "scala", "kotlin")
 
-val codegen by configurations.creating {
+val codegen = configurations.create("codegen") {
   isCanBeConsumed = false
   isCanBeResolved = true
 }
@@ -43,7 +43,8 @@ val inputClasspath = (sourceSet.output.resourcesDir?.let { codegen.plus(project.
 URLConnection.setDefaultUseCaches("jar", false)
 
 val languageTasks = LANGUAGES.map { language ->
-  if (fileTree("src/${sourceSet.name}/${language}").isEmpty) {
+  // Inspecting source contents here invalidates the configuration cache after every source edit.
+  if (!file("src/${sourceSet.name}/${language}").isDirectory) {
     return@map null
   }
   val compileTaskName = sourceSet.getCompileTaskName(language)
@@ -66,6 +67,7 @@ fun createLanguageTask(
     group = "Byte Buddy"
     outputs.cacheIf { true }
     classFileVersion = ClassFileVersion.JAVA_V8
+    isWarnOnEmptyTypeSet = false
     val compileTask = compileTaskProvider.get()
     // this does not work for kotlin as compile task does not extend AbstractCompile
     if (compileTask is AbstractCompile) {

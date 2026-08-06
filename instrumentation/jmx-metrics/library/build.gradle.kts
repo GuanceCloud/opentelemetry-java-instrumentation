@@ -13,14 +13,16 @@ dependencies {
   testImplementation("com.linecorp.armeria:armeria-junit5:1.31.3")
   testImplementation("com.linecorp.armeria:armeria-grpc:1.31.3")
   testImplementation("io.opentelemetry.proto:opentelemetry-proto:1.5.0-alpha")
+  testImplementation("io.github.netmikey.logunit:logunit-jul")
+
+  testImplementation(platform("io.grpc:grpc-bom:1.82.1"))
+  testImplementation("io.grpc:grpc-netty-shaded")
 }
 
 tasks {
-  withType<Test>().configureEach {
-    usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
-  }
-
   test {
+    usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
+
     val shadowTask = project(":javaagent").tasks.named<Jar>("shadowJar")
     val testAppTask = project(":instrumentation:jmx-metrics:testing-apps:testing-webapp").tasks.named<War>("war")
     val camelTestAppTask = project(":instrumentation:jmx-metrics:testing-apps:camel-testing-app").tasks.named<Jar>("camelTestAppJar")
@@ -43,10 +45,14 @@ tasks {
       .withPropertyName("camelTestApp")
       .withNormalizer(ClasspathNormalizer::class)
 
+    val registryDir = layout.projectDirectory.dir("../model").asFile.absolutePath
+    inputs.dir(registryDir).withPathSensitivity(PathSensitivity.RELATIVE)
+
     jvmArgumentProviders += CommandLineArgumentProvider {
       listOf(
         "-Dio.opentelemetry.javaagent.path=${agentJar.get().asFile.absolutePath}",
         "-Dio.opentelemetry.testapp.path=${testAppWar.get().asFile.absolutePath}",
+        "-Dio.opentelemetry.registry.path=$registryDir",
         "-Dio.opentelemetry.cameltestapp.path=${camelTestAppJar.get().asFile.absolutePath}",
       )
     }

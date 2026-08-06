@@ -11,7 +11,12 @@ import com.amazonaws.handlers.RequestHandler2;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
+import io.opentelemetry.instrumentation.awssdk.v1_11.internal.AwsSdkInstrumenterFactory;
+import io.opentelemetry.instrumentation.awssdk.v1_11.internal.SqsProcessRequest;
+import io.opentelemetry.instrumentation.awssdk.v1_11.internal.SqsReceiveRequest;
+import io.opentelemetry.instrumentation.awssdk.v1_11.internal.TracingRequestHandler;
 import java.util.List;
+import javax.annotation.Nullable;
 
 /**
  * Entrypoint for instrumenting AWS SDK v1 clients.
@@ -22,16 +27,12 @@ import java.util.List;
  * ensure you do not register any problematic {@link RequestHandler2}s on your clients or you will
  * witness broken traces.
  */
-public class AwsSdkTelemetry {
-
-  /**
-   * Returns the OpenTelemetry {@link Context} stored in the {@link Request}, or {@code null} if
-   * there is no {@link Context}. This is generally not needed unless you are implementing your own
-   * instrumentation that delegates to this one.
-   */
-  public static Context getOpenTelemetryContext(Request<?> request) {
-    return request.getHandlerContext(TracingRequestHandler.CONTEXT);
-  }
+public final class AwsSdkTelemetry {
+  private final Instrumenter<Request<?>, Response<?>> requestInstrumenter;
+  private final Instrumenter<SqsReceiveRequest, Response<?>> consumerReceiveInstrumenter;
+  private final Instrumenter<SqsProcessRequest, Response<?>> consumerProcessInstrumenter;
+  private final Instrumenter<Request<?>, Response<?>> producerInstrumenter;
+  private final Instrumenter<Request<?>, Response<?>> dynamoDbInstrumenter;
 
   /** Returns a new {@link AwsSdkTelemetry} configured with the given {@link OpenTelemetry}. */
   public static AwsSdkTelemetry create(OpenTelemetry openTelemetry) {
@@ -44,12 +45,6 @@ public class AwsSdkTelemetry {
   public static AwsSdkTelemetryBuilder builder(OpenTelemetry openTelemetry) {
     return new AwsSdkTelemetryBuilder(openTelemetry);
   }
-
-  private final Instrumenter<Request<?>, Response<?>> requestInstrumenter;
-  private final Instrumenter<SqsReceiveRequest, Response<?>> consumerReceiveInstrumenter;
-  private final Instrumenter<SqsProcessRequest, Response<?>> consumerProcessInstrumenter;
-  private final Instrumenter<Request<?>, Response<?>> producerInstrumenter;
-  private final Instrumenter<Request<?>, Response<?>> dynamoDbInstrumenter;
 
   AwsSdkTelemetry(
       OpenTelemetry openTelemetry,
@@ -80,5 +75,15 @@ public class AwsSdkTelemetry {
         consumerProcessInstrumenter,
         producerInstrumenter,
         dynamoDbInstrumenter);
+  }
+
+  /**
+   * Returns the OpenTelemetry {@link Context} stored in the {@link Request}, or {@code null} if
+   * there is no {@link Context}. This is generally not needed unless you are implementing your own
+   * instrumentation that delegates to this one.
+   */
+  @Nullable
+  public static Context getOpenTelemetryContext(Request<?> request) {
+    return request.getHandlerContext(TracingRequestHandler.CONTEXT);
   }
 }

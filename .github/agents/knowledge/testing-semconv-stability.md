@@ -3,28 +3,28 @@
 ## Quick Reference
 
 - Use when: reviewing semconv dual-mode assertions or `testStableSemconv` / `testBothSemconv` tasks
-- Review focus: mode-specific assertions, `maybeStable()` usage boundaries, class-level deprecation suppression
+- Review focus: mode-specific assertions, `maybeStable()` usage boundaries
 
 ## Background: The Three Modes
 
 The system property `otel.semconv-stability.opt-in` (or env `OTEL_SEMCONV_STABILITY_OPT_IN`)
 controls which attributes are emitted at runtime. Tests must run in all applicable modes.
 
-| Property value | Old attrs emitted | Stable attrs emitted | Purpose |
-| --- | :-: | :-: | --- |
-| *(unset)* | ✅ | ❌ | Default / legacy mode — what most users run today |
-| `database` | ❌ | ✅ | Stable-only — users who have opted in |
-| `database/dup` | ✅ | ✅ | Both — migration period support |
+| Property value | Old attrs emitted | Stable attrs emitted | Purpose                                           |
+| -------------- | :---------------: | :------------------: | ------------------------------------------------- |
+| _(unset)_      |        ✅         |          ❌          | Default / legacy mode — what most users run today |
+| `database`     |        ❌         |          ✅          | Stable-only — users who have opted in             |
+| `database/dup` |        ✅         |          ✅          | Both — migration period support                   |
 
 Multiple domains can be comma-separated: `database,code,service.peer`.
 
 Available domains and their `SemconvStability` methods:
 
-| Domain | `opt-in` value | Methods |
-| --- | --- | --- |
-| Database | `database` / `database/dup` | `emitOldDatabaseSemconv()`, `emitStableDatabaseSemconv()` |
-| Code | `code` / `code/dup` | `emitOldCodeSemconv()`, `emitStableCodeSemconv()` |
-| RPC | `rpc` / `rpc/dup` | `emitOldRpcSemconv()`, `emitStableRpcSemconv()` |
+| Domain       | `opt-in` value                      | Methods                                                         |
+| ------------ | ----------------------------------- | --------------------------------------------------------------- |
+| Database     | `database` / `database/dup`         | `emitOldDatabaseSemconv()`, `emitStableDatabaseSemconv()`       |
+| Code         | `code` / `code/dup`                 | `emitOldCodeSemconv()`, `emitStableCodeSemconv()`               |
+| RPC          | `rpc` / `rpc/dup`                   | `emitOldRpcSemconv()`, `emitStableRpcSemconv()`                 |
 | Service peer | `service.peer` / `service.peer/dup` | `emitOldServicePeerSemconv()`, `emitStableServicePeerSemconv()` |
 
 All methods are in `io.opentelemetry.instrumentation.api.internal.SemconvStability`.
@@ -76,24 +76,30 @@ for other domains `check { dependsOn(testStableSemconv) }`.
 
 ## Asserting Attributes in Tests
 
-Preferred approach (most compact) — inline ternary with `emitStable*()`, where `null` means
-the attribute is expected absent:
+For the cross-cutting shape — inline ternary with `null` for "absent", static-imported flag
+accessors, and `assumeTrue(...)` guidance — see
+[testing-general-patterns.md](testing-general-patterns.md#flag-gated--mode-dependent-assertions).
+The semconv-specific patterns below build on that shape.
 
-```java
-equalTo(DB_USER, emitStableDatabaseSemconv() ? null : USER_DB)
-equalTo(ERROR_TYPE, emitStableDatabaseSemconv() ? "42601" : null)
-span.hasName(emitStableDatabaseSemconv() ? "SELECT" : "SELECT dbname")
-```
+### `maybeStable(OLD_KEY)` for 1:1 key renames
 
-Use `maybeStable(oldKey)` when only the attribute key changes and the value stays the same.
-`maybeStable()` does NOT cover `dup` mode — use separate `if` blocks for that.
+Use `maybeStable(OLD_KEY)` when only the attribute _key_ flips between old and stable
+semconv and the value is identical:
 
 ```java
 span.hasAttribute(equalTo(maybeStable(DB_STATEMENT), "SELECT ?"));
 ```
 
-Use separate `if` blocks (not `if/else`) when assertion structure differs significantly between
-modes — this ensures both branches execute in `dup` mode:
+`maybeStable()` does **not** cover `/dup` mode (it returns one key, not both), and does
+**not** apply where the mapping isn't 1:1 — for example `DB_RESPONSE_STATUS_CODE` →
+`ERROR_TYPE`. Use `emitOld*()` / `emitStable*()` `if` blocks for those.
+
+### `if` blocks (not `if/else`) when structure differs
+
+When the _set_ of asserted attributes differs between modes — not just values — use
+separate top-level `if` blocks rather than `if/else`. For domains that support `/dup` mode
+(currently RPC), this is required so both branches run; for other domains it's a habit
+that keeps the assertion `/dup`-safe if the domain ever adopts it:
 
 ```java
 if (emitStableCodeSemconv()) {
@@ -103,12 +109,3 @@ if (emitOldCodeSemconv()) {
   assertThat(attributes).containsEntry(CODE_NAMESPACE, "MyClass");
 }
 ```
-
-Use `assumeTrue(emitStable*())` only when an entire test is meaningful in one mode only.
-
-## Key Rules
-
-- Add `@SuppressWarnings("deprecation")` at class level when tests use old Semconv constants.
-- Use `if` (not `if/else`) for dual-mode assertions so both branches run in `/dup` mode.
-- Do NOT use `maybeStable()` for `DB_RESPONSE_STATUS_CODE` → `ERROR_TYPE` — these don't have
-  a 1:1 mapping. Use `emitOld*()`/`emitStable*()` `if` blocks instead.

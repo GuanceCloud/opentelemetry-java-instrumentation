@@ -5,6 +5,7 @@
 
 package io.opentelemetry.instrumentation.apachehttpclient.v4_3;
 
+import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.http.AbstractHttpClientTest;
 import io.opentelemetry.instrumentation.testing.junit.http.HttpClientResult;
@@ -23,13 +24,15 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.protocol.BasicHttpContext;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class AbstractApacheHttpClientTest {
+
+  @RegisterExtension static final AutoCleanupExtension cleanup = AutoCleanupExtension.create();
 
   protected abstract InstrumentationExtension testing();
 
@@ -41,17 +44,13 @@ public abstract class AbstractApacheHttpClientTest {
   @BeforeAll
   void setUp() {
     client = createClient(false);
+    cleanup.deferAfterAll(client);
     clientWithReadTimeout = createClient(true);
-  }
-
-  @AfterAll
-  void tearDown() throws Exception {
-    client.close();
-    clientWithReadTimeout.close();
+    cleanup.deferAfterAll(clientWithReadTimeout);
   }
 
   CloseableHttpClient getClient(URI uri) {
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       return clientWithReadTimeout;
     }
     return client;

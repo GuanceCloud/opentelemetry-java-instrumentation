@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
@@ -13,16 +14,12 @@ import io.opentelemetry.javaagent.extension.instrumentation.HelperResourceBuilde
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.ClassInjector;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.InjectionMode;
 import java.util.List;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class DubboInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class DubboInstrumentationModule extends InstrumentationModule {
   public DubboInstrumentationModule() {
     super("apache-dubbo", "apache-dubbo-2.7");
   }
@@ -32,18 +29,17 @@ public class DubboInstrumentationModule extends InstrumentationModule
     helperResourceBuilder.register(
         "META-INF/services/org.apache.dubbo.rpc.Filter",
         "apache-dubbo-2.7/META-INF/services/org.apache.dubbo.rpc.Filter");
+    helperResourceBuilder.register(
+        "META-INF/services/org.apache.dubbo.rpc.cluster.Cluster",
+        "apache-dubbo-2.7/META-INF/services/org.apache.dubbo.rpc.cluster.Cluster");
   }
 
   @Override
-  public void injectClasses(ClassInjector injector) {
-    injector
-        .proxyBuilder(
-            "io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7.OpenTelemetryClientFilter")
-        .inject(InjectionMode.CLASS_ONLY);
-    injector
-        .proxyBuilder(
-            "io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7.OpenTelemetryServerFilter")
-        .inject(InjectionMode.CLASS_ONLY);
+  public List<String> exposedClassNames() {
+    return asList(
+        "io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7.OpenTelemetryClientFilter",
+        "io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7.OpenTelemetryServerFilter",
+        "io.opentelemetry.javaagent.instrumentation.apachedubbo.v2_7.RegistryCapturingClusterWrapperProxy");
   }
 
   @Override
@@ -52,7 +48,7 @@ public class DubboInstrumentationModule extends InstrumentationModule
   }
 
   // A type instrumentation is needed to trigger resource injection.
-  static class ResourceInjectingTypeInstrumentation implements TypeInstrumentation {
+  private static class ResourceInjectingTypeInstrumentation implements TypeInstrumentation {
     @Override
     public ElementMatcher<TypeDescription> typeMatcher() {
       return named("org.apache.dubbo.common.extension.ExtensionLoader");

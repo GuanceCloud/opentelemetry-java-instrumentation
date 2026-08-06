@@ -17,7 +17,7 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
-import io.opentelemetry.javaagent.instrumentation.jedis.JedisRequestContext;
+import io.opentelemetry.javaagent.instrumentation.jedis.common.v1_4.JedisRequestContext;
 import javax.annotation.Nullable;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
@@ -58,8 +58,18 @@ class JedisConnectionInstrumentation implements TypeInstrumentation {
       @Nullable
       public static AdviceScope start(
           Connection connection, ProtocolCommand command, byte[][] args) {
+        if (JedisPipelineContext.inTransactionFraming()) {
+          // MULTI/EXEC/DISCARD frame a batched transaction; they are represented by the MULTI
+          // batch span rather than getting their own spans.
+          return null;
+        }
         Context parentContext = currentContext();
         JedisRequest request = JedisRequest.create(connection, command, asList(args));
+        if (JedisPipelineContext.capture(request)) {
+          // A pipeline or transaction is active, so this command is captured and aggregated into
+          // the batch span created at sync()/exec() rather than getting its own span.
+          return null;
+        }
         if (!instrumenter().shouldStart(parentContext, request)) {
           return null;
         }

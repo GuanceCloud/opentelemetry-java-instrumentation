@@ -42,6 +42,7 @@ import javax.persistence.NoResultException;
 import javax.persistence.Persistence;
 import javax.persistence.Query;
 import org.hibernate.Version;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -49,8 +50,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class EntityManagerTest extends AbstractHibernateTest {
 
-  static final EntityManagerFactory entityManagerFactory =
+  private static final EntityManagerFactory entityManagerFactory =
       Persistence.createEntityManagerFactory("test-pu");
+
+  @AfterAll
+  static void closeEntityManagerFactory() {
+    entityManagerFactory.close();
+  }
 
   @SuppressWarnings("deprecation") // TODO DB_CONNECTION_STRING deprecation
   @ParameterizedTest
@@ -263,7 +269,7 @@ class EntityManagerTest extends AbstractHibernateTest {
                         .hasParent(trace.getSpan(0)),
                 // persist test has an extra query for getting id of inserted element
                 span ->
-                    span.hasName(emitStableDatabaseSemconv() ? "SELECT Value" : "SELECT db1.Value")
+                    span.hasName(emitStableDatabaseSemconv() ? "select Value" : "SELECT db1.Value")
                         .hasKind(CLIENT)
                         .hasParent(trace.getSpan(1))
                         .hasAttributesSatisfyingExactly(
@@ -343,14 +349,14 @@ class EntityManagerTest extends AbstractHibernateTest {
   @SuppressWarnings("deprecation") // TODO DB_CONNECTION_STRING deprecation
   @ParameterizedTest
   @MethodSource("provideArgumentsAttachesState")
-  void testAttachesStateToQuery(Function<EntityManager, Query> queryBuildMethod) {
+  void testAttachesStateToQuery(QueryParameter parameter) {
     testing.runWithSpan(
         "parent",
         () -> {
           EntityManager entityManager = entityManagerFactory.createEntityManager();
           EntityTransaction entityTransaction = entityManager.getTransaction();
           entityTransaction.begin();
-          queryBuildMethod.apply(entityManager).getResultList();
+          parameter.queryBuildMethod.apply(entityManager).getResultList();
           entityTransaction.commit();
           entityManager.close();
         });
@@ -364,7 +370,7 @@ class EntityManagerTest extends AbstractHibernateTest {
                         .hasNoParent()
                         .hasTotalAttributeCount(0),
                 span ->
-                    span.hasName("SELECT Value")
+                    span.hasName(parameter.sessionSpanName)
                         .hasKind(INTERNAL)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -372,7 +378,7 @@ class EntityManagerTest extends AbstractHibernateTest {
                                 HIBERNATE_SESSION_ID,
                                 val -> assertThat(val).isInstanceOf(String.class))),
                 span ->
-                    span.hasName(emitStableDatabaseSemconv() ? "SELECT Value" : "SELECT db1.Value")
+                    span.hasName(parameter.clientSpanName)
                         .hasKind(CLIENT)
                         .hasParent(trace.getSpan(1))
                         .hasAttributesSatisfyingExactly(
@@ -428,13 +434,13 @@ class EntityManagerTest extends AbstractHibernateTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span ->
-                    span.hasName("SELECT Value")
+                    span.hasName(emitStableDatabaseSemconv() ? "select Value" : "SELECT Value")
                         .hasKind(SpanKind.INTERNAL)
                         .hasNoParent()
                         .hasStatus(StatusData.unset())
                         .hasEvents(emptyList()),
                 span ->
-                    span.hasName(emitStableDatabaseSemconv() ? "SELECT Value" : "SELECT db1.Value")
+                    span.hasName(emitStableDatabaseSemconv() ? "select Value" : "SELECT db1.Value")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))));
   }
@@ -444,16 +450,24 @@ class EntityManagerTest extends AbstractHibernateTest {
         Arguments.of(
             named(
                 "createQuery",
-                (Function<EntityManager, Query>) em -> em.createQuery("from Value"))),
+                new QueryParameter(
+                    emitStableDatabaseSemconv() ? "select Value" : "SELECT Value",
+                    emitStableDatabaseSemconv() ? "select Value" : "SELECT db1.Value",
+                    em -> em.createQuery("from Value")))),
         Arguments.of(
             named(
                 "getNamedQuery",
-                (Function<EntityManager, Query>) em -> em.createNamedQuery("TestNamedQuery"))),
+                new QueryParameter(
+                    emitStableDatabaseSemconv() ? "select Value" : "SELECT Value",
+                    emitStableDatabaseSemconv() ? "select Value" : "SELECT db1.Value",
+                    em -> em.createNamedQuery("TestNamedQuery")))),
         Arguments.of(
             named(
                 "createSQLQuery",
-                (Function<EntityManager, Query>)
-                    em -> em.createNativeQuery("SELECT * FROM Value"))));
+                new QueryParameter(
+                    "SELECT Value",
+                    emitStableDatabaseSemconv() ? "SELECT Value" : "SELECT db1.Value",
+                    em -> em.createNativeQuery("SELECT * FROM Value")))));
   }
 
   private static class Parameter {
@@ -471,6 +485,21 @@ class EntityManagerTest extends AbstractHibernateTest {
       this.attach = attach;
       this.flushOnCommit = flushOnCommit;
       this.sessionMethodTest = sessionMethodTest;
+    }
+  }
+
+  private static class QueryParameter {
+    final String sessionSpanName;
+    final String clientSpanName;
+    final Function<EntityManager, Query> queryBuildMethod;
+
+    QueryParameter(
+        String sessionSpanName,
+        String clientSpanName,
+        Function<EntityManager, Query> queryBuildMethod) {
+      this.sessionSpanName = sessionSpanName;
+      this.clientSpanName = clientSpanName;
+      this.queryBuildMethod = queryBuildMethod;
     }
   }
 }

@@ -7,6 +7,7 @@ package io.opentelemetry.javaagent.instrumentation.apachehttpclient.v5_0;
 
 import static io.opentelemetry.instrumentation.testing.junit.http.AbstractHttpClientTest.CONNECTION_TIMEOUT;
 import static io.opentelemetry.instrumentation.testing.junit.http.AbstractHttpClientTest.READ_TIMEOUT;
+import static io.opentelemetry.instrumentation.testing.util.TestLatestDeps.testLatestDeps;
 
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.http.HttpClientInstrumentationExtension;
@@ -65,7 +66,7 @@ class ApacheHttpClientTest {
   }
 
   private CloseableHttpClient getClient(URI uri) {
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       return clientWithReadTimeout;
     }
     return client;
@@ -224,7 +225,7 @@ class ApacheHttpClientTest {
       // apparently apache http client does not report the 302 status code?
       optionsBuilder.setResponseCodeOnRedirectError(null);
 
-      if (Boolean.getBoolean("testLatestDeps")) {
+      if (testLatestDeps()) {
         optionsBuilder.disableTestHttps();
         optionsBuilder.disableTestRemoteConnection();
       }

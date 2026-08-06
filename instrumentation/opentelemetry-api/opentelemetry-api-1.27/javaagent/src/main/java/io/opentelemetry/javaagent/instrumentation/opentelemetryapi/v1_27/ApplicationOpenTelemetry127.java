@@ -7,8 +7,8 @@ package io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_27;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.context.propagation.ApplicationContextPropagators;
-import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.trace.ApplicationTracerFactory;
+import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_0.context.propagation.ApplicationContextPropagators;
+import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_0.trace.ApplicationTracerFactory;
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_10.metrics.ApplicationMeterFactory;
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_10.metrics.ApplicationMeterProvider;
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_15.metrics.ApplicationMeterFactory115;
@@ -18,6 +18,7 @@ import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_27.logs.Ap
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_27.trace.ApplicationTracerFactory127;
 import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_4.trace.ApplicationTracerProvider14;
 import java.lang.reflect.InvocationTargetException;
+import javax.annotation.Nullable;
 
 public class ApplicationOpenTelemetry127 implements application.io.opentelemetry.api.OpenTelemetry {
 
@@ -112,15 +113,22 @@ public class ApplicationOpenTelemetry127 implements application.io.opentelemetry
     return meterFactory;
   }
 
+  @Nullable
   private static ApplicationMeterFactory getMeterFactory(String className) {
     return getFactory(className, ApplicationMeterFactory.class);
   }
 
   private static ApplicationLoggerFactory getLoggerFactory() {
-    // this class is defined in opentelemetry-api-1.52
+    // this class is defined in opentelemetry-api-1.63
     ApplicationLoggerFactory loggerFactory =
         getLoggerFactory(
-            "io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_52.incubator.logs.ApplicationLoggerFactory150Incubator");
+            "io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_63.incubator.logs.ApplicationLoggerFactory163Incubator");
+    if (loggerFactory == null) {
+      // this class is defined in opentelemetry-api-1.63
+      loggerFactory =
+          getLoggerFactory(
+              "io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_63.logs.ApplicationLoggerFactory163");
+    }
     // this class is defined in opentelemetry-api-1.50
     if (loggerFactory == null) {
       loggerFactory =
@@ -164,6 +172,7 @@ public class ApplicationOpenTelemetry127 implements application.io.opentelemetry
     return loggerFactory;
   }
 
+  @Nullable
   private static ApplicationLoggerFactory getLoggerFactory(String className) {
     return getFactory(className, ApplicationLoggerFactory.class);
   }
@@ -186,10 +195,12 @@ public class ApplicationOpenTelemetry127 implements application.io.opentelemetry
     return tracerFactory;
   }
 
+  @Nullable
   private static ApplicationTracerFactory getTracerFactory(String className) {
     return getFactory(className, ApplicationTracerFactory.class);
   }
 
+  @Nullable
   private static <T> T getFactory(String className, Class<T> factoryClass) {
     try {
       Class<?> clazz = Class.forName(className);

@@ -5,21 +5,30 @@ plugins {
 dependencies {
   compileOnly(project(":instrumentation:java-util-logging:shaded-stub-for-instrumenting"))
 
-  compileOnly(project(":javaagent-bootstrap"))
-
   // ensure no cross interference
   testInstrumentation(project(":instrumentation:jboss-logmanager:jboss-logmanager-appender-1.1:javaagent"))
 }
 
 tasks {
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
     jvmArgs("-Dotel.instrumentation.java-util-logging.experimental-log-attributes=true")
   }
 
+  val testCaptureTemplateAndArguments = register<Test>("testCaptureTemplateAndArguments") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
+    jvmArgs(
+      "-Dotel.instrumentation.java-util-logging.experimental.capture-template=true",
+      "-Dotel.instrumentation.java-util-logging.experimental.capture-arguments=true",
+    )
+  }
+
   check {
     dependsOn(testExperimental)
+    dependsOn(testCaptureTemplateAndArguments)
   }
 }

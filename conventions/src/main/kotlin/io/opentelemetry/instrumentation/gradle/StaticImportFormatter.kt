@@ -78,6 +78,11 @@ class StaticImportFormatter : FormatterFunc.NeedsFile, Serializable {
         "emit[a-zA-Z0-9]*",
       ),
       Rule(
+        "TestLatestDeps",
+        "io.opentelemetry.instrumentation.testing.util.TestLatestDeps",
+        "testLatestDeps",
+      ),
+      Rule(
         "SqlDialect",
         "io.opentelemetry.instrumentation.api.incubator.semconv.db.SqlDialect",
         "DOUBLE_QUOTES_ARE_[A-Z_]+"
@@ -89,6 +94,12 @@ class StaticImportFormatter : FormatterFunc.NeedsFile, Serializable {
         "stringKey|longKey|booleanKey|doubleKey|stringArrayKey|longArrayKey|booleanArrayKey|doubleArrayKey",
         lineExcludePattern = "= AttributeKey.",
         filePattern = "Test\\.java$"
+      ),
+      Rule(
+        "Arguments",
+        "org.junit.jupiter.params.provider.Arguments",
+        "argumentSet",
+        filePattern = "Test\\.java$",
       ),
     )
 

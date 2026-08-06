@@ -6,18 +6,18 @@
 package io.opentelemetry.javaagent.instrumentation.servlet.v2_2;
 
 import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
-import io.opentelemetry.instrumentation.servlet.internal.ServletAccessor;
-import io.opentelemetry.instrumentation.servlet.internal.ServletRequestContext;
+import io.opentelemetry.instrumentation.servlet.common.internal.ServletAccessor;
+import io.opentelemetry.instrumentation.servlet.common.internal.ServletRequestContext;
 import io.opentelemetry.javaagent.bootstrap.internal.AgentCommonConfig;
 import java.util.Set;
 
-public class Servlet2SpanNameExtractor<REQUEST, RESPONSE>
+class Servlet2SpanNameExtractor<REQUEST, RESPONSE>
     implements SpanNameExtractor<ServletRequestContext<REQUEST>> {
 
   private final ServletAccessor<REQUEST, RESPONSE> accessor;
   private final Set<String> knownMethods = AgentCommonConfig.get().getKnownHttpRequestMethods();
 
-  public Servlet2SpanNameExtractor(ServletAccessor<REQUEST, RESPONSE> accessor) {
+  Servlet2SpanNameExtractor(ServletAccessor<REQUEST, RESPONSE> accessor) {
     this.accessor = accessor;
   }
 

@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.couchbase.springdata;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
@@ -30,7 +31,6 @@ import io.opentelemetry.instrumentation.couchbase.AbstractCouchbaseTest;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -68,13 +68,13 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
                             + "    emit(meta.id, null);"
                             + " }"
                             + "}"))));
-    CouchbaseConfig.environment = environment;
-    CouchbaseConfig.bucketSettings = bucketCouchbase;
+    CouchbaseConfig.configure(environment, bucketCouchbase);
 
     // Close all buckets and disconnect
     couchbaseCluster.disconnect();
 
     applicationContext = new AnnotationConfigApplicationContext(CouchbaseConfig.class);
+    cleanup.deferAfterAll(applicationContext);
     repository = applicationContext.getBean(TestRepository.class);
   }
 
@@ -82,11 +82,6 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
     testing.clearData();
     repository.deleteAll();
     testing.waitForTraces(2);
-  }
-
-  @AfterAll
-  void cleanUp() {
-    applicationContext.close();
   }
 
   protected abstract TestDocument findById(TestRepository repository, String id);
@@ -131,7 +126,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + bucketCouchbase.name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasNoParent()
                         .hasAttributesSatisfyingExactly(
@@ -166,7 +164,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("someTrace").hasKind(SpanKind.INTERNAL).hasNoParent(),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + bucketCouchbase.name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -181,7 +182,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
                             satisfies(
                                 stringKey("couchbase.operation_id"), experimentalAttribute())),
                 span ->
-                    span.hasName("Bucket.get")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.get " + bucketCouchbase.name()
+                                : "Bucket.get")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -214,7 +218,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("someTrace").hasKind(SpanKind.INTERNAL).hasNoParent(),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + bucketCouchbase.name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -229,7 +236,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
                             satisfies(
                                 stringKey("couchbase.operation_id"), experimentalAttribute())),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + bucketCouchbase.name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -264,7 +274,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("someTrace").hasKind(SpanKind.INTERNAL).hasNoParent(),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + bucketCouchbase.name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -279,7 +292,10 @@ public abstract class AbstractCouchbaseSpringRepositoryTest extends AbstractCouc
                             satisfies(
                                 stringKey("couchbase.operation_id"), experimentalAttribute())),
                 span ->
-                    span.hasName("Bucket.remove")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.remove " + bucketCouchbase.name()
+                                : "Bucket.remove")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(

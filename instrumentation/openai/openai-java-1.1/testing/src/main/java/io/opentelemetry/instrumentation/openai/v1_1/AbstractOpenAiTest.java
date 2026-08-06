@@ -5,15 +5,22 @@
 
 package io.opentelemetry.instrumentation.openai.v1_1;
 
+import static io.opentelemetry.instrumentation.api.internal.SemconvExceptionSignal.emitExceptionAsLogs;
+import static io.opentelemetry.instrumentation.testing.util.TestLatestDeps.testLatestDeps;
+import static java.util.Collections.emptyList;
+
 import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientAsync;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
+import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.instrumentation.openai.TestHelper;
 import io.opentelemetry.instrumentation.openai.v3_0.OpenAi3TestHelper;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.recording.RecordingExtension;
+import io.opentelemetry.sdk.testing.assertj.LogRecordDataAssert;
 import io.opentelemetry.sdk.testing.assertj.SpanDataAssert;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -38,7 +45,7 @@ abstract class AbstractOpenAiTest {
   @RegisterExtension static final RecordingExtension recording = new RecordingExtension(API_URL);
 
   protected static final TestHelper testHelper =
-      Boolean.getBoolean("testLatestDeps") ? new OpenAi3TestHelper() : new OpenAi1TestHelper();
+      testLatestDeps() ? new OpenAi3TestHelper() : new OpenAi1TestHelper();
 
   protected abstract InstrumentationExtension getTesting();
 
@@ -87,6 +94,36 @@ abstract class AbstractOpenAiTest {
 
   protected abstract List<Consumer<SpanDataAssert>> maybeWithTransportSpan(
       Consumer<SpanDataAssert> span);
+
+  /**
+   * Returns the log record assertions expected when a GenAI client operation fails. Empty unless
+   * exceptions are emitted as logs, in which case it contains the {@code
+   * gen_ai.client.operation.exception} log, preceded by any transport-level exception logs supplied
+   * by {@link #transportExceptionLogs}.
+   */
+  protected final List<Consumer<LogRecordDataAssert>> genAiClientExceptionLogs(Throwable thrown) {
+    if (!emitExceptionAsLogs()) {
+      return emptyList();
+    }
+    List<Consumer<LogRecordDataAssert>> logs = new ArrayList<>(transportExceptionLogs());
+    logs.add(
+        logRecord ->
+            logRecord
+                .hasSeverity(Severity.WARN)
+                .hasEventName("gen_ai.client.operation.exception")
+                .hasException(thrown)
+                .hasTotalAttributeCount(3));
+    return logs;
+  }
+
+  /**
+   * Returns the transport-level exception log assertions emitted by additional instrumentation
+   * (e.g. the HTTP client under the javaagent), ordered before the GenAI exception log. Empty by
+   * default.
+   */
+  protected List<Consumer<LogRecordDataAssert>> transportExceptionLogs() {
+    return emptyList();
+  }
 
   @Parameter protected TestType testType;
 }

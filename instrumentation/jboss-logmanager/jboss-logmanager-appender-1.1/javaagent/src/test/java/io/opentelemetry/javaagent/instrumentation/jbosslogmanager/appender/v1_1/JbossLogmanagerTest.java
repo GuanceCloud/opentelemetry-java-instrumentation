@@ -15,8 +15,10 @@ import static io.opentelemetry.semconv.ExceptionAttributes.EXCEPTION_TYPE;
 import static io.opentelemetry.semconv.incubating.ThreadIncubatingAttributes.THREAD_ID;
 import static io.opentelemetry.semconv.incubating.ThreadIncubatingAttributes.THREAD_NAME;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
@@ -31,13 +33,23 @@ import org.jboss.logmanager.Level;
 import org.jboss.logmanager.LogContext;
 import org.jboss.logmanager.Logger;
 import org.jboss.logmanager.MDC;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class JbossLogmanagerTest {
+
+  private static final AttributeKey<String> LOG_BODY_TEMPLATE =
+      AttributeKey.stringKey("log.body.template");
+  private static final AttributeKey<List<String>> LOG_BODY_PARAMETERS =
+      AttributeKey.stringArrayKey("log.body.parameters");
+
+  private static final boolean CAPTURE_TEMPLATE =
+      Boolean.getBoolean("otel.instrumentation.jboss-logmanager.experimental.capture-template");
+  private static final boolean CAPTURE_ARGUMENTS =
+      Boolean.getBoolean("otel.instrumentation.jboss-logmanager.experimental.capture-arguments");
 
   private static final Logger logger = LogContext.getLogContext().getLogger("abc");
 
@@ -160,6 +172,17 @@ class JbossLogmanagerTest {
                           EXCEPTION_STACKTRACE,
                           val -> val.contains(JbossLogmanagerTest.class.getName()))));
             }
+            // logging via the Supplier + Throwable overload used above for logException doesn't
+            // support parameters, so the template/arguments attributes are only captured in the
+            // plain withParam case
+            if (withParam && !logException) {
+              if (CAPTURE_TEMPLATE) {
+                attributeAsserts.add(equalTo(LOG_BODY_TEMPLATE, "xyz: {0}"));
+              }
+              if (CAPTURE_ARGUMENTS) {
+                attributeAsserts.add(equalTo(LOG_BODY_PARAMETERS, singletonList("123")));
+              }
+            }
             logRecord.hasAttributesSatisfyingExactly(attributeAsserts);
 
             assertThat(logRecord.actual().getTimestampEpochNanos())
@@ -193,18 +216,17 @@ class JbossLogmanagerTest {
     }
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"event.name", "otel.event.name"})
-  void testMdc(String eventNameProperty) {
+  @Test
+  void testMdc() {
     MDC.put("key1", "val1");
     MDC.put("key2", "val2");
-    MDC.put(eventNameProperty, "MyEventName");
+    MDC.put("otel.event.name", "MyEventName");
     try {
       logger.info("xyz");
     } finally {
       MDC.remove("key1");
       MDC.remove("key2");
-      MDC.remove(eventNameProperty);
+      MDC.remove("otel.event.name");
     }
 
     testing.waitAndAssertLogRecords(

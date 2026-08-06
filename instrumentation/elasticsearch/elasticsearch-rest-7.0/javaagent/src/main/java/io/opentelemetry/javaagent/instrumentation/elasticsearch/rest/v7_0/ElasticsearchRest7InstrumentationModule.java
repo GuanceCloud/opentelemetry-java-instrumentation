@@ -12,13 +12,11 @@ import static net.bytebuddy.matcher.ElementMatchers.not;
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class ElasticsearchRest7InstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class ElasticsearchRest7InstrumentationModule extends InstrumentationModule {
   public ElasticsearchRest7InstrumentationModule() {
     super("elasticsearch-rest", "elasticsearch-rest-7.0", "elasticsearch");
   }
@@ -27,22 +25,13 @@ public class ElasticsearchRest7InstrumentationModule extends InstrumentationModu
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
     // added in 7.0.0
     return hasClassesNamed("org.elasticsearch.client.RestClient$InternalRequest")
-        // added in 8.10 (native OTel instrumentation)
+        // artifact presence gate (provides native OTel support)
+        // added in co.elastic.clients:elasticsearch-java 8.10
         .and(not(hasClassesNamed("co.elastic.clients.transport.instrumentation.Instrumentation")));
-  }
-
-  @Override
-  public String getModuleGroup() {
-    return "elasticsearch";
   }
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
     return singletonList(new RestClientInstrumentation());
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 }

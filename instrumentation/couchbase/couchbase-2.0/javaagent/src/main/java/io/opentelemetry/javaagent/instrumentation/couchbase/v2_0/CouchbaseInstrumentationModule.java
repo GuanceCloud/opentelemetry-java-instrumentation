@@ -12,13 +12,11 @@ import static java.util.Collections.singletonList;
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class CouchbaseInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class CouchbaseInstrumentationModule extends InstrumentationModule {
 
   public CouchbaseInstrumentationModule() {
     super("couchbase", "couchbase-2.0");
@@ -35,23 +33,13 @@ public class CouchbaseInstrumentationModule extends InstrumentationModule
   }
 
   @Override
-  public String getModuleGroup() {
-    return "couchbase";
-  }
-
-  @Override
   public List<String> injectedClassNames() {
     return singletonList("rx.OpenTelemetryTracingUtil");
   }
 
   @Override
-  public boolean isIndyReady() {
-    return true;
-  }
-
-  @Override
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
-    // removed in 3.x
+    // added in 2.0.0, removed in 3.0.0
     return hasClassesNamed("com.couchbase.client.java.CouchbaseAsyncBucket");
   }
 }

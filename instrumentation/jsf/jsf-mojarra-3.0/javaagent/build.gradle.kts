@@ -7,8 +7,8 @@ muzzle {
     group.set("org.glassfish")
     module.set("jakarta.faces")
     versions.set("[3,)")
-    extraDependency("jakarta.el:jakarta.el-api:4.0.0")
     assertInverse.set(true)
+    extraDependency("jakarta.el:jakarta.el-api:4.0.0")
   }
 }
 
@@ -25,20 +25,20 @@ dependencies {
   library("jakarta.faces:jakarta.faces-api:3.0.0")
   testLibrary("org.glassfish:jakarta.faces:3.0.4")
 
-  implementation(project(":instrumentation:jsf:jsf-jakarta-common:javaagent"))
-  testImplementation(project(":instrumentation:jsf:jsf-jakarta-common:testing"))
+  implementation(project(":instrumentation:jsf:jsf-common-jakarta:javaagent"))
+  testImplementation(project(":instrumentation:jsf:jsf-common-jakarta:testing"))
 
   testInstrumentation(project(":instrumentation:servlet:servlet-5.0:javaagent"))
   testInstrumentation(project(":instrumentation:jsf:jsf-mojarra-1.2:javaagent"))
 
   // JSF 4+ requires CDI instead of BeanManager, the test should be upgraded first
-  latestDepTestLibrary("jakarta.el:jakarta.el-api:4.+") // documented limitation
+  latestDepTestLibrary("jakarta.el:jakarta.el-api:4.+") // related dependency
   latestDepTestLibrary("jakarta.faces:jakarta.faces-api:3.+") // documented limitation
   latestDepTestLibrary("org.glassfish:jakarta.faces:3.+") // documented limitation
 }
 
 tasks {
-  withType<Test>().configureEach {
+  test {
     jvmArgs("-Dotel.instrumentation.common.experimental.controller-telemetry.enabled=true")
     systemProperty("collectMetadata", otelProps.collectMetadata)
     systemProperty("metadataConfig", "otel.instrumentation.common.experimental.controller-telemetry.enabled=true")

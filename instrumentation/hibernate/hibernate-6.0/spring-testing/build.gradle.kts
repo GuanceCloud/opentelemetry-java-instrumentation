@@ -2,10 +2,10 @@ plugins {
   id("otel.javaagent-testing")
 }
 
-val springAgent by configurations.creating
+val springAgent = configurations.create("springAgent")
 
 dependencies {
-  library("org.hibernate:hibernate-core:6.0.0.Final")
+  library("org.hibernate.orm:hibernate-core:6.0.0.Final")
 
   testInstrumentation(project(":instrumentation:hibernate:hibernate-6.0:javaagent"))
   testInstrumentation(project(":instrumentation:jdbc:javaagent"))
@@ -15,6 +15,7 @@ dependencies {
   testInstrumentation(project(":instrumentation:hibernate:hibernate-procedure-call-4.3:javaagent"))
 
   testImplementation("org.hsqldb:hsqldb:2.0.0")
+  testImplementation(project(":instrumentation:hibernate:testing"))
   testLibrary("org.springframework.data:spring-data-jpa:3.0.0")
 
   springAgent("org.springframework:spring-instrument:6.0.7")
@@ -27,12 +28,16 @@ otelJava {
 tasks {
   withType<Test>().configureEach {
     jvmArgs("-javaagent:" + springAgent.singleFile.absolutePath)
+  }
 
-    // TODO run tests both with and without experimental span attributes
+  val testExperimental = register<Test>("testExperimental") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
     jvmArgs("-Dotel.instrumentation.hibernate.experimental-span-attributes=true")
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -40,6 +45,6 @@ tasks {
   }
 
   check {
-    dependsOn(testStableSemconv)
+    dependsOn(testExperimental, testStableSemconv)
   }
 }

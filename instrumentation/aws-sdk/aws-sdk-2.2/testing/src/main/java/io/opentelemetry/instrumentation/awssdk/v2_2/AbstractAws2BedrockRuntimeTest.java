@@ -27,6 +27,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.within;
 
 import io.opentelemetry.api.common.AttributeKey;
@@ -39,7 +40,6 @@ import io.opentelemetry.instrumentation.testing.recording.RecordingExtension;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -86,6 +86,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlockStart;
 import software.amazon.awssdk.thirdparty.jackson.core.JsonFactory;
 
+// TODO: Remove after https://github.com/open-telemetry/semantic-conventions-genai/issues/247
+// is resolved.
+@SuppressWarnings("OtelDeprecatedApiUsage")
 public abstract class AbstractAws2BedrockRuntimeTest {
   protected static final String INSTRUMENTATION_NAME = "io.opentelemetry.aws-sdk-2.2";
 
@@ -669,7 +672,66 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testConverseToolCallStream() throws InterruptedException, ExecutionException {
+  void testConverseStreamToolCallWithEmptyToolArguments() {
+    BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
+    builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
+    configureClient(builder);
+    BedrockRuntimeAsyncClient client = configureBedrockRuntimeClient(builder.build());
+
+    String modelId = "amazon.nova-micro-v1:0";
+    List<Message> messages = new ArrayList<>();
+    messages.add(
+        Message.builder()
+            .role(ConversationRole.USER)
+            .content(ContentBlock.fromText("What time is it?"))
+            .build());
+
+    ConverseStreamResponseHandler responseHandler =
+        ConverseStreamResponseHandler.builder()
+            .subscriber(ConverseStreamResponseHandler.Visitor.builder().build())
+            .build();
+
+    assertThatCode(
+            () ->
+                client
+                    .converseStream(
+                        ConverseStreamRequest.builder()
+                            .modelId(modelId)
+                            .messages(messages)
+                            .toolConfig(serverTimeToolConfig())
+                            .build(),
+                        responseHandler)
+                    .join())
+        .doesNotThrowAnyException();
+
+    getTesting()
+        .waitAndAssertLogRecords(
+            log ->
+                log.hasAttributesSatisfyingExactly(
+                        equalTo(GEN_AI_PROVIDER_NAME, AWS_BEDROCK),
+                        equalTo(EVENT_NAME, "gen_ai.user.message"))
+                    .hasBody(Value.of(KeyValue.of("content", Value.of("What time is it?")))),
+            log ->
+                log.hasAttributesSatisfyingExactly(
+                        equalTo(GEN_AI_PROVIDER_NAME, AWS_BEDROCK),
+                        equalTo(EVENT_NAME, "gen_ai.choice"))
+                    .hasBody(
+                        Value.of(
+                            KeyValue.of("finish_reason", Value.of("tool_use")),
+                            KeyValue.of("index", Value.of(0)),
+                            KeyValue.of(
+                                "toolCalls",
+                                Value.of(
+                                    Value.of(
+                                        KeyValue.of("name", Value.of("get_server_time")),
+                                        KeyValue.of("arguments", Value.of("{}")),
+                                        KeyValue.of("id", Value.of("tooluse_empty_params_test")),
+                                        KeyValue.of("type", Value.of("function"))))),
+                            KeyValue.of("content", Value.of("")))));
+  }
+
+  @Test
+  void testConverseToolCallStream() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -730,7 +792,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                 .toolConfig(currentWeatherToolConfig())
                 .build(),
             responseHandler)
-        .get();
+        .join();
 
     if (currentToolArgs.length() > 0 && !responseChunksTools.isEmpty()) {
       JsonNode node = JsonNode.parser().parse(currentToolArgs.toString());
@@ -922,7 +984,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                 .toolConfig(currentWeatherToolConfig())
                 .build(),
             responseHandler1)
-        .get();
+        .join();
 
     assertThat(String.join("", responseChunks))
         .contains(
@@ -1068,6 +1130,27 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                                         + "The current weather in Seattle is 50 degrees and it is raining. In San Francisco, the weather is 70 degrees and sunny.")))));
   }
 
+  private static ToolConfiguration serverTimeToolConfig() {
+    return ToolConfiguration.builder()
+        .tools(
+            Tool.builder()
+                .toolSpec(
+                    ToolSpecification.builder()
+                        .name("get_server_time")
+                        .description("Get the current server time.")
+                        .inputSchema(
+                            ToolInputSchema.builder()
+                                .json(
+                                    Document.mapBuilder()
+                                        .putString("type", "object")
+                                        .putDocument("properties", Document.mapBuilder().build())
+                                        .build())
+                                .build())
+                        .build())
+                .build())
+        .build();
+  }
+
   private static ToolConfiguration currentWeatherToolConfig() {
     return ToolConfiguration.builder()
         .tools(
@@ -1103,7 +1186,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testConverseStream() throws InterruptedException, ExecutionException {
+  void testConverseStream() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -1135,7 +1218,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                         .build())
                 .build(),
             responseHandler)
-        .get();
+        .join();
 
     assertThat(String.join("", responseChunks)).isEqualTo("\"Test, test\"");
 
@@ -1222,7 +1305,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testConverseStreamOptions() throws InterruptedException, ExecutionException {
+  void testConverseStreamOptions() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -1261,7 +1344,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                         .build())
                 .build(),
             responseHandler)
-        .get();
+        .join();
 
     assertThat(String.join("", responseChunks)).isEqualTo("This model");
 
@@ -1439,8 +1522,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamAmazonTitan()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamAmazonTitan() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -1488,7 +1570,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request, responseHandler).get();
+    client.invokeModelWithResponseStream(request, responseHandler).join();
 
     assertThat(text.toString()).contains("Here is the list of every country in the world");
 
@@ -1736,8 +1818,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamAmazonNova()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamAmazonNova() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -1804,7 +1885,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request, responseHandler).get();
+    client.invokeModelWithResponseStream(request, responseHandler).join();
 
     assertThat(text.toString())
         .contains("Listing every country in the world is a comprehensive task");
@@ -2278,8 +2359,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamAnthropicClaude()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamAnthropicClaude() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -2340,7 +2420,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request, responseHandler).get();
+    client.invokeModelWithResponseStream(request, responseHandler).join();
 
     assertThat(text.toString()).contains("Unfortunately I do not have a complete list of every");
 
@@ -2860,8 +2940,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamToolCallAmazonNova()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamToolCallAmazonNova() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -2999,7 +3078,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request0, responseHandler0).get();
+    client.invokeModelWithResponseStream(request0, responseHandler0).join();
 
     String seattleToolUseId0 = "";
     String sanFranciscoToolUseId0 = "";
@@ -3233,7 +3312,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request1, responseHandler1).get();
+    client.invokeModelWithResponseStream(request1, responseHandler1).join();
 
     assertThat(text.toString())
         .contains(
@@ -3770,8 +3849,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamToolCallAnthropicClaude()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamToolCallAnthropicClaude() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     builder.overrideConfiguration(createOverrideConfigurationBuilder().build());
     configureClient(builder);
@@ -3912,7 +3990,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request0, responseHandler0).get();
+    client.invokeModelWithResponseStream(request0, responseHandler0).join();
 
     String seattleToolUseId0 = "";
     String sanFranciscoToolUseId0 = "";
@@ -4120,7 +4198,7 @@ public abstract class AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request1, responseHandler1).get();
+    client.invokeModelWithResponseStream(request1, responseHandler1).join();
 
     assertThat(text.toString())
         .contains(

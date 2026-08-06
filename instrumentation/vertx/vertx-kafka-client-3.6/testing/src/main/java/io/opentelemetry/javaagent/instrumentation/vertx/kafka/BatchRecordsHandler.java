@@ -6,6 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.vertx.kafka;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.instrumentation.testing.GlobalTraceUtil;
 import io.vertx.core.Handler;
@@ -15,9 +16,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
-public class BatchRecordsHandler implements Handler<KafkaConsumerRecords<String, String>> {
+class BatchRecordsHandler implements Handler<KafkaConsumerRecords<String, String>> {
 
-  public static final BatchRecordsHandler INSTANCE = new BatchRecordsHandler();
+  static final BatchRecordsHandler INSTANCE = new BatchRecordsHandler();
 
   private static final AtomicInteger lastBatchSize = new AtomicInteger();
   private static volatile CountDownLatch messageReceived = new CountDownLatch(0);
@@ -32,22 +33,22 @@ public class BatchRecordsHandler implements Handler<KafkaConsumerRecords<String,
     GlobalTraceUtil.runWithSpan("batch consumer", () -> {});
     for (int i = 0; i < records.size(); ++i) {
       KafkaConsumerRecord<String, String> record = records.recordAt(i);
-      if (record.value().equals("error")) {
+      if ("error".equals(record.value())) {
         throw new IllegalArgumentException("boom");
       }
     }
   }
 
-  public static void reset(int expectedBatchSize) {
+  static void reset(int expectedBatchSize) {
     messageReceived = new CountDownLatch(expectedBatchSize);
     lastBatchSize.set(0);
   }
 
-  public static void waitForMessages() throws InterruptedException {
-    messageReceived.await(30, SECONDS);
+  static void waitForMessages() throws InterruptedException {
+    assertThat(messageReceived.await(30, SECONDS)).isTrue();
   }
 
-  public static int getLastBatchSize() {
+  static int getLastBatchSize() {
     return lastBatchSize.get();
   }
 }

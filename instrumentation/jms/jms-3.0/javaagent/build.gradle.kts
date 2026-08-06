@@ -22,7 +22,7 @@ muzzle {
 }
 
 dependencies {
-  implementation(project(":instrumentation:jms:jms-common:javaagent"))
+  implementation(project(":instrumentation:jms:jms-common-1.1:javaagent"))
 
   library("jakarta.jms:jakarta.jms-api:3.0.0")
 
@@ -41,7 +41,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testReceiveSpansDisabled by registering(Test::class) {
+  val testReceiveSpansDisabled = register<Test>("testReceiveSpansDisabled") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -56,6 +56,10 @@ tasks {
       excludeTestsMatching("Jms3SuppressReceiveSpansTest")
     }
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
+    systemProperty(
+      "metadataConfig",
+      "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
   }
 
   check {

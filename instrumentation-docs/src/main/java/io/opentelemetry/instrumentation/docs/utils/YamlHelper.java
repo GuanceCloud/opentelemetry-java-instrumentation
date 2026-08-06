@@ -5,9 +5,9 @@
 
 package io.opentelemetry.instrumentation.docs.utils;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.groupingBy;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -15,18 +15,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.opentelemetry.instrumentation.docs.internal.ConfigurationOption;
 import io.opentelemetry.instrumentation.docs.internal.ConfigurationType;
+import io.opentelemetry.instrumentation.docs.internal.DeclarativeSchema;
 import io.opentelemetry.instrumentation.docs.internal.EmittedMetrics;
 import io.opentelemetry.instrumentation.docs.internal.EmittedScope;
 import io.opentelemetry.instrumentation.docs.internal.EmittedSpans;
 import io.opentelemetry.instrumentation.docs.internal.InstrumentationClassification;
 import io.opentelemetry.instrumentation.docs.internal.InstrumentationMetadata;
 import io.opentelemetry.instrumentation.docs.internal.InstrumentationModule;
+import io.opentelemetry.instrumentation.docs.internal.SharedConfigurationRegistry;
 import io.opentelemetry.instrumentation.docs.internal.TelemetryAttribute;
 import java.io.BufferedWriter;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -49,27 +56,32 @@ public class YamlHelper {
 
     Yaml yaml = new Yaml(options);
 
-    // Add library modules
-    Map<String, Object> libraries = getLibraryInstrumentations(list);
-    if (!libraries.isEmpty()) {
-      yaml.dump(getLibraryInstrumentations(list), writer);
+    // Common metrics and configurations are collected once into a shared catalog; each module then
+    // references them by id instead of inlining full copies (see DefinitionCatalog).
+    DefinitionCatalog catalog = buildDefinitionCatalog(list);
+
+    Map<String, Object> definitions = catalog.toDefinitionsMap();
+    if (!definitions.isEmpty()) {
+      Map<String, Object> definitionsRoot = new LinkedHashMap<>();
+      definitionsRoot.put("definitions", definitions);
+      yaml.dump(definitionsRoot, writer);
     }
 
-    // Add internal modules
-    Map<String, Object> internal = generateBaseYaml(list, InstrumentationClassification.INTERNAL);
-    if (!internal.isEmpty()) {
-      yaml.dump(internal, writer);
+    Map<String, Object> libraries = getLibraryInstrumentations(list, catalog);
+    if (!libraries.isEmpty()) {
+      yaml.dump(libraries, writer);
     }
 
     // add custom instrumentation modules
-    Map<String, Object> custom = generateBaseYaml(list, InstrumentationClassification.CUSTOM);
+    Map<String, Object> custom = getCustomInstrumentations(list, catalog);
     if (!custom.isEmpty()) {
       yaml.dump(custom, writer);
     }
   }
 
-  private static Map<String, Object> getLibraryInstrumentations(List<InstrumentationModule> list) {
-    Map<String, List<InstrumentationModule>> libraryInstrumentations =
+  private static Map<String, Object> getLibraryInstrumentations(
+      List<InstrumentationModule> list, DefinitionCatalog catalog) {
+    List<InstrumentationModule> libraryInstrumentations =
         list.stream()
             .filter(
                 module ->
@@ -77,58 +89,52 @@ public class YamlHelper {
                         .getMetadata()
                         .getClassification()
                         .equals(InstrumentationClassification.LIBRARY))
-            .collect(
-                groupingBy(
-                    InstrumentationModule::getGroup,
-                    TreeMap::new,
-                    collectingAndThen(
-                        toList(),
-                        modules ->
-                            modules.stream()
-                                .sorted(InstrumentationNameComparator.BY_NAME_AND_VERSION)
-                                .collect(toList()))));
+            .sorted(InstrumentationNameComparator.BY_NAME_AND_VERSION)
+            .toList();
+
+    if (libraryInstrumentations.isEmpty()) {
+      return new TreeMap<>();
+    }
+
+    List<Map<String, Object>> instrumentations = new ArrayList<>();
+    for (InstrumentationModule module : libraryInstrumentations) {
+      instrumentations.add(baseProperties(module, catalog));
+    }
 
     Map<String, Object> output = new TreeMap<>();
-    libraryInstrumentations.forEach(
-        (group, modules) -> {
-          List<Map<String, Object>> instrumentations = new ArrayList<>();
-          for (InstrumentationModule module : modules) {
-            instrumentations.add(baseProperties(module));
-          }
-          output.put(group, instrumentations);
-        });
-
-    Map<String, Object> newOutput = new TreeMap<>();
-    if (output.isEmpty()) {
-      return newOutput;
-    }
-    newOutput.put("libraries", output);
-    return newOutput;
+    output.put("libraries", instrumentations);
+    return output;
   }
 
-  private static Map<String, Object> generateBaseYaml(
-      List<InstrumentationModule> list, InstrumentationClassification classification) {
+  private static Map<String, Object> getCustomInstrumentations(
+      List<InstrumentationModule> list, DefinitionCatalog catalog) {
     List<InstrumentationModule> filtered =
         list.stream()
-            .filter(module -> module.getMetadata().getClassification().equals(classification))
+            .filter(
+                module ->
+                    module
+                        .getMetadata()
+                        .getClassification()
+                        .equals(InstrumentationClassification.CUSTOM))
             .sorted(InstrumentationNameComparator.BY_NAME_AND_VERSION)
             .toList();
 
     List<Map<String, Object>> instrumentations = new ArrayList<>();
     for (InstrumentationModule module : filtered) {
-      instrumentations.add(baseProperties(module));
+      instrumentations.add(baseProperties(module, catalog));
     }
 
     Map<String, Object> newOutput = new TreeMap<>();
     if (instrumentations.isEmpty()) {
       return newOutput;
     }
-    newOutput.put(classification.toString(), instrumentations);
+    newOutput.put(InstrumentationClassification.CUSTOM.toString(), instrumentations);
     return newOutput;
   }
 
   /** Assembles map of properties that all modules could have */
-  private static Map<String, Object> baseProperties(InstrumentationModule module) {
+  private static Map<String, Object> baseProperties(
+      InstrumentationModule module, DefinitionCatalog catalog) {
     Map<String, Object> moduleMap = new LinkedHashMap<>();
     moduleMap.put("name", module.getInstrumentationName());
 
@@ -145,11 +151,17 @@ public class YamlHelper {
       moduleMap.put("has_standalone_library", true);
     }
 
-    if (module.getAgentTargetVersions() != null && !module.getAgentTargetVersions().isEmpty()) {
-      moduleMap.put("javaagent_target_versions", new ArrayList<>(module.getAgentTargetVersions()));
+    if (module.hasJavaAgent()) {
+      moduleMap.put("has_javaagent", true);
     }
 
-    addConfigurations(module, moduleMap);
+    if (module.getAgentTargetVersions() != null && !module.getAgentTargetVersions().isEmpty()) {
+      List<String> agentTargetVersions = new ArrayList<>(module.getAgentTargetVersions());
+      Collections.sort(agentTargetVersions);
+      moduleMap.put("javaagent_target_versions", agentTargetVersions);
+    }
+
+    addConfigurations(module, moduleMap, catalog);
 
     // Get telemetry grouping lists
     Set<String> telemetryGroups = new TreeSet<>(module.getMetrics().keySet());
@@ -160,18 +172,13 @@ public class YamlHelper {
       for (String group : telemetryGroups) {
         Map<String, Object> telemetryEntry = new LinkedHashMap<>();
         telemetryEntry.put("when", group);
-        List<EmittedMetrics.Metric> metrics =
-            new ArrayList<>(module.getMetrics().getOrDefault(group, emptyList()));
-        List<Map<String, Object>> metricsList = new ArrayList<>();
 
-        // sort by name for determinism in the order
-        metrics.sort(Comparator.comparing(EmittedMetrics.Metric::getName));
-
-        for (EmittedMetrics.Metric metric : metrics) {
-          metricsList.add(getMetricsMap(metric));
+        Set<String> metricRefs = new TreeSet<>();
+        for (EmittedMetrics.Metric metric : module.getMetrics().getOrDefault(group, emptyList())) {
+          metricRefs.add(catalog.metricId(metric));
         }
-        if (!metricsList.isEmpty()) {
-          telemetryEntry.put("metrics", metricsList);
+        if (!metricRefs.isEmpty()) {
+          telemetryEntry.put("metric_refs", new ArrayList<>(metricRefs));
         }
 
         List<EmittedSpans.Span> spans =
@@ -188,7 +195,7 @@ public class YamlHelper {
           telemetryEntry.put("spans", spanList);
         }
 
-        if (!spanList.isEmpty() || !metricsList.isEmpty()) {
+        if (!spanList.isEmpty() || !metricRefs.isEmpty()) {
           telemetryList.add(telemetryEntry);
         }
       }
@@ -250,19 +257,25 @@ public class YamlHelper {
   }
 
   private static void addConfigurations(
-      InstrumentationModule module, Map<String, Object> moduleMap) {
+      InstrumentationModule module, Map<String, Object> moduleMap, DefinitionCatalog catalog) {
     if (module.getMetadata() != null && !module.getMetadata().getConfigurations().isEmpty()) {
-      List<Map<String, Object>> configurations = new ArrayList<>();
+      Set<String> configRefs = new TreeSet<>();
       for (ConfigurationOption configuration : module.getMetadata().getConfigurations()) {
-        configurations.add(configurationToMap(configuration));
+        configRefs.add(catalog.configId(configuration));
       }
-      moduleMap.put("configurations", configurations);
+      moduleMap.put("configuration_refs", new ArrayList<>(configRefs));
     }
   }
 
   private static Map<String, Object> configurationToMap(ConfigurationOption configuration) {
     Map<String, Object> conf = new LinkedHashMap<>();
-    conf.put("name", configuration.name());
+    // Declarative-only configs (e.g. url_template_rules) have no flat system property name.
+    if (configuration.name() != null) {
+      conf.put("name", configuration.name());
+    }
+    if (configuration.declarativeName() != null) {
+      conf.put("declarative_name", configuration.declarativeName());
+    }
     conf.put("description", configuration.description());
     conf.put("type", configuration.type().toString());
     if (configuration.type().equals(ConfigurationType.BOOLEAN)) {
@@ -272,7 +285,41 @@ public class YamlHelper {
     } else {
       conf.put("default", configuration.defaultValue());
     }
+    if (configuration.examples() != null && !configuration.examples().isEmpty()) {
+      conf.put("examples", configuration.examples());
+    }
+    if (configuration.declarativeType() != null) {
+      conf.put("declarative_type", configuration.declarativeType().toString());
+    }
+    if (configuration.declarativeSchema() != null) {
+      conf.put("declarative_schema", declarativeSchemaToMap(configuration.declarativeSchema()));
+    }
     return conf;
+  }
+
+  private static Map<String, Object> declarativeSchemaToMap(DeclarativeSchema schema) {
+    Map<String, Object> schemaMap = new LinkedHashMap<>();
+    schemaMap.put("type", schema.type());
+    if (schema.required() != null && !schema.required().isEmpty()) {
+      schemaMap.put("required", schema.required());
+    }
+    Map<String, Object> properties = new LinkedHashMap<>();
+    schema
+        .properties()
+        .forEach(
+            (key, property) -> {
+              Map<String, Object> propertyMap = new LinkedHashMap<>();
+              propertyMap.put("type", property.type());
+              if (property.description() != null) {
+                propertyMap.put("description", property.description());
+              }
+              if (property.defaultValue() != null) {
+                propertyMap.put("default", property.defaultValue());
+              }
+              properties.put(key, propertyMap);
+            });
+    schemaMap.put("properties", properties);
+    return schemaMap;
   }
 
   private static List<Map<String, Object>> getSortedAttributeMaps(
@@ -309,7 +356,12 @@ public class YamlHelper {
 
   public static InstrumentationMetadata metaDataParser(String input)
       throws JsonProcessingException {
-    return mapper.readValue(input, InstrumentationMetadata.class);
+    InstrumentationMetadata metadata = mapper.readValue(input, InstrumentationMetadata.class);
+    // Expand any `- ref: <id>` configuration entries into their shared definitions so all consumers
+    // (the doc generator and the declarative-config validation test) see fully-resolved options.
+    metadata.setConfigurations(
+        SharedConfigurationRegistry.getInstance().resolve(metadata.getConfigurations()));
+    return metadata;
   }
 
   public static EmittedScope emittedScopeParser(String input) {
@@ -322,6 +374,173 @@ public class YamlHelper {
 
   public static EmittedSpans emittedSpansParser(String input) throws JsonProcessingException {
     return mapper.readValue(input, EmittedSpans.class);
+  }
+
+  /**
+   * Builds the shared definitions catalog from every module that will be emitted. Each unique
+   * metric/configuration block is assigned a deterministic id and stored once; modules then
+   * reference these ids.
+   */
+  private static DefinitionCatalog buildDefinitionCatalog(List<InstrumentationModule> list) {
+    DefinitionCatalog catalog = new DefinitionCatalog();
+
+    List<InstrumentationModule> emitted =
+        list.stream()
+            .filter(
+                module -> {
+                  InstrumentationClassification classification =
+                      module.getMetadata().getClassification();
+                  return classification.equals(InstrumentationClassification.LIBRARY)
+                      || classification.equals(InstrumentationClassification.CUSTOM);
+                })
+            .toList();
+
+    for (InstrumentationModule module : emitted) {
+      for (List<EmittedMetrics.Metric> metrics : module.getMetrics().values()) {
+        for (EmittedMetrics.Metric metric : metrics) {
+          Map<String, Object> def = getMetricsMap(metric);
+          String canonical = canonicalize(def);
+          if (!catalog.metricCanonicalToId.containsKey(canonical)) {
+            String id = metric.getName() + "-" + shortHash(canonical);
+            catalog.metricCanonicalToId.put(canonical, id);
+            catalog.metricDefs.put(id, def);
+          }
+        }
+      }
+    }
+
+    // Configurations: registry-backed configs (resolved from a `ref`) use their curated registry
+    // id. Module-specific configs are keyed by their config name, unless two distinct contents
+    // share a name, in which case a short content hash disambiguates them.
+    Map<String, Set<String>> nonRegistryNameToCanonicals = new HashMap<>();
+    Map<String, Map<String, Object>> canonicalToDef = new LinkedHashMap<>();
+    for (InstrumentationModule module : emitted) {
+      if (module.getMetadata() == null) {
+        continue;
+      }
+      for (ConfigurationOption configuration : module.getMetadata().getConfigurations()) {
+        Map<String, Object> def = configurationToMap(configuration);
+        String canonical = canonicalize(def);
+        canonicalToDef.put(canonical, def);
+        if (configuration.id() != null) {
+          catalog.configDefs.put(configuration.id(), def);
+          catalog.configCanonicalToId.put(canonical, configuration.id());
+        } else {
+          nonRegistryNameToCanonicals
+              .computeIfAbsent(configNameKey(configuration), k -> new TreeSet<>())
+              .add(canonical);
+        }
+      }
+    }
+    nonRegistryNameToCanonicals.forEach(
+        (name, canonicals) -> {
+          boolean unique = canonicals.size() == 1;
+          for (String canonical : canonicals) {
+            // Skip content already cataloged via a registry ref
+            if (catalog.configCanonicalToId.containsKey(canonical)) {
+              continue;
+            }
+            String id = unique ? name : name + "-" + shortHash(canonical);
+            catalog.configDefs.put(id, canonicalToDef.get(canonical));
+            catalog.configCanonicalToId.put(canonical, id);
+          }
+        });
+
+    return catalog;
+  }
+
+  private static String configNameKey(ConfigurationOption configuration) {
+    String key =
+        configuration.name() != null ? configuration.name() : configuration.declarativeName();
+    return requireNonNull(
+        key, "configuration must have a name or declarative_name to derive a definition id");
+  }
+
+  /**
+   * Produces a stable, order-independent string representation of a definition map (map keys sorted
+   * recursively) used both as the de-duplication key and as the input to the id hash.
+   */
+  private static String canonicalize(Object value) {
+    StringBuilder sb = new StringBuilder();
+    canonicalize(value, sb);
+    return sb.toString();
+  }
+
+  private static void canonicalize(Object value, StringBuilder sb) {
+    if (value instanceof Map<?, ?> map) {
+      TreeMap<String, Object> sorted = new TreeMap<>();
+      map.forEach((k, v) -> sorted.put(String.valueOf(k), v));
+      sb.append('{');
+      sorted.forEach(
+          (k, v) -> {
+            sb.append(k).append('=');
+            canonicalize(v, sb);
+            sb.append(';');
+          });
+      sb.append('}');
+    } else if (value instanceof List<?> list) {
+      sb.append('[');
+      for (Object item : list) {
+        canonicalize(item, sb);
+        sb.append(',');
+      }
+      sb.append(']');
+    } else {
+      sb.append(value);
+    }
+  }
+
+  /** First 8 hex chars of the SHA-256 of the input. */
+  private static String shortHash(String input) {
+    try {
+      byte[] hash = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < 4; i++) {
+        sb.append(String.format(Locale.ROOT, "%02x", hash[i]));
+      }
+      return sb.toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new AssertionError("SHA-256 not available", e);
+    }
+  }
+
+  /**
+   * Holds the shared metric and configuration definitions and the lookups needed to resolve a
+   * module's metric/config back to its catalog id. This class is internal and is hence not for
+   * public use.
+   */
+  private static final class DefinitionCatalog {
+    final Map<String, Map<String, Object>> metricDefs = new TreeMap<>();
+    final Map<String, Map<String, Object>> configDefs = new TreeMap<>();
+    final Map<String, String> metricCanonicalToId = new HashMap<>();
+    final Map<String, String> configCanonicalToId = new HashMap<>();
+
+    String metricId(EmittedMetrics.Metric metric) {
+      return requireNonNull(
+          metricCanonicalToId.get(canonicalize(getMetricsMap(metric))),
+          "metric not present in definitions catalog");
+    }
+
+    String configId(ConfigurationOption configuration) {
+      String id = configuration.id();
+      if (id != null) {
+        return id;
+      }
+      return requireNonNull(
+          configCanonicalToId.get(canonicalize(configurationToMap(configuration))),
+          "configuration not present in definitions catalog");
+    }
+
+    Map<String, Object> toDefinitionsMap() {
+      Map<String, Object> definitions = new LinkedHashMap<>();
+      if (!configDefs.isEmpty()) {
+        definitions.put("configurations", configDefs);
+      }
+      if (!metricDefs.isEmpty()) {
+        definitions.put("metrics", metricDefs);
+      }
+      return definitions;
+    }
   }
 
   private YamlHelper() {}

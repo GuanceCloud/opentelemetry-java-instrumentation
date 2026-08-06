@@ -5,12 +5,12 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.security.config.v6_0.webflux;
 
-import static io.opentelemetry.javaagent.instrumentation.spring.security.config.v6_0.EnduserAttributesCapturerSingletons.enduserAttributesCapturer;
+import static io.opentelemetry.javaagent.instrumentation.spring.security.config.v6_0.UserAttributesCapturerSingletons.userAttributesCapturer;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
-import io.opentelemetry.instrumentation.spring.security.config.v6_0.webflux.EnduserAttributesServerHttpSecurityCustomizer;
+import io.opentelemetry.instrumentation.spring.security.config.v6_0.webflux.UserAttributesServerHttpSecurityCustomizer;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import net.bytebuddy.asm.Advice;
@@ -36,9 +36,9 @@ class ServerHttpSecurityInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class BuildAdvice {
 
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static void onEnter(@Advice.This ServerHttpSecurity serverHttpSecurity) {
-      new EnduserAttributesServerHttpSecurityCustomizer(enduserAttributesCapturer())
+      new UserAttributesServerHttpSecurityCustomizer(userAttributesCapturer())
           .customize(serverHttpSecurity);
     }
   }

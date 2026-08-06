@@ -19,7 +19,9 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.internal.Timer;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
+import io.opentelemetry.javaagent.instrumentation.pulsar.v2_8.telemetry.PulsarSingletons;
 import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.asm.Advice.AssignReturned;
 import net.bytebuddy.description.type.TypeDescription;
@@ -65,6 +67,11 @@ class ConsumerImplInstrumentation implements TypeInstrumentation {
     transformer.applyAdviceToMethod(
         isProtected().and(named("internalBatchReceiveAsync")).and(takesArguments(0)),
         getClass().getName() + "$ConsumerBatchAsyncReceiveAdvice");
+
+    // only in MultiTopicsConsumerImpl
+    transformer.applyAdviceToMethod(
+        named("receiveMessageFromConsumer"),
+        getClass().getName() + "$SuppressInstrumentationAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -92,8 +99,8 @@ class ConsumerImplInstrumentation implements TypeInstrumentation {
     public static void after(
         @Advice.Enter Timer timer,
         @Advice.This Consumer<?> consumer,
-        @Advice.Return Message<?> message,
-        @Advice.Thrown Throwable throwable) {
+        @Advice.Return @Nullable Message<?> message,
+        @Advice.Thrown @Nullable Throwable throwable) {
       Context parent = Context.current();
       Context current = startAndEndConsumerReceive(parent, message, timer, consumer, throwable);
       if (current != null && throwable == null) {
@@ -116,8 +123,8 @@ class ConsumerImplInstrumentation implements TypeInstrumentation {
     public static void after(
         @Advice.Enter Timer timer,
         @Advice.This Consumer<?> consumer,
-        @Advice.Return Message<?> message,
-        @Advice.Thrown Throwable throwable) {
+        @Advice.Return @Nullable Message<?> message,
+        @Advice.Thrown @Nullable Throwable throwable) {
       Context parent = Context.current();
       startAndEndConsumerReceive(parent, message, timer, consumer, throwable);
       // No need to inject context to message.
@@ -133,7 +140,7 @@ class ConsumerImplInstrumentation implements TypeInstrumentation {
     }
 
     @AssignReturned.ToReturned
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static CompletableFuture<Message<?>> after(
         @Advice.This Consumer<?> consumer,
         @Advice.Return CompletableFuture<Message<?>> future,
@@ -151,12 +158,28 @@ class ConsumerImplInstrumentation implements TypeInstrumentation {
     }
 
     @AssignReturned.ToReturned
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static CompletableFuture<Messages<?>> after(
         @Advice.This Consumer<?> consumer,
         @Advice.Return CompletableFuture<Messages<?>> future,
         @Advice.Enter Timer timer) {
       return wrapBatch(future, timer, consumer);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  public static class SuppressInstrumentationAdvice {
+
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
+    public static void before() {
+      // MultiTopicsConsumerImpl#receiveMessageFromConsumer is called from a background thread, we
+      // don't want to create a span for it.
+      PulsarSingletons.startSuppressingReceive();
+    }
+
+    @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class, inline = false)
+    public static void after() {
+      PulsarSingletons.endSuppressingReceive();
     }
   }
 }

@@ -19,6 +19,15 @@ In addition to Google Java Style formatting, spotless applies
 [custom static importing rules](../../conventions/src/main/kotlin/io/opentelemetry/instrumentation/gradle/StaticImportFormatter.kt)
 (e.g. rewriting `Objects.requireNonNull` to a static import).
 
+Markdown files are formatted and linted separately through
+[flint](https://github.com/grafana/flint), run via [mise](https://mise.jdx.dev/):
+
+```bash
+mise run lint:fix
+```
+
+flint also checks that links in markdown files resolve.
+
 #### Pre-commit hook
 
 To completely delegate code style formatting to the machine,
@@ -36,7 +45,7 @@ by auto-formatting.
 
 To run these checks locally:
 
-```
+```bash
 ./gradlew checkstyleMain checkstyleTest
 ```
 
@@ -46,6 +55,9 @@ To run these checks locally:
 
 Follow the principle of minimal necessary visibility. Use the most restrictive access modifier that
 still allows the code to function correctly.
+
+Static fields should be `private`, except for constant-like static fields with an
+uppercase (`SCREAMING_SNAKE_CASE`) name.
 
 ### Internal packages
 
@@ -73,6 +85,11 @@ methods below the non-private methods that use them.
 private static method or a `static {}` block, it is acceptable to place the method or block
 immediately after the field to keep initialization logic co-located, even when this contradicts
 the general method ordering above.
+
+**Static factory entry points**: When a class exposes public static factory methods as its primary
+creation API (for example `create*(...)` or `builder(...)`), place those methods below fields and
+immediately above constructors. Treat static factory methods and constructors as a single
+construction section.
 
 **Static utility classes**: Place the private constructor (used to prevent instantiation) after all
 methods.
@@ -116,6 +133,11 @@ Examples that may remain uppercase include:
 - semantic keys and handles such as `AttributeKey`, `ContextKey`, `VirtualField`,
   `MethodHandle`, and `Pattern`
 - canonical singleton or sentinel fields named `INSTANCE`, `EMPTY`, or `NOOP`
+
+Private `static final` arrays of constant or immutable values should also use uppercase names when
+the array is not exposed outside the class and is not mutated after initialization. Even though Java
+arrays are technically mutable, treat this private, unexposed usage as constant-like for naming
+purposes.
 
 Do not use uppercase solely because a field is `static final`.
 
@@ -189,6 +211,10 @@ affect end users.
 
 Prefer AssertJ assertions over JUnit assertions (assertEquals, assertTrue, etc.) for better
 error messages.
+
+In test files that use `io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat`,
+do not also statically import `org.assertj.core.api.Assertions.assertThat` — `OpenTelemetryAssertions`
+extends `Assertions`, so all AssertJ `assertThat` overloads are already in scope via inheritance.
 
 ### JUnit
 

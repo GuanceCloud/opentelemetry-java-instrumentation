@@ -26,7 +26,7 @@ tasks {
     usesService(gradle.sharedServices.registrations["testcontainersBuildService"].service)
   }
 
-  val testReceiveSpanDisabled by registering(Test::class) {
+  val testReceiveSpanDisabled = register<Test>("testReceiveSpanDisabled") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter {
@@ -40,6 +40,10 @@ tasks {
       excludeTestsMatching("RocketMqClientSuppressReceiveSpanTest")
     }
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
+    systemProperty(
+      "metadataConfig",
+      "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
   }
 
   check {

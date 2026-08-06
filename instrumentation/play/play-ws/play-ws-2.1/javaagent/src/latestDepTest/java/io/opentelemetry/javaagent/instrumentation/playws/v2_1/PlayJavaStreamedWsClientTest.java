@@ -62,7 +62,8 @@ class PlayJavaStreamedWsClientTest extends PlayWsClientBaseTest<StandaloneWSRequ
         .whenComplete(
             (response, throwable) -> {
               if (throwable != null) {
-                requestResult.complete(throwable.getCause());
+                requestResult.complete(
+                    throwable.getCause() != null ? throwable.getCause() : throwable);
               } else {
                 requestResult.complete(response.getStatus());
               }
@@ -80,7 +81,7 @@ class PlayJavaStreamedWsClientTest extends PlayWsClientBaseTest<StandaloneWSRequ
   }
 
   private static StandaloneWSClient getClient(URI uri) {
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       return wsClientWithReadTimeout;
     }
     return wsClient;

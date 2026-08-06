@@ -94,11 +94,6 @@ class ApacheHttpAsyncClientTest {
     protected void configure(HttpClientTestOptions.Builder optionsBuilder) {
       super.configure(optionsBuilder);
       optionsBuilder.spanEndsAfterBody();
-      optionsBuilder.setHttpProtocolVersion(
-          uri ->
-              Boolean.getBoolean("testLatestDeps") && uri.toString().startsWith("https")
-                  ? "2"
-                  : "1.1");
     }
 
     @Override
@@ -106,7 +101,7 @@ class ApacheHttpAsyncClientTest {
       SimpleHttpRequest httpRequest = super.buildRequest(method, uri, headers);
       RequestConfig.Builder configBuilder = RequestConfig.custom();
       configBuilder.setConnectTimeout(getTimeout(connectTimeout()));
-      if (uri.toString().contains("/read-timeout")) {
+      if (uri.getPath().endsWith("/read-timeout")) {
         configBuilder.setResponseTimeout(getTimeout(readTimeout()));
       }
       RequestConfig requestConfig = configBuilder.build();

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
 
 /**
  * Javaagent distribution-specific configuration.
@@ -37,6 +38,8 @@ public class AgentDistributionConfig {
   private final List<String> excludeClasses;
 
   private final List<String> excludeClassLoaders;
+
+  private final boolean threadDetailsEnabled;
 
   private final InstrumentationConfig instrumentation;
 
@@ -80,12 +83,13 @@ public class AgentDistributionConfig {
 
   @JsonCreator
   AgentDistributionConfig(
-      @JsonProperty("indy/development") Boolean indyEnabled,
-      @JsonProperty("force_synchronous_agent_listeners/development")
+      @Nullable @JsonProperty("indy/development") Boolean indyEnabled,
+      @Nullable @JsonProperty("force_synchronous_agent_listeners/development")
           Boolean forceSynchronousAgentListeners,
-      @JsonProperty("exclude_classes") List<String> excludeClasses,
-      @JsonProperty("exclude_class_loaders") List<String> excludeClassLoaders,
-      @JsonProperty("instrumentation") InstrumentationConfig instrumentation) {
+      @Nullable @JsonProperty("exclude_classes") List<String> excludeClasses,
+      @Nullable @JsonProperty("exclude_class_loaders") List<String> excludeClassLoaders,
+      @Nullable @JsonProperty("thread_details_enabled") Boolean threadDetailsEnabled,
+      @Nullable @JsonProperty("instrumentation") InstrumentationConfig instrumentation) {
     this.indyEnabled = indyEnabled != null ? indyEnabled : false;
     this.forceSynchronousAgentListeners =
         forceSynchronousAgentListeners != null ? forceSynchronousAgentListeners : false;
@@ -93,12 +97,13 @@ public class AgentDistributionConfig {
         excludeClasses != null ? new ArrayList<>(excludeClasses) : new ArrayList<>();
     this.excludeClassLoaders =
         excludeClassLoaders != null ? new ArrayList<>(excludeClassLoaders) : new ArrayList<>();
+    this.threadDetailsEnabled = threadDetailsEnabled != null ? threadDetailsEnabled : false;
     this.instrumentation = instrumentation != null ? instrumentation : new InstrumentationConfig();
   }
 
   // Default constructor for testing
   AgentDistributionConfig() {
-    this(null, null, null, null, null);
+    this(null, null, null, null, null, null);
   }
 
   /**
@@ -161,6 +166,10 @@ public class AgentDistributionConfig {
     return indyEnabled;
   }
 
+  public boolean isThreadDetailsEnabled() {
+    return threadDetailsEnabled;
+  }
+
   public boolean isForceSynchronousAgentListeners() {
     return forceSynchronousAgentListeners;
   }
@@ -185,9 +194,9 @@ public class AgentDistributionConfig {
 
     @JsonCreator
     InstrumentationConfig(
-        @JsonProperty("default_enabled") Boolean defaultEnabled,
-        @JsonProperty("disabled") List<String> disabled,
-        @JsonProperty("enabled") List<String> enabled) {
+        @Nullable @JsonProperty("default_enabled") Boolean defaultEnabled,
+        @Nullable @JsonProperty("disabled") List<String> disabled,
+        @Nullable @JsonProperty("enabled") List<String> enabled) {
       this.defaultEnabled = defaultEnabled != null ? defaultEnabled : true;
       this.disabled = disabled != null ? new HashSet<>(disabled) : new HashSet<>();
       this.enabled = enabled != null ? new HashSet<>(enabled) : new HashSet<>();
@@ -220,12 +229,20 @@ public class AgentDistributionConfig {
     private final ConfigProperties configProperties;
 
     ConfigPropertiesAgentDistributionConfig(ConfigProperties configProperties) {
+      this(
+          configProperties,
+          configProperties.getBoolean("otel.instrumentation.common.v3-preview", false));
+    }
+
+    private ConfigPropertiesAgentDistributionConfig(
+        ConfigProperties configProperties, boolean v3Preview) {
       super(
-          configProperties.getBoolean("otel.javaagent.experimental.indy", false),
+          configProperties.getBoolean("otel.javaagent.experimental.indy", v3Preview),
           configProperties.getBoolean(
               "otel.javaagent.experimental.force-synchronous-agent-listeners", false),
           configProperties.getList("otel.javaagent.exclude-classes"),
           configProperties.getList("otel.javaagent.exclude-class-loaders"),
+          configProperties.getBoolean("otel.javaagent.add-thread-details", !v3Preview),
           null);
       this.configProperties = configProperties;
     }

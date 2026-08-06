@@ -34,11 +34,10 @@ kotlin {
 
 tasks {
   withType<Test>().configureEach {
-    systemProperty("testLatestDeps", otelProps.testLatestDeps)
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -47,7 +46,7 @@ tasks {
     systemProperty("metadataConfig", "otel.instrumentation.http.server.emit-experimental-telemetry=true")
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=service.peer")

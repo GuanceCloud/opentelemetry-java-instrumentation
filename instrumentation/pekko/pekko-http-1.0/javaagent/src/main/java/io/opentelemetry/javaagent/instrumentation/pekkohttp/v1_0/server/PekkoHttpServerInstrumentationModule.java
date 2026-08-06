@@ -11,13 +11,11 @@ import static java.util.Arrays.asList;
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class PekkoHttpServerInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class PekkoHttpServerInstrumentationModule extends InstrumentationModule {
   public PekkoHttpServerInstrumentationModule() {
     super("pekko-http", "pekko-http-1.0", "pekko-http-server");
   }
@@ -26,12 +24,8 @@ public class PekkoHttpServerInstrumentationModule extends InstrumentationModule
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
     // in GraphInterpreterInstrumentation we instrument a class that belongs to pekko-streams, make
     // sure this runs only when pekko-http is present to avoid muzzle failures
+    // added in 1.0.0
     return hasClassesNamed("org.apache.pekko.http.scaladsl.HttpExt");
-  }
-
-  @Override
-  public String getModuleGroup() {
-    return "pekko-server";
   }
 
   @Override
@@ -41,10 +35,5 @@ public class PekkoHttpServerInstrumentationModule extends InstrumentationModule
         new HttpServerBluePrintInstrumentation(),
         new GraphInterpreterInstrumentation(),
         new PekkoHttpServerSourceInstrumentation());
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 }

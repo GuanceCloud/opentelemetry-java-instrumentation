@@ -11,20 +11,12 @@ plugins {
 }
 
 /**
- * The latest *released* version of the project. Evaluated lazily so the work is only done if necessary.
+ * The baseline version japicmp compares against. Pinned in version.gradle.kts and bumped
+ * atomically with docs/apidiffs/current_vs_latest/ by the post-release PR opened from
+ * .github/workflows/release.yml.
  */
-val latestReleasedVersion: String by lazy {
-  // hack to find the current released version of the project
-  val temp: Configuration = configurations.create("tempConfig")
-  temp.resolutionStrategy.cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
-  // pick the bom, since we don't use dependency substitution on it.
-  dependencies.add(temp.name, "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:latest.release")
-  val moduleVersion = configurations["tempConfig"].resolvedConfiguration.firstLevelModuleDependencies.elementAt(0).moduleVersion
-
-  configurations.remove(temp)
-  logger.info("Discovered latest release version: $moduleVersion")
-  moduleVersion
-}
+val apidiffBaselineVersion: String =
+  rootProject.extra["apidiffBaselineVersion"] as String
 
 /**
  * Locate the project's artifact of a particular version.
@@ -54,21 +46,21 @@ if (project.findProperty("otel.stable") == "true" && project.path != ":javaagent
     // Only apply japicmp to projects that have a jar task (i.e. not BOMs or platforms)
     tasks.findByName("jar")?.let {
       tasks {
-        val jApiCmp by registering(JapicmpTask::class) {
+        val jApiCmp = register<JapicmpTask>("jApiCmp") {
           dependsOn("jar")
 
           // the japicmp "new" version is either the user-specified one, or the locally built jar.
-          val apiNewVersion: String? by project
+          val apiNewVersion = project.findProperty("apiNewVersion") as String?
           val newArtifact = apiNewVersion?.let { findArtifact(it) }
-            ?: file(getByName<Jar>("jar").archiveFile)
+              ?: file(getByName<Jar>("jar").archiveFile)
           newClasspath.from(files(newArtifact))
 
           // only output changes, not everything
           onlyModified.set(true)
 
           // the japicmp "old" version is either the user-specified one, or the latest release.
-          val apiBaseVersion: String? by project
-          val baselineVersion = apiBaseVersion ?: latestReleasedVersion
+          val apiBaseVersion = project.findProperty("apiBaseVersion") as String?
+          val baselineVersion = apiBaseVersion ?: apidiffBaselineVersion
           oldClasspath.from(
             try {
               files(findArtifact(baselineVersion))

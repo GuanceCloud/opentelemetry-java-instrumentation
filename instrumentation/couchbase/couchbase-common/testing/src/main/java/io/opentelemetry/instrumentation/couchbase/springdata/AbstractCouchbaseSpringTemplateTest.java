@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.couchbase.springdata;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.instrumentation.testing.junit.db.SemconvStabilityUtil.maybeStable;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
@@ -27,12 +28,10 @@ import com.couchbase.client.java.cluster.ClusterManager;
 import com.couchbase.client.java.env.CouchbaseEnvironment;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.couchbase.AbstractCouchbaseTest;
+import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,7 +45,8 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
   @RegisterExtension
   static final InstrumentationExtension testing = AgentInstrumentationExtension.create();
 
-  private final List<AutoCloseable> cleanup = new ArrayList<>();
+  @RegisterExtension static final AutoCleanupExtension cleanup = AutoCleanupExtension.create();
+
   private CouchbaseTemplate couchbaseTemplate;
   private CouchbaseTemplate memcacheTemplate;
 
@@ -67,12 +67,12 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
     Bucket memcacheBucket =
         memcacheCluster.openBucket(bucketMemcache.name(), bucketMemcache.password());
 
-    cleanup.add(couchbaseBucket::close);
-    cleanup.add(memcacheBucket::close);
-    cleanup.add(couchbaseCluster::disconnect);
-    cleanup.add(memcacheCluster::disconnect);
-    cleanup.add(couchbaseEnvironment::shutdown);
-    cleanup.add(memcacheEnvironment::shutdown);
+    cleanup.deferAfterAll(couchbaseEnvironment::shutdown);
+    cleanup.deferAfterAll(memcacheEnvironment::shutdown);
+    cleanup.deferAfterAll(couchbaseCluster::disconnect);
+    cleanup.deferAfterAll(memcacheCluster::disconnect);
+    cleanup.deferAfterAll(couchbaseBucket::close);
+    cleanup.deferAfterAll(memcacheBucket::close);
 
     testing.runWithSpan(
         "getting info",
@@ -80,13 +80,6 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
           couchbaseTemplate = new CouchbaseTemplate(couchbaseManager.info(), couchbaseBucket);
           memcacheTemplate = new CouchbaseTemplate(memcacheManager.info(), memcacheBucket);
         });
-  }
-
-  @AfterAll
-  void cleanUp() throws Exception {
-    for (AutoCloseable closeable : cleanup) {
-      closeable.close();
-    }
   }
 
   private Stream<Arguments> templates() {
@@ -114,7 +107,10 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("someTrace").hasKind(SpanKind.INTERNAL).hasNoParent(),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + template.getCouchbaseBucket().name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -129,7 +125,10 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
                             satisfies(
                                 stringKey("couchbase.operation_id"), experimentalAttribute())),
                 span ->
-                    span.hasName("Bucket.get")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.get " + template.getCouchbaseBucket().name()
+                                : "Bucket.get")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -161,7 +160,10 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("someTrace").hasKind(SpanKind.INTERNAL).hasNoParent(),
                 span ->
-                    span.hasName("Bucket.upsert")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.upsert " + template.getCouchbaseBucket().name()
+                                : "Bucket.upsert")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -176,7 +178,10 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
                             satisfies(
                                 stringKey("couchbase.operation_id"), experimentalAttribute())),
                 span ->
-                    span.hasName("Bucket.remove")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.remove " + template.getCouchbaseBucket().name()
+                                : "Bucket.remove")
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasAttributesSatisfyingExactly(
@@ -200,7 +205,10 @@ public abstract class AbstractCouchbaseSpringTemplateTest extends AbstractCouchb
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span ->
-                    span.hasName("Bucket.get")
+                    span.hasName(
+                            emitStableDatabaseSemconv()
+                                ? "Bucket.get " + template.getCouchbaseBucket().name()
+                                : "Bucket.get")
                         .hasKind(SpanKind.CLIENT)
                         .hasNoParent()
                         .hasAttributesSatisfyingExactly(

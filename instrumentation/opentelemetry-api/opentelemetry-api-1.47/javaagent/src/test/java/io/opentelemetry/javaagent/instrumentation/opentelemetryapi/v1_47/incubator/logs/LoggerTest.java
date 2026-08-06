@@ -39,7 +39,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 class LoggerTest {
 
   @RegisterExtension
-  static final AgentInstrumentationExtension testing = AgentInstrumentationExtension.create();
+  private static final AgentInstrumentationExtension testing =
+      AgentInstrumentationExtension.create();
 
   private String instrumentationName;
   private Logger logger;
@@ -88,8 +89,10 @@ class LoggerTest {
                         logRecordData -> {
                           assertThat(logRecordData.getInstrumentationScopeInfo().getName())
                               .isEqualTo(instrumentationName);
-                          assertThat(((ExtendedLogRecordData) logRecordData).getEventName())
-                              .isEqualTo("eventName");
+                          assertThat(logRecordData).isInstanceOf(ExtendedLogRecordData.class);
+                          ExtendedLogRecordData extendedLogRecordData =
+                              (ExtendedLogRecordData) logRecordData;
+                          assertThat(extendedLogRecordData.getEventName()).isEqualTo("eventName");
                           assertThat(logRecordData.getInstrumentationScopeInfo().getVersion())
                               .isEqualTo("1.2.3");
                           assertThat(logRecordData.getTimestampEpochNanos()).isGreaterThan(0);

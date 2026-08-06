@@ -7,8 +7,8 @@ package io.opentelemetry.instrumentation.servlet.v3_0;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
-import io.opentelemetry.instrumentation.servlet.internal.ServletRequestContext;
-import io.opentelemetry.instrumentation.servlet.internal.ServletResponseContext;
+import io.opentelemetry.instrumentation.servlet.common.internal.ServletRequestContext;
+import io.opentelemetry.instrumentation.servlet.common.internal.ServletResponseContext;
 import io.opentelemetry.instrumentation.servlet.v3_0.internal.Servlet3TelemetryFilter;
 import javax.servlet.Filter;
 import javax.servlet.http.HttpServletRequest;
@@ -16,6 +16,10 @@ import javax.servlet.http.HttpServletResponse;
 
 /** Entrypoint for instrumenting Servlets. */
 public final class ServletTelemetry {
+  private final Instrumenter<
+          ServletRequestContext<HttpServletRequest>, ServletResponseContext<HttpServletResponse>>
+      instrumenter;
+  private final boolean addTraceIdRequestAttribute;
 
   /** Returns a new instance configured with the given {@link OpenTelemetry} instance. */
   public static ServletTelemetry create(OpenTelemetry openTelemetry) {
@@ -26,11 +30,6 @@ public final class ServletTelemetry {
   public static ServletTelemetryBuilder builder(OpenTelemetry openTelemetry) {
     return new ServletTelemetryBuilder(openTelemetry);
   }
-
-  private final Instrumenter<
-          ServletRequestContext<HttpServletRequest>, ServletResponseContext<HttpServletResponse>>
-      instrumenter;
-  private final boolean addTraceIdRequestAttribute;
 
   ServletTelemetry(
       Instrumenter<

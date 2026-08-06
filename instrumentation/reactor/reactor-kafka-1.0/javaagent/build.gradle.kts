@@ -37,15 +37,13 @@ dependencies {
 
 testing {
   suites {
-    val testV1_3_3 by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("testV1_3_3") {
       dependencies {
         implementation(project(":instrumentation:reactor:reactor-kafka-1.0:testing"))
 
+        implementation("io.projectreactor.kafka:reactor-kafka:${baseVersion("1.3.3").orLatest()}")
         if (otelProps.testLatestDeps) {
-          implementation("io.projectreactor.kafka:reactor-kafka:latest.release")
           implementation("io.projectreactor:reactor-core:3.4.+")
-        } else {
-          implementation("io.projectreactor.kafka:reactor-kafka:1.3.3")
         }
       }
 
@@ -58,15 +56,13 @@ testing {
       }
     }
 
-    val testV1_3_21 by registering(JvmTestSuite::class) {
+    register<JvmTestSuite>("testV1_3_21") {
       dependencies {
         implementation(project(":instrumentation:reactor:reactor-kafka-1.0:testing"))
 
+        implementation("io.projectreactor.kafka:reactor-kafka:${baseVersion("1.3.21").orLatest()}")
         if (otelProps.testLatestDeps) {
-          implementation("io.projectreactor.kafka:reactor-kafka:latest.release")
           implementation("io.projectreactor:reactor-core:3.4.+")
-        } else {
-          implementation("io.projectreactor.kafka:reactor-kafka:1.3.21")
         }
       }
 
@@ -87,7 +83,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -96,7 +92,7 @@ tasks {
     systemProperty("hasConsumerGroup", otelProps.testLatestDeps)
   }
 
-  val testReceiveSpansDisabled by registering(Test::class) {
+  val testReceiveSpansDisabled = register<Test>("testReceiveSpansDisabled") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -106,6 +102,10 @@ tasks {
   test {
     systemProperty("hasConsumerGroup", otelProps.testLatestDeps)
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
+    systemProperty(
+      "metadataConfig",
+      "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
   }
 
   check {

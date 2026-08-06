@@ -8,14 +8,14 @@ muzzle {
   pass {
     group.set("org.springframework.data")
     module.set("spring-data-commons")
-    versions.set("[1.8.0.RELEASE,]")
+    versions.set("[1.8.0.RELEASE,)")
     extraDependency("org.springframework:spring-aop:1.2")
     assertInverse.set(true)
   }
   pass {
     group.set("org.springframework")
     module.set("spring-aop")
-    versions.set("[1.2,]")
+    versions.set("[1.2,)")
     extraDependency("org.springframework.data:spring-data-commons:1.8.0.RELEASE")
     assertInverse.set(true)
   }
@@ -55,7 +55,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=database")

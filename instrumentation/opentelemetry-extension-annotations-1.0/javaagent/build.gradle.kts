@@ -7,7 +7,6 @@ muzzle {
     group.set("io.opentelemetry")
     module.set("opentelemetry-extension-annotations")
     versions.set("[0.16.0,)")
-    skip("0.13.0") // opentelemetry-api has a bad dependency on non-alpha api-metric 0.13.0
     assertInverse.set(true)
   }
 }
@@ -40,7 +39,7 @@ tasks {
     jvmArgs("-Dotel.instrumentation.opentelemetry-annotations.exclude-methods=io.opentelemetry.test.annotation.TracedWithSpan[ignored]")
   }
 
-  val testDeclarativeConfig by registering(Test::class) {
+  val testDeclarativeConfig = register<Test>("testDeclarativeConfig") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs(

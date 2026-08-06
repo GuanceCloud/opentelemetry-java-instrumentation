@@ -6,8 +6,8 @@
 package io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_10.metrics;
 
 import io.opentelemetry.api.metrics.LongCounter;
-import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.context.AgentContextStorage;
-import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.trace.Bridging;
+import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_0.context.AgentContextStorage;
+import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_0.trace.Bridging;
 
 public class ApplicationLongCounter
     implements application.io.opentelemetry.api.metrics.LongCounter {
@@ -38,5 +38,11 @@ public class ApplicationLongCounter
         value,
         Bridging.toAgent(applicationAttributes),
         AgentContextStorage.getAgentContext(applicationContext));
+  }
+
+  // added in 1.40.0 to incubator api
+  // added in 1.61.0 to stable api
+  public boolean isEnabled() {
+    return agentCounter.isEnabled();
   }
 }

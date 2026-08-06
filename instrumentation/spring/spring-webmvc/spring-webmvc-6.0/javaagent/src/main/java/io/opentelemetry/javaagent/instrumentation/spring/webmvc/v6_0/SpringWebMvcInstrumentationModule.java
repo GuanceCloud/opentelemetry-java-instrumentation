@@ -7,19 +7,16 @@ package io.opentelemetry.javaagent.instrumentation.spring.webmvc.v6_0;
 
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.ClassInjector;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.InjectionMode;
 import java.util.List;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class SpringWebMvcInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class SpringWebMvcInstrumentationModule extends InstrumentationModule {
 
   public SpringWebMvcInstrumentationModule() {
     super("spring-webmvc", "spring-webmvc-6.0");
@@ -39,24 +36,12 @@ public class SpringWebMvcInstrumentationModule extends InstrumentationModule
   }
 
   @Override
-  public void injectClasses(ClassInjector injector) {
-    injector
-        .proxyBuilder("org.springframework.web.servlet.v6_0.OpenTelemetryHandlerMappingFilter")
-        .inject(InjectionMode.CLASS_ONLY);
-  }
-
-  @Override
-  public String getModuleGroup() {
-    return "servlet";
+  public List<String> exposedClassNames() {
+    return singletonList("org.springframework.web.servlet.v6_0.OpenTelemetryHandlerMappingFilter");
   }
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
     return asList(new DispatcherServletInstrumentation(), new HandlerAdapterInstrumentation());
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 }

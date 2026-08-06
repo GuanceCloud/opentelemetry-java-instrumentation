@@ -20,8 +20,6 @@ muzzle {
     module.set("dropwizard-client")
     versions.set("(,3.0.0)")
     assertInverse.set(true)
-    // Could not find com.google.code.findbugs:jsr305:.
-    skip("3.0.2", "4.0.2")
   }
 }
 
@@ -38,7 +36,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=service.peer")

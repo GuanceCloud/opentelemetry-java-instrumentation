@@ -14,8 +14,6 @@ muzzle {
 dependencies {
   library("org.jboss.logmanager:jboss-logmanager:1.1.0.GA")
 
-  compileOnly(project(":javaagent-bootstrap"))
-
   // ensure no cross interference
   testInstrumentation(project(":instrumentation:java-util-logging:javaagent"))
 }
@@ -26,10 +24,25 @@ if (otelProps.testLatestDeps) {
   }
 }
 
-tasks.withType<Test>().configureEach {
-  // TODO run tests both with and without experimental log attributes
-  jvmArgs("-Dotel.instrumentation.jboss-logmanager.experimental.capture-mdc-attributes=*")
-  jvmArgs("-Dotel.instrumentation.jboss-logmanager.experimental.capture-event-name=true")
-  jvmArgs("-Dotel.instrumentation.jboss-logmanager.experimental-log-attributes=true")
-  jvmArgs("-Dotel.instrumentation.java-util-logging.experimental-log-attributes=true")
+tasks {
+  withType<Test>().configureEach {
+    // TODO run tests both with and without experimental log attributes
+    jvmArgs("-Dotel.instrumentation.jboss-logmanager.experimental.capture-mdc-attributes=*")
+    jvmArgs("-Dotel.instrumentation.jboss-logmanager.experimental-log-attributes=true")
+    jvmArgs("-Dotel.instrumentation.java-util-logging.experimental-log-attributes=true")
+  }
+
+  val testCaptureTemplateAndArguments = register<Test>("testCaptureTemplateAndArguments") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
+    jvmArgs(
+      "-Dotel.instrumentation.jboss-logmanager.experimental.capture-template=true",
+      "-Dotel.instrumentation.jboss-logmanager.experimental.capture-arguments=true",
+    )
+  }
+
+  check {
+    dependsOn(testCaptureTemplateAndArguments)
+  }
 }

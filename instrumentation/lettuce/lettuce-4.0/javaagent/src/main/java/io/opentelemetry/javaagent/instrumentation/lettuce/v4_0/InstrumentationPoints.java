@@ -10,6 +10,7 @@ import static com.lambdaworks.redis.protocol.CommandType.DEBUG;
 import static com.lambdaworks.redis.protocol.CommandType.SHUTDOWN;
 import static io.opentelemetry.javaagent.instrumentation.lettuce.v4_0.LettuceSingletons.instrumenter;
 
+import com.lambdaworks.redis.RedisCommandExecutionException;
 import com.lambdaworks.redis.protocol.AsyncCommand;
 import com.lambdaworks.redis.protocol.CommandType;
 import com.lambdaworks.redis.protocol.ProtocolKeyword;
@@ -21,6 +22,7 @@ import io.opentelemetry.instrumentation.api.incubator.config.internal.Declarativ
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import javax.annotation.Nullable;
 
 public class InstrumentationPoints {
 
@@ -33,8 +35,8 @@ public class InstrumentationPoints {
   public static void afterCommand(
       RedisCommand<?, ?, ?> command,
       Context context,
-      Throwable throwable,
-      AsyncCommand<?, ?, ?> asyncCommand) {
+      @Nullable Throwable throwable,
+      @Nullable AsyncCommand<?, ?, ?> asyncCommand) {
     if (throwable != null) {
       instrumenter().end(context, command, null, throwable);
     } else if (expectsResponse(command)) {
@@ -55,6 +57,33 @@ public class InstrumentationPoints {
       // No response is expected, so we must finish the span now.
       instrumenter().end(context, command, null, null);
     }
+  }
+
+  public static void endReactiveCommand(
+      RedisCommand<?, ?, ?> command,
+      Context context,
+      String methodName,
+      @Nullable Throwable commandError) {
+    if (!expectsResponse(command)) {
+      return;
+    }
+
+    Throwable error = null;
+    if ("completeExceptionally".equals(methodName)) {
+      error = commandError;
+    }
+    if (error == null
+        && "complete".equals(methodName)
+        && command.getOutput() != null
+        && command.getOutput().hasError()) {
+      error = new RedisCommandExecutionException(command.getOutput().getError());
+    }
+
+    if (error == null && "cancel".equals(methodName) && CAPTURE_EXPERIMENTAL_SPAN_ATTRIBUTES) {
+      Span.fromContext(context).setAttribute("lettuce.command.cancelled", true);
+    }
+
+    instrumenter().end(context, command, null, error);
   }
 
   /**

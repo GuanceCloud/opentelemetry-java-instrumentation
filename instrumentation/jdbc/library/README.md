@@ -8,7 +8,7 @@ Provides OpenTelemetry instrumentation for
 ### Add these dependencies to your project
 
 Replace `OPENTELEMETRY_VERSION` with the [latest
-release]( https://central.sonatype.com/artifact/io.opentelemetry.instrumentation/opentelemetry-jdbc).
+release](https://central.sonatype.com/artifact/io.opentelemetry.instrumentation/opentelemetry-jdbc).
 
 For Maven, add to your `pom.xml` dependencies:
 
@@ -70,5 +70,5 @@ public class DataSourceConfig {
 2. Set the driver class to `io.opentelemetry.instrumentation.jdbc.OpenTelemetryDriver`.
 
 3. Inject `OpenTelemetry` into `io.opentelemetry.instrumentation.jdbc.OpenTelemetryDriver` _before the initialization of the database connection pool_.
-You can do this with the `void setOpenTelemetry(OpenTelemetry openTelemetry)` method of `io.opentelemetry.instrumentation.jdbc.OpenTelemetryDriver`.
-Another way is to use `OpenTelemetryDriver.install(OpenTelemetry openTelemetry)`.
+   You can do this with the `void setOpenTelemetry(OpenTelemetry openTelemetry)` method of `io.opentelemetry.instrumentation.jdbc.OpenTelemetryDriver`.
+   Another way is to use `OpenTelemetryDriver.install(OpenTelemetry openTelemetry)`.

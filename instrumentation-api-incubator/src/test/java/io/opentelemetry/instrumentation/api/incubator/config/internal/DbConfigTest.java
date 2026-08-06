@@ -60,7 +60,22 @@ class DbConfigTest {
   }
 
   @Test
-  void commonSqlCommenterPropertyIsUsedAsFallback() {
+  void deprecatedCommonStatementSanitizerConfigIgnoredInV3Preview() {
+    ExtendedOpenTelemetry openTelemetry = mock(ExtendedOpenTelemetry.class);
+    DeclarativeConfigProperties commonConfig =
+        mock(DeclarativeConfigProperties.class, RETURNS_DEEP_STUBS);
+    when(openTelemetry.getInstrumentationConfig("common")).thenReturn(commonConfig);
+    when(commonConfig.getBoolean("v3_preview")).thenReturn(true);
+    when(commonConfig.get("db").get("query_sanitization").getBoolean("enabled")).thenReturn(null);
+    when(commonConfig.get("database").get("statement_sanitizer").getBoolean("enabled"))
+        .thenReturn(false);
+    when(commonConfig.get("db_statement_sanitizer").getBoolean("enabled")).thenReturn(null);
+
+    assertThat(DbConfig.isCommonQuerySanitizationEnabled(openTelemetry)).isTrue();
+  }
+
+  @Test
+  void deprecatedCommonSqlCommenterConfigIgnoredInV3Preview() {
     ExtendedOpenTelemetry openTelemetry = mock(ExtendedOpenTelemetry.class);
     DeclarativeConfigProperties commonConfig =
         mock(DeclarativeConfigProperties.class, RETURNS_DEEP_STUBS);
@@ -68,15 +83,15 @@ class DbConfigTest {
         mock(DeclarativeConfigProperties.class, RETURNS_DEEP_STUBS);
     when(openTelemetry.getInstrumentationConfig("common")).thenReturn(commonConfig);
     when(openTelemetry.getInstrumentationConfig("jdbc")).thenReturn(instrumentationConfig);
+    when(commonConfig.getBoolean("v3_preview")).thenReturn(true);
     when(instrumentationConfig.get("sqlcommenter/development").getBoolean("enabled"))
         .thenReturn(null);
     when(commonConfig.get("db").get("sqlcommenter/development").getBoolean("enabled"))
         .thenReturn(null);
     when(commonConfig.get("database").get("sqlcommenter/development").getBoolean("enabled"))
-        .thenReturn(null);
-    when(commonConfig.get("db_sqlcommenter/development").getBoolean("enabled")).thenReturn(true);
+        .thenReturn(true);
 
-    assertThat(DbConfig.isSqlCommenterEnabled(openTelemetry, "jdbc")).isTrue();
+    assertThat(DbConfig.isSqlCommenterEnabled(openTelemetry, "jdbc")).isFalse();
   }
 
   @Test

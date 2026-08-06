@@ -12,21 +12,14 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
 import java.util.List;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
-abstract class AbstractAwsSdkInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+abstract class AbstractAwsSdkInstrumentationModule extends InstrumentationModule {
 
   protected AbstractAwsSdkInstrumentationModule(String additionalInstrumentationName) {
     super("aws-sdk", "aws-sdk-2.2", additionalInstrumentationName);
-  }
-
-  @Override
-  public String getModuleGroup() {
-    return "aws-sdk-v2";
   }
 
   @Override
@@ -36,19 +29,13 @@ abstract class AbstractAwsSdkInstrumentationModule extends InstrumentationModule
 
   @Override
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
-    // We don't actually transform it but want to make sure we only apply the instrumentation when
-    // our key dependency is present.
+    // added in 2.2.0
     return hasClassesNamed("software.amazon.awssdk.core.interceptor.ExecutionInterceptor");
   }
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
     return singletonList(new ResourceInjectingTypeInstrumentation());
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 
   abstract void doTransform(TypeTransformer transformer);

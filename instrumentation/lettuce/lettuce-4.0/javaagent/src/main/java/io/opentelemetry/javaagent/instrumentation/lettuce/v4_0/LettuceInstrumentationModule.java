@@ -10,12 +10,10 @@ import static java.util.Arrays.asList;
 import com.google.auto.service.AutoService;
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
 import java.util.List;
 
 @AutoService(InstrumentationModule.class)
-public class LettuceInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class LettuceInstrumentationModule extends InstrumentationModule {
   public LettuceInstrumentationModule() {
     super("lettuce", "lettuce-4.0");
   }
@@ -25,11 +23,9 @@ public class LettuceInstrumentationModule extends InstrumentationModule
     return asList(
         new LettuceAsyncCommandInstrumentation(),
         new LettuceAsyncCommandsInstrumentation(),
+        new LettuceConnectionInstrumentation(),
+        new LettuceReactiveCommandDispatcherInstrumentation(),
+        new LettuceObservableCommandInstrumentation(),
         new LettuceConnectInstrumentation());
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 }

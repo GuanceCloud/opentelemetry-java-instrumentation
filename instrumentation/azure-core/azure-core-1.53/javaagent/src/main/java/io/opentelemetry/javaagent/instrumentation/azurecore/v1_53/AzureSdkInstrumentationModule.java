@@ -15,16 +15,12 @@ import io.opentelemetry.javaagent.extension.instrumentation.HelperResourceBuilde
 import io.opentelemetry.javaagent.extension.instrumentation.InstrumentationModule;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.ExperimentalInstrumentationModule;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.ClassInjector;
-import io.opentelemetry.javaagent.extension.instrumentation.internal.injection.InjectionMode;
 import java.util.List;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 
 @AutoService(InstrumentationModule.class)
-public class AzureSdkInstrumentationModule extends InstrumentationModule
-    implements ExperimentalInstrumentationModule {
+public class AzureSdkInstrumentationModule extends InstrumentationModule {
   public AzureSdkInstrumentationModule() {
     super("azure-core", "azure-core-1.53");
   }
@@ -42,28 +38,27 @@ public class AzureSdkInstrumentationModule extends InstrumentationModule
   }
 
   @Override
-  public void injectClasses(ClassInjector injector) {
-    injector
-        .proxyBuilder(
-            "io.opentelemetry.javaagent.instrumentation.azurecore.v1_53.shaded.com.azure.core.tracing.opentelemetry.OpenTelemetryTracer")
-        .inject(InjectionMode.CLASS_ONLY);
-    injector
-        .proxyBuilder(
-            "io.opentelemetry.javaagent.instrumentation.azurecore.v1_53.shaded.com.azure.core.tracing.opentelemetry.OpenTelemetryTracerProvider")
-        .inject(InjectionMode.CLASS_ONLY);
+  public List<String> exposedClassNames() {
+    return asList(
+        "io.opentelemetry.javaagent.instrumentation.azurecore.v1_53.shaded.com.azure.core.tracing.opentelemetry.OpenTelemetryTracer",
+        "io.opentelemetry.javaagent.instrumentation.azurecore.v1_53.shaded.com.azure.core.tracing.opentelemetry.OpenTelemetryTracerProvider");
   }
 
   @Override
   public ElementMatcher.Junction<ClassLoader> classLoaderMatcher() {
-    // added in azure-core 1.53
+    // added in 1.53
     return hasClassesNamed("com.azure.core.util.LibraryTelemetryOptions")
-        // added in azure-core-tracing-opentelemetry 1.0.0-beta.47 (native OTel support)
+        // artifact presence gate (provides native OTel support)
+        // added in com.azure:azure-core-tracing-opentelemetry 1.0.0-beta.47
         .and(not(hasClassesNamed("com.azure.core.tracing.opentelemetry.OpenTelemetryTracer")));
   }
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
-    return asList(new EmptyTypeInstrumentation(), new AzureHttpClientInstrumentation());
+    return asList(
+        new EmptyTypeInstrumentation(),
+        new AzureContextInstrumentation(),
+        new AzureHttpClientInstrumentation());
   }
 
   private static class EmptyTypeInstrumentation implements TypeInstrumentation {
@@ -77,10 +72,5 @@ public class AzureSdkInstrumentationModule extends InstrumentationModule
     public void transform(TypeTransformer transformer) {
       // Nothing to instrument, no methods to match
     }
-  }
-
-  @Override
-  public boolean isIndyReady() {
-    return true;
   }
 }

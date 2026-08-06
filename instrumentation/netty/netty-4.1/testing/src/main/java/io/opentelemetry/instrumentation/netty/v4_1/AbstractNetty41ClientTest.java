@@ -95,7 +95,7 @@ public abstract class AbstractNetty41ClientTest
     configureChannel(ch);
     CompletableFuture<Integer> result = new CompletableFuture<>();
     result.whenComplete((status, throwable) -> httpClientResult.complete(() -> status, throwable));
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       ch.pipeline().addLast(new ReadTimeoutHandler(READ_TIMEOUT.toMillis(), MILLISECONDS));
     }
     ch.pipeline().addLast(new ClientHandler(result));
@@ -159,7 +159,7 @@ public abstract class AbstractNetty41ClientTest
   }
 
   @Test
-  void closeChannel() throws ExecutionException, InterruptedException {
+  void closeChannel() throws InterruptedException {
     String method = "GET";
     URI uri = resolveAddress("/read-timeout");
     DefaultFullHttpRequest request = buildRequest(method, uri, emptyMap());
@@ -170,7 +170,7 @@ public abstract class AbstractNetty41ClientTest
     CompletableFuture<Integer> result = new CompletableFuture<>();
     channel.pipeline().addLast(new ClientHandler(result));
     channel.pipeline().addLast(new ReadTimeoutHandler(READ_TIMEOUT.toMillis(), MILLISECONDS));
-    channel.writeAndFlush(request).get();
+    channel.writeAndFlush(request).sync();
     Thread.sleep(1_000);
     channel.close();
 

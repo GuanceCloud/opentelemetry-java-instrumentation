@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.javahttpclient;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static io.opentelemetry.instrumentation.testing.junit.service.SemconvServiceStabilityUtil.maybeStablePeerService;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.semconv.ErrorAttributes.ERROR_TYPE;
 import static io.opentelemetry.semconv.HttpAttributes.HTTP_REQUEST_METHOD;
@@ -55,6 +56,10 @@ public abstract class AbstractJavaHttpClientTest extends AbstractHttpClientTest<
 
   protected abstract HttpClient configureHttpClient(HttpClient httpClient);
 
+  protected boolean hasServicePeerName() {
+    return false;
+  }
+
   @Override
   public HttpRequest buildRequest(String method, URI uri, Map<String, String> headers) {
     HttpRequest.Builder requestBuilder =
@@ -66,7 +71,7 @@ public abstract class AbstractJavaHttpClientTest extends AbstractHttpClientTest<
       // received
       requestBuilder.header("java-http-client-http2", "true");
     }
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       requestBuilder.timeout(READ_TIMEOUT);
     }
     return requestBuilder.build();
@@ -115,7 +120,7 @@ public abstract class AbstractJavaHttpClientTest extends AbstractHttpClientTest<
           // unopened port or non routable address; or timeout
           if ("http://localhost:61/".equals(uri.toString())
               || "https://192.0.2.1/".equals(uri.toString())
-              || uri.toString().contains("/read-timeout")) {
+              || uri.getPath().endsWith("/read-timeout")) {
             attributes.remove(NETWORK_PROTOCOL_VERSION);
           }
           return attributes;
@@ -172,12 +177,15 @@ public abstract class AbstractJavaHttpClientTest extends AbstractHttpClientTest<
                         .hasKind(SpanKind.CLIENT)
                         .hasParent(trace.getSpan(0))
                         .hasStatus(StatusData.error())
-                        .hasAttributesSatisfying(
+                        .hasAttributesSatisfyingExactly(
                             equalTo(URL_FULL, uri.toString()),
                             equalTo(SERVER_ADDRESS, uri.getHost()),
                             equalTo(SERVER_PORT, uri.getPort()),
                             equalTo(HTTP_REQUEST_METHOD, method),
-                            equalTo(ERROR_TYPE, CancellationException.class.getName())),
+                            equalTo(ERROR_TYPE, CancellationException.class.getName()),
+                            equalTo(
+                                maybeStablePeerService(),
+                                hasServicePeerName() ? "test-peer-service" : null)),
                 span ->
                     span.hasName("test-http-server")
                         .hasKind(SpanKind.SERVER)

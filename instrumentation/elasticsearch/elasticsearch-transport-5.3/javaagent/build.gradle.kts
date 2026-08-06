@@ -7,10 +7,6 @@ muzzle {
     group.set("org.elasticsearch.client")
     module.set("transport")
     versions.set("[5.3.0,6.0.0)")
-    // version 7.11.0 depends on org.elasticsearch:elasticsearch:7.11.0 which depends on
-    // org.elasticsearch:elasticsearch-plugin-classloader:7.11.0 which does not exist
-    // version 7.17.8 has broken module metadata
-    skip("7.11.0", "7.17.8")
     // version 8.8.0 depends on elasticsearch:elasticsearch-preallocate which doesn't exist
     excludeDependency("org.elasticsearch:elasticsearch-preallocate")
     assertInverse.set(true)
@@ -19,9 +15,6 @@ muzzle {
     group.set("org.elasticsearch")
     module.set("elasticsearch")
     versions.set("[5.3.0,6.0.0)")
-    // version 7.11.0 depends on org.elasticsearch:elasticsearch-plugin-classloader:7.11.0
-    // which does not exist
-    skip("7.11.0")
     // version 8.8.0 depends on elasticsearch:elasticsearch-preallocate which doesn't exist
     excludeDependency("org.elasticsearch:elasticsearch-preallocate")
     assertInverse.set(true)
@@ -44,13 +37,13 @@ dependencies {
     isTransitive = false
   }
 
-  implementation(project(":instrumentation:elasticsearch:elasticsearch-transport-common:javaagent"))
+  implementation(project(":instrumentation:elasticsearch:elasticsearch-transport-common-5.0:javaagent"))
 
   testInstrumentation(project(":instrumentation:apache-httpasyncclient-4.1:javaagent"))
   testInstrumentation(project(":instrumentation:netty:netty-4.1:javaagent"))
   testInstrumentation(project(":instrumentation:spring:spring-data:spring-data-1.8:javaagent"))
 
-  testImplementation(project(":instrumentation:elasticsearch:elasticsearch-transport-common:testing"))
+  testImplementation(project(":instrumentation:elasticsearch:elasticsearch-transport-common-5.0:testing"))
   testImplementation("org.apache.logging.log4j:log4j-core:2.11.0")
   testImplementation("org.apache.logging.log4j:log4j-api:2.11.0")
   testImplementation("com.google.guava:guava")
@@ -61,7 +54,6 @@ dependencies {
 
   testLibrary("org.springframework.data:spring-data-elasticsearch:3.0.0.RELEASE")
 
-  latestDepTestLibrary("org.elasticsearch.plugin:transport-netty3-client:5.+") // see elasticsearch-transport-6.0 module
   latestDepTestLibrary("org.elasticsearch.client:transport:5.+") // see elasticsearch-transport-6.0 module
   latestDepTestLibrary("org.springframework.data:spring-data-elasticsearch:3.0.+") // see elasticsearch-transport-6.0 module
 }
@@ -77,7 +69,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 
@@ -85,7 +77,7 @@ tasks {
     systemProperty("metadataConfig", "otel.semconv-stability.opt-in=database")
   }
 
-  val testExperimental by registering(Test::class) {
+  val testExperimental = register<Test>("testExperimental") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 

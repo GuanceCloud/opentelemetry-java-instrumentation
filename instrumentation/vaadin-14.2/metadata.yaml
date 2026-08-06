@@ -7,7 +7,4 @@ features:
   - HTTP_ROUTE
   - CONTROLLER_SPANS
 configurations:
-  - name: otel.instrumentation.common.experimental.controller-telemetry.enabled
-    description: Enables the creation of experimental controller spans.
-    type: boolean
-    default: false
+  - ref: common.controller-telemetry.enabled

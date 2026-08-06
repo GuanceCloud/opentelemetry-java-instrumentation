@@ -22,7 +22,6 @@ dependencies {
   testLibrary("org.mongodb:mongodb-driver-reactivestreams:4.0.0")
 
   testImplementation(project(":instrumentation:mongo:mongo-common:testing"))
-  testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.5")
 
   testInstrumentation(project(":instrumentation:mongo:mongo-async-3.3:javaagent"))
   testInstrumentation(project(":instrumentation:mongo:mongo-3.1:javaagent"))
@@ -35,7 +34,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=database")

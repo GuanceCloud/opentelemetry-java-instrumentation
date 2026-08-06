@@ -45,6 +45,7 @@ public abstract class AbstractCassandra44Test extends AbstractCassandraTest {
   @MethodSource("provideReactiveParameters")
   void reactiveTest(Parameter parameter) {
     CqlSession session = getSession(parameter.keyspace);
+    cleanup.deferCleanup(session);
 
     testing()
         .runWithSpan(
@@ -64,7 +65,11 @@ public abstract class AbstractCassandra44Test extends AbstractCassandraTest {
                             .hasKind(SpanKind.CLIENT)
                             .hasParent(trace.getSpan(0))
                             .hasAttributesSatisfyingExactly(
-                                satisfies(NETWORK_TYPE, val -> val.isIn("ipv4", "ipv6")),
+                                satisfies(
+                                    NETWORK_TYPE,
+                                    emitStableDatabaseSemconv()
+                                        ? val -> val.isNull()
+                                        : val -> val.isIn("ipv4", "ipv6")),
                                 equalTo(SERVER_ADDRESS, cassandraHost),
                                 equalTo(SERVER_PORT, cassandraPort),
                                 equalTo(NETWORK_PEER_ADDRESS, cassandraIp),
@@ -75,9 +80,7 @@ public abstract class AbstractCassandra44Test extends AbstractCassandraTest {
                                 equalTo(
                                     DB_QUERY_SUMMARY,
                                     emitStableDatabaseSemconv() ? parameter.spanName : null),
-                                equalTo(
-                                    maybeStable(DB_OPERATION),
-                                    emitStableDatabaseSemconv() ? null : parameter.operation),
+                                equalTo(maybeStable(DB_OPERATION), parameter.operation),
                                 equalTo(maybeStable(DB_CASSANDRA_CONSISTENCY_LEVEL), "LOCAL_ONE"),
                                 equalTo(maybeStable(DB_CASSANDRA_COORDINATOR_DC), "datacenter1"),
                                 satisfies(
@@ -88,15 +91,11 @@ public abstract class AbstractCassandra44Test extends AbstractCassandraTest {
                                     val -> val.isInstanceOf(Boolean.class)),
                                 equalTo(maybeStable(DB_CASSANDRA_PAGE_SIZE), 5000),
                                 equalTo(maybeStable(DB_CASSANDRA_SPECULATIVE_EXECUTION_COUNT), 0),
-                                equalTo(
-                                    maybeStable(DB_CASSANDRA_TABLE),
-                                    emitStableDatabaseSemconv() ? null : parameter.table)),
+                                equalTo(maybeStable(DB_CASSANDRA_TABLE), parameter.table)),
                     span ->
                         span.hasName("child")
                             .hasKind(SpanKind.INTERNAL)
                             .hasParent(trace.getSpan(0))));
-
-    session.close();
   }
 
   private static Stream<Arguments> provideReactiveParameters() {

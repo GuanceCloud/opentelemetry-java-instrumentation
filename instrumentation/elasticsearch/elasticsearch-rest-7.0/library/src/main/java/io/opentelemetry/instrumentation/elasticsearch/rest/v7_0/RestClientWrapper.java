@@ -18,8 +18,10 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.InvocationHandlerAdapter;
 import org.apache.http.Header;
@@ -28,6 +30,7 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.ResponseListener;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientPackageAccess;
 
 class RestClientWrapper {
   private static final Class<?> proxyClass = createProxyClass();
@@ -111,7 +114,11 @@ class RestClientWrapper {
                   return method.invoke(target, args);
                 }))
         .make()
-        .load(RestClient.class.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+        .load(
+            RestClient.class.getClassLoader(),
+            ClassInjector.UsingReflection.isAvailable()
+                ? ClassLoadingStrategy.Default.INJECTION
+                : ClassLoadingStrategy.UsingLookup.of(RestClientPackageAccess.getLookup()))
         .getLoaded();
   }
 
@@ -132,6 +139,7 @@ class RestClientWrapper {
   }
 
   @SuppressWarnings("unchecked") // casting reflection result
+  @Nullable
   private static Instrumenter<ElasticsearchRestRequest, Response> getInstrumenter(Object proxy)
       throws IllegalAccessException {
     Supplier<Instrumenter<ElasticsearchRestRequest, Response>> supplier =

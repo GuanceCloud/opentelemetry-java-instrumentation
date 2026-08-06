@@ -9,6 +9,7 @@ import static java.util.Objects.requireNonNull;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.CommonConfig;
 import io.opentelemetry.instrumentation.api.incubator.semconv.http.HttpExperimentalAttributesExtractor;
@@ -64,20 +65,6 @@ public final class DefaultHttpServerInstrumenterBuilder<REQUEST, RESPONSE> {
   private boolean emitExperimentalHttpServerTelemetry = false;
   private Consumer<InstrumenterBuilder<REQUEST, RESPONSE>> builderCustomizer = b -> {};
 
-  private DefaultHttpServerInstrumenterBuilder(
-      String instrumentationName,
-      OpenTelemetry openTelemetry,
-      HttpServerAttributesGetter<REQUEST, RESPONSE> attributesGetter,
-      @Nullable TextMapGetter<REQUEST> headerGetter) {
-    this.instrumentationName = requireNonNull(instrumentationName, "instrumentationName");
-    this.openTelemetry = requireNonNull(openTelemetry, "openTelemetry");
-    this.attributesGetter = requireNonNull(attributesGetter, "attributesGetter");
-    httpAttributesExtractorBuilder = HttpServerAttributesExtractor.builder(attributesGetter);
-    httpSpanNameExtractorBuilder = HttpSpanNameExtractor.builder(attributesGetter);
-    httpServerRouteBuilder = HttpServerRoute.builder(attributesGetter);
-    this.headerGetter = headerGetter;
-  }
-
   public static <REQUEST, RESPONSE> DefaultHttpServerInstrumenterBuilder<REQUEST, RESPONSE> create(
       String instrumentationName,
       OpenTelemetry openTelemetry,
@@ -96,6 +83,20 @@ public final class DefaultHttpServerInstrumenterBuilder<REQUEST, RESPONSE> {
         openTelemetry,
         attributesGetter,
         requireNonNull(headerGetter, "headerGetter"));
+  }
+
+  private DefaultHttpServerInstrumenterBuilder(
+      String instrumentationName,
+      OpenTelemetry openTelemetry,
+      HttpServerAttributesGetter<REQUEST, RESPONSE> attributesGetter,
+      @Nullable TextMapGetter<REQUEST> headerGetter) {
+    this.instrumentationName = requireNonNull(instrumentationName, "instrumentationName");
+    this.openTelemetry = requireNonNull(openTelemetry, "openTelemetry");
+    this.attributesGetter = requireNonNull(attributesGetter, "attributesGetter");
+    httpAttributesExtractorBuilder = HttpServerAttributesExtractor.builder(attributesGetter);
+    httpSpanNameExtractorBuilder = HttpSpanNameExtractor.builder(attributesGetter);
+    httpServerRouteBuilder = HttpServerRoute.builder(attributesGetter);
+    this.headerGetter = headerGetter;
   }
 
   /**
@@ -230,7 +231,13 @@ public final class DefaultHttpServerInstrumenterBuilder<REQUEST, RESPONSE> {
             .addAttributesExtractors(additionalExtractors)
             .addContextCustomizer(httpServerRouteBuilder.build())
             .addOperationMetrics(HttpServerMetrics.get())
-            .setSchemaUrl(SchemaUrls.V1_37_0);
+            .setSchemaUrl(SchemaUrls.V1_41_0);
+    Experimental.setExceptionEventExtractor(
+        builder,
+        (logRecordBuilder, context, request) -> {
+          logRecordBuilder.setEventName("http.server.request.exception");
+          logRecordBuilder.setSeverity(Severity.ERROR);
+        });
     if (emitExperimentalHttpServerTelemetry) {
       builder
           .addAttributesExtractor(HttpExperimentalAttributesExtractor.create(attributesGetter))

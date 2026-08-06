@@ -13,8 +13,8 @@ muzzle {
     group.set("io.netty")
     module.set("netty-all")
     versions.set("[4.0.0.Final,4.1.0.Final)")
-    excludeDependency("io.netty:netty-tcnative")
     assertInverse.set(true)
+    excludeDependency("io.netty:netty-tcnative")
   }
   fail {
     group.set("io.netty")
@@ -36,7 +36,11 @@ dependencies {
 }
 
 tasks {
-  val testConnectionSpan by registering(Test::class) {
+  withType<Test>().configureEach {
+    systemProperty("collectMetadata", otelProps.collectMetadata)
+  }
+
+  val testConnectionSpan = register<Test>("testConnectionSpan") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter {
@@ -46,18 +50,17 @@ tasks {
     include("**/Netty40ConnectionSpanTest.*", "**/Netty40ClientSslTest.*")
     jvmArgs("-Dotel.instrumentation.netty.connection-telemetry.enabled=true")
     jvmArgs("-Dotel.instrumentation.netty.ssl-telemetry.enabled=true")
+    systemProperty("metadataConfig", "otel.instrumentation.netty.connection-telemetry.enabled=true,otel.instrumentation.netty.ssl-telemetry.enabled=true")
   }
 
   test {
-    systemProperty("collectMetadata", otelProps.collectMetadata)
-
     filter {
       excludeTestsMatching("Netty40ConnectionSpanTest")
       excludeTestsMatching("Netty40ClientSslTest")
     }
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=service.peer")

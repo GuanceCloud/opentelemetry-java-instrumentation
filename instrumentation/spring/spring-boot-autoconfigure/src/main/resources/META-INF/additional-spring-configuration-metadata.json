@@ -314,14 +314,8 @@
     {
       "name": "otel.instrumentation.http.client.emit-experimental-telemetry",
       "type": "java.lang.Boolean",
-      "description": "Enable the capture of experimental HTTP client telemetry. Add the <code>http.request.body.size</code> and <code>http.response.body.size> attributes to spans, and record the <code>http.client.request.size</code> and <code>http.client.response.size</code> metrics.",
+      "description": "Enable the capture of experimental HTTP client telemetry. Add the <code>http.request.body.size</code> and <code>http.response.body.size</code> attributes to spans, and record the <code>http.client.request.size</code> and <code>http.client.response.size</code> metrics.",
       "defaultValue": false
-    },
-    {
-      "name": "otel.instrumentation.http.client.experimental.redact-query-parameters",
-      "type": "java.lang.Boolean",
-      "description": "Redact sensitive URL parameters. See https://opentelemetry.io/docs/specs/semconv/http/http-spans.",
-      "defaultValue": true
     },
     {
       "name": "otel.instrumentation.http.known-methods",
@@ -510,19 +504,19 @@
       "defaultValue": false
     },
     {
-      "name": "otel.instrumentation.common.logging.trace-id",
+      "name": "otel.instrumentation.common.logging.trace-id-key",
       "type": "java.lang.String",
       "description": "Customize MDC key name for the trace id.",
       "defaultValue": "trace_id"
     },
     {
-      "name": "otel.instrumentation.common.logging.span-id",
+      "name": "otel.instrumentation.common.logging.span-id-key",
       "type": "java.lang.String",
       "description": "Customize MDC key name for the span id.",
       "defaultValue": "span_id"
     },
     {
-      "name": "otel.instrumentation.common.logging.trace-flags",
+      "name": "otel.instrumentation.common.logging.trace-flags-key",
       "type": "java.lang.String",
       "description": "Customize MDC key name for the trace flags.",
       "defaultValue": "trace_flags"
@@ -558,22 +552,28 @@
       "defaultValue": true
     },
     {
-      "name": "otel.instrumentation.runtime-telemetry.emit-experimental-telemetry",
+      "name": "otel.instrumentation.runtime-telemetry.emit-experimental-metrics",
       "type": "java.lang.Boolean",
-      "description": "Enable the capture of experimental metrics.",
+      "description": "Enable the capture of experimental JMX-based metrics.",
       "defaultValue": false
     },
     {
-      "name": "otel.instrumentation.runtime-telemetry-java17.enable-all",
+      "name": "otel.instrumentation.runtime-telemetry.emit-experimental-jfr-metrics",
       "type": "java.lang.Boolean",
-      "description": "Enable the capture of all JFR based metrics.",
+      "description": "Enable the capture of experimental JFR-based metrics on Java 17+.",
       "defaultValue": false
     },
     {
-      "name": "otel.instrumentation.runtime-telemetry-java17.enabled",
+      "name": "otel.instrumentation.runtime-telemetry.experimental.prefer-jfr",
       "type": "java.lang.Boolean",
-      "description": "Enable the capture of JFR based metrics.",
+      "description": "Prefer JFR over JMX for metrics available from both sources, on Java 17+.",
       "defaultValue": false
+    },
+    {
+      "name": "otel.instrumentation.sanitization.url.experimental.sensitive-query-parameters",
+      "type": "java.util.List<java.lang.String>",
+      "description": "List of URL query parameter names whose values are redacted in URL attributes. See https://opentelemetry.io/docs/specs/semconv/http/http-spans.",
+      "defaultValue": "AWSAccessKeyId,Signature,sig,X-Goog-Signature"
     },
     {
       "name": "otel.instrumentation.spring-web.enabled",

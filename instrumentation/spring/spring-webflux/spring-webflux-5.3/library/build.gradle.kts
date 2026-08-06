@@ -17,7 +17,7 @@ dependencies {
   testLibrary("org.springframework.boot:spring-boot-starter-reactor-netty:2.4.0")
 }
 
-// spring 6 (which spring-kafka 3.+ uses) requires java 17
+// Spring 6 (which Spring Boot 3+ uses) requires Java 17
 if (otelProps.testLatestDeps) {
   otelJava {
     minJavaVersionSupported.set(JavaVersion.VERSION_17)
@@ -38,7 +38,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=service.peer")

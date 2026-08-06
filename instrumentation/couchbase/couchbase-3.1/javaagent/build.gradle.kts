@@ -7,8 +7,6 @@ muzzle {
     group.set("com.couchbase.client")
     module.set("java-client")
     versions.set("[3.1,3.1.6)")
-    // these versions were released as ".bundle" instead of ".jar"
-    skip("2.7.5", "2.7.8")
     assertInverse.set(true)
   }
 }
@@ -24,6 +22,7 @@ sourceSets {
 }
 
 dependencies {
+  compileOnly(project(":muzzle")) // For @NoMuzzle
   compileOnly(
     project(
       path = ":instrumentation:couchbase:couchbase-3.1:tracing-opentelemetry-shaded",
@@ -50,15 +49,28 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.opt-in=database")
     systemProperty("metadataConfig", "otel.semconv-stability.opt-in=database")
   }
 
+  val testStableSemconvExperimental = register<Test>("testStableSemconvExperimental") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    jvmArgs(
+      "-Dotel.semconv-stability.opt-in=database",
+      "-Dotel.instrumentation.couchbase.experimental-span-attributes=true",
+    )
+    systemProperty(
+      "metadataConfig",
+      "otel.semconv-stability.opt-in=database,otel.instrumentation.couchbase.experimental-span-attributes=true",
+    )
+  }
+
   check {
-    dependsOn(testStableSemconv)
+    dependsOn(testStableSemconv, testStableSemconvExperimental)
   }
 
   if (otelProps.denyUnsafe) {

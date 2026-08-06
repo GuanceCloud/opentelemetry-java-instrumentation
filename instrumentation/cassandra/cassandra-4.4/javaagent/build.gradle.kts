@@ -6,7 +6,7 @@ muzzle {
   pass {
     group.set("com.datastax.oss")
     module.set("java-driver-core")
-    versions.set("[4.4,]")
+    versions.set("[4.4,)")
     assertInverse.set(true)
   }
   pass {
@@ -41,7 +41,7 @@ tasks {
     systemProperty("collectMetadata", otelProps.collectMetadata)
   }
 
-  val testStableSemconv by registering(Test::class) {
+  val testStableSemconv = register<Test>("testStableSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
 

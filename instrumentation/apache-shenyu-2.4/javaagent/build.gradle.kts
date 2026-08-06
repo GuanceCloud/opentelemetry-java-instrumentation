@@ -26,7 +26,6 @@ dependencies {
     exclude("org.codehaus.groovy", "groovy")
   }
 
-  // the latest version of apache shenyu uses spring-boot 3.3
   latestDepTestLibrary("org.springframework.boot:spring-boot-starter-test:3.3.+") // related dependency
 
   testInstrumentation(project(":instrumentation:netty:netty-4.1:javaagent"))
@@ -39,7 +38,7 @@ if (otelProps.testLatestDeps) {
   }
 }
 
-tasks.withType<Test>().configureEach {
+tasks.test {
   jvmArgs("-Dotel.instrumentation.apache-shenyu.experimental-span-attributes=true")
 
   systemProperty("metadataConfig", "otel.instrumentation.apache-shenyu.experimental-span-attributes=true")

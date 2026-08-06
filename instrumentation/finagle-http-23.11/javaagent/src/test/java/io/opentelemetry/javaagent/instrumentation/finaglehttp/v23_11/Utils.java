@@ -19,14 +19,9 @@ import java.util.Map;
 
 class Utils {
 
-  private Utils() {}
-
   static Http.Client createClient(ClientType clientType) {
     Http.Client client =
         Http.client()
-            .withNoHttp2()
-            .withTransport()
-            .readTimeout(Duration.fromMilliseconds(READ_TIMEOUT.toMillis()))
             .withTransport()
             .connectTimeout(Duration.fromMilliseconds(CONNECTION_TIMEOUT.toMillis()))
             // disable automatic retries -- retries will result in under-counting traces in the
@@ -40,6 +35,10 @@ class Utils {
       case SINGLE_CONN:
         client = client.withSessionPool().maxSize(1);
         break;
+      case READ_TIMEOUT:
+        client =
+            client.withTransport().readTimeout(Duration.fromMilliseconds(READ_TIMEOUT.toMillis()));
+        break;
       case DEFAULT:
         break;
     }
@@ -50,6 +49,7 @@ class Utils {
   enum ClientType {
     TLS,
     SINGLE_CONN,
+    READ_TIMEOUT,
     DEFAULT;
   }
 
@@ -70,4 +70,6 @@ class Utils {
     headers.forEach((key, value) -> request.headerMap().put(key, value));
     return request;
   }
+
+  private Utils() {}
 }

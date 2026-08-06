@@ -33,7 +33,6 @@ import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.LibraryInstrumentationExtension;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -72,6 +71,9 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlockStart;
 import software.amazon.awssdk.thirdparty.jackson.core.JsonFactory;
 
+// TODO: Remove after https://github.com/open-telemetry/semantic-conventions-genai/issues/247
+// is resolved.
+@SuppressWarnings("OtelDeprecatedApiUsage")
 class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
 
   @RegisterExtension
@@ -403,8 +405,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testConverseToolCallStreamNoMessageContent()
-      throws InterruptedException, ExecutionException {
+  void testConverseToolCallStreamNoMessageContent() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     AwsSdkTelemetry telemetry =
         AwsSdkTelemetry.builder(testing.getOpenTelemetry())
@@ -472,7 +473,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                 .toolConfig(currentWeatherToolConfig())
                 .build(),
             responseHandler)
-        .get();
+        .join();
 
     if (currentToolArgs.length() > 0 && !responseChunksTools.isEmpty()) {
       JsonNode node = JsonNode.parser().parse(currentToolArgs.toString());
@@ -650,7 +651,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                 .toolConfig(currentWeatherToolConfig())
                 .build(),
             responseHandler1)
-        .get();
+        .join();
 
     assertThat(String.join("", responseChunks))
         .contains(
@@ -1191,8 +1192,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamToolCallAmazonNovaNoMessageContent()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamToolCallAmazonNovaNoMessageContent() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     AwsSdkTelemetry telemetry =
         AwsSdkTelemetry.builder(testing.getOpenTelemetry())
@@ -1337,7 +1337,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request0, responseHandler0).get();
+    client.invokeModelWithResponseStream(request0, responseHandler0).join();
 
     String seattleToolUseId0 = "";
     String sanFranciscoToolUseId0 = "";
@@ -1557,7 +1557,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request1, responseHandler1).get();
+    client.invokeModelWithResponseStream(request1, responseHandler1).join();
 
     assertThat(text.toString())
         .contains(
@@ -2027,8 +2027,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
   }
 
   @Test
-  void testInvokeModelWithResponseStreamToolCallAnthropicClaudeNoMessageContent()
-      throws InterruptedException, ExecutionException {
+  void testInvokeModelWithResponseStreamToolCallAnthropicClaudeNoMessageContent() {
     BedrockRuntimeAsyncClientBuilder builder = BedrockRuntimeAsyncClient.builder();
     AwsSdkTelemetry telemetry =
         AwsSdkTelemetry.builder(testing.getOpenTelemetry())
@@ -2176,7 +2175,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request0, responseHandler0).get();
+    client.invokeModelWithResponseStream(request0, responseHandler0).join();
 
     String seattleToolUseId0 = "";
     String sanFranciscoToolUseId0 = "";
@@ -2370,7 +2369,7 @@ class Aws2BedrockRuntimeTest extends AbstractAws2BedrockRuntimeTest {
                     .build())
             .build();
 
-    client.invokeModelWithResponseStream(request1, responseHandler1).get();
+    client.invokeModelWithResponseStream(request1, responseHandler1).join();
 
     assertThat(text.toString())
         .contains(

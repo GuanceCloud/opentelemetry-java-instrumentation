@@ -31,7 +31,7 @@ class PlayScalaStreamedWsClientTest extends PlayWsClientBaseTest<StandaloneWSReq
   private static StandaloneWSClient wsClientWithReadTimeout;
 
   @BeforeAll
-  void setup() {
+  static void setup() {
     wsClient = new StandaloneAhcWSClient(asyncHttpClient, materializer);
     wsClientWithReadTimeout =
         new StandaloneAhcWSClient(asyncHttpClientWithReadTimeout, materializer);
@@ -106,7 +106,7 @@ class PlayScalaStreamedWsClientTest extends PlayWsClientBaseTest<StandaloneWSReq
   }
 
   private static StandaloneWSClient getClient(URI uri) {
-    if (uri.toString().contains("/read-timeout")) {
+    if (uri.getPath().endsWith("/read-timeout")) {
       return wsClientWithReadTimeout;
     }
     return wsClient;

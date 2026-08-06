@@ -7,14 +7,14 @@ package io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_4.trace;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.opentelemetry.api.trace.TracerBuilder;
-import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.trace.ApplicationTracerFactory;
+import io.opentelemetry.javaagent.instrumentation.opentelemetryapi.v1_0.trace.ApplicationTracerFactory;
 
 class ApplicationTracerBuilder implements application.io.opentelemetry.api.trace.TracerBuilder {
 
   private final ApplicationTracerFactory tracerFactory;
   private final TracerBuilder agentTracerBuilder;
 
-  public ApplicationTracerBuilder(
+  ApplicationTracerBuilder(
       ApplicationTracerFactory tracerFactory, TracerBuilder agentTracerBuilder) {
     this.tracerFactory = tracerFactory;
     this.agentTracerBuilder = agentTracerBuilder;
