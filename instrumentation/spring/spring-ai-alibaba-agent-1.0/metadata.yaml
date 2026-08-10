@@ -1,0 +1,5 @@
+display_name: Spring AI Alibaba Agent Framework
+description: >
+  This instrumentation creates spans for Spring AI Alibaba Agent Framework agent invocations
+  and tool calls.
+library_link: https://java2ai.com/en/docs/1.1.2.2/tutorials/agent-framework/quick-start
