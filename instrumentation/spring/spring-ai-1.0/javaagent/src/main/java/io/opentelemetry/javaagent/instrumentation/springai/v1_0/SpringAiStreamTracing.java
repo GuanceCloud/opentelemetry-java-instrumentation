@@ -24,6 +24,7 @@ public final class SpringAiStreamTracing {
             return source;
           }
           Context context = instrumenter.start(parentContext, request);
+          SpringAiMessageAttributes.setSystemInstructions(context, request);
           SpringAiMessageAttributes.setInputMessages(context, request);
           SpringAiMessageEvents.emitPromptEvents(context, request);
           AtomicBoolean ended = new AtomicBoolean();

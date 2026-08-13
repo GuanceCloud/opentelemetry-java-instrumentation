@@ -28,9 +28,12 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.javaagent.instrumentation.springai.v1_0.app.TestChatModel;
+import java.util.Arrays;
 import javax.annotation.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.DefaultChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -80,7 +83,9 @@ class ChatModelTest {
                 .get(stringKey("gen_ai.input.messages")))
         .isEqualTo(
             messageSpanAttribute(
-                "[{\"role\":\"user\",\"content\":\"" + repeatedContent(8192) + "\"}]"));
+                "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\""
+                    + repeatedContent(8192)
+                    + "\"}]}]"));
     assertThat(
             testing
                 .waitForTraces(1)
@@ -110,17 +115,29 @@ class ChatModelTest {
                             equalTo(GEN_AI_USAGE_INPUT_TOKENS, 3L),
                             equalTo(GEN_AI_USAGE_OUTPUT_TOKENS, 2L),
                             equalTo(
+                                stringKey("gen_ai.system_instructions"),
+                                messageSpanAttribute(
+                                    "[{\"type\":\"text\",\"content\":\"You are a helpful tracing assistant.\"}]")),
+                            equalTo(
                                 stringKey("gen_ai.input.messages"),
                                 messageSpanAttribute(
-                                    "[{\"role\":\"user\",\"content\":\"Tell me about traces\"}]")),
+                                    "[{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"content\":\"Tell me about traces\"}]}]")),
                             equalTo(
                                 stringKey("gen_ai.output.messages"),
                                 messageSpanAttribute(
-                                    "[{\"role\":\"assistant\",\"content\":\"A trace represents an end-to-end request.\"}]")))));
+                                    "[{\"role\":\"assistant\",\"parts\":[{\"type\":\"text\",\"content\":\"A trace represents an end-to-end request.\"}],\"finish_reason\":\"stop\"}]")))));
   }
 
   private static void assertMessageEvents(SpanContext spanContext) {
     testing.waitAndAssertLogRecords(
+        log ->
+            log.hasAttributesSatisfyingExactly(
+                    equalTo(GEN_AI_PROVIDER_NAME, "test"),
+                    equalTo(stringKey("event.name"), "gen_ai.system.message"))
+                .hasSpanContext(spanContext)
+                .hasBody(
+                    Value.of(
+                        KeyValue.of("content", Value.of("You are a helpful tracing assistant.")))),
         log ->
             log.hasAttributesSatisfyingExactly(
                     equalTo(GEN_AI_PROVIDER_NAME, "test"),
@@ -147,7 +164,11 @@ class ChatModelTest {
   private static Prompt prompt() {
     DefaultChatOptions options = new DefaultChatOptions();
     options.setModel(MODEL);
-    return new Prompt("Tell me about traces", options);
+    return new Prompt(
+        Arrays.asList(
+            new SystemMessage("You are a helpful tracing assistant."),
+            new UserMessage("Tell me about traces")),
+        options);
   }
 
   private static String repeatedContent(int length) {

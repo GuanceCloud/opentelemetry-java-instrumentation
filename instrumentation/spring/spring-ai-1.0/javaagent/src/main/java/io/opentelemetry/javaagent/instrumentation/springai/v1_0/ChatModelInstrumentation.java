@@ -53,6 +53,7 @@ class ChatModelInstrumentation implements TypeInstrumentation {
         return null;
       }
       Context context = instrumenter().start(parentContext, request);
+      SpringAiMessageAttributes.setSystemInstructions(context, request);
       SpringAiMessageAttributes.setInputMessages(context, request);
       SpringAiMessageEvents.emitPromptEvents(context, request);
       return context;

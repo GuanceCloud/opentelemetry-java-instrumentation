@@ -15,11 +15,14 @@ import java.util.List;
 import java.util.Locale;
 import javax.annotation.Nullable;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 
 /** Adds opt-in message content attributes for backends that display trace tags. */
 public final class SpringAiMessageAttributes {
+  private static final AttributeKey<String> GEN_AI_SYSTEM_INSTRUCTIONS =
+      stringKey("gen_ai.system_instructions");
   private static final AttributeKey<String> GEN_AI_INPUT_MESSAGES =
       stringKey("gen_ai.input.messages");
   private static final AttributeKey<String> GEN_AI_OUTPUT_MESSAGES =
@@ -28,6 +31,20 @@ public final class SpringAiMessageAttributes {
       booleanKey("gen_ai.input.messages.truncated");
   private static final AttributeKey<Boolean> GEN_AI_OUTPUT_MESSAGES_TRUNCATED =
       booleanKey("gen_ai.output.messages.truncated");
+
+  public static void setSystemInstructions(Context context, SpringAiRequest request) {
+    if (!SpringAiSingletons.captureMessageContentAsSpanAttributes()) {
+      return;
+    }
+    SerializedMessages messages =
+        serializeSystemInstructions(
+            request.prompt().getInstructions(),
+            SpringAiSingletons.messageContentSpanAttributeMaxLength());
+    if (messages.json().equals("[]")) {
+      return;
+    }
+    Span.fromContext(context).setAttribute(GEN_AI_SYSTEM_INSTRUCTIONS, messages.json());
+  }
 
   public static void setInputMessages(Context context, SpringAiRequest request) {
     if (!SpringAiSingletons.captureMessageContentAsSpanAttributes()) {
@@ -59,19 +76,42 @@ public final class SpringAiMessageAttributes {
     }
   }
 
+  static SerializedMessages serializeSystemInstructions(
+      List<Message> messages, int maxContentLength) {
+    StringBuilder result = new StringBuilder("[");
+    boolean truncated = false;
+    boolean first = true;
+    for (Message message : messages) {
+      if (message.getMessageType() != MessageType.SYSTEM) {
+        continue;
+      }
+      if (!first) {
+        result.append(',');
+      }
+      first = false;
+      truncated |= appendTextPart(result, truncate(message.getText(), maxContentLength));
+    }
+    return new SerializedMessages(result.append(']').toString(), truncated);
+  }
+
   static SerializedMessages serializeMessages(List<Message> messages, int maxContentLength) {
     StringBuilder result = new StringBuilder("[");
     boolean truncated = false;
-    for (int index = 0; index < messages.size(); index++) {
-      if (index > 0) {
+    boolean first = true;
+    for (Message message : messages) {
+      if (message.getMessageType() == MessageType.SYSTEM) {
+        continue;
+      }
+      if (!first) {
         result.append(',');
       }
-      Message message = messages.get(index);
+      first = false;
       result.append("{\"role\":");
       appendJsonString(result, message.getMessageType().name().toLowerCase(Locale.ROOT));
-      result.append(",\"content\":");
+      result.append(",\"parts\":[");
       TruncatedContent content = truncate(message.getText(), maxContentLength);
-      appendJsonString(result, content.value());
+      appendTextPart(result, content);
+      result.append(']');
       result.append('}');
       truncated |= content.truncated();
     }
@@ -83,7 +123,9 @@ public final class SpringAiMessageAttributes {
     StringBuilder result = new StringBuilder("[");
     boolean truncated = false;
     if (streamedContent != null) {
-      truncated = appendAssistantMessage(result, streamedContent, maxContentLength);
+      String finishReason =
+          response.getResults().isEmpty() ? null : finishReason(response.getResults().get(0));
+      truncated = appendAssistantMessage(result, streamedContent, finishReason, maxContentLength);
     } else {
       List<Generation> generations = response.getResults();
       for (int index = 0; index < generations.size(); index++) {
@@ -92,19 +134,42 @@ public final class SpringAiMessageAttributes {
         }
         truncated |=
             appendAssistantMessage(
-                result, generations.get(index).getOutput().getText(), maxContentLength);
+                result,
+                generations.get(index).getOutput().getText(),
+                finishReason(generations.get(index)),
+                maxContentLength);
       }
     }
     return new SerializedMessages(result.append(']').toString(), truncated);
   }
 
   private static boolean appendAssistantMessage(
-      StringBuilder result, @Nullable String content, int maxContentLength) {
-    result.append("{\"role\":\"assistant\",\"content\":");
+      StringBuilder result,
+      @Nullable String content,
+      @Nullable String finishReason,
+      int maxContentLength) {
+    result.append("{\"role\":\"assistant\",\"parts\":[");
     TruncatedContent truncatedContent = truncate(content, maxContentLength);
-    appendJsonString(result, truncatedContent.value());
+    appendTextPart(result, truncatedContent);
+    result.append(']');
+    if (finishReason != null) {
+      result.append(",\"finish_reason\":");
+      appendJsonString(result, finishReason);
+    }
     result.append('}');
     return truncatedContent.truncated();
+  }
+
+  private static boolean appendTextPart(StringBuilder result, TruncatedContent content) {
+    result.append("{\"type\":\"text\",\"content\":");
+    appendJsonString(result, content.value());
+    result.append('}');
+    return content.truncated();
+  }
+
+  @Nullable
+  private static String finishReason(Generation generation) {
+    return generation.getMetadata() == null ? null : generation.getMetadata().getFinishReason();
   }
 
   private static TruncatedContent truncate(@Nullable String content, int maxContentLength) {
