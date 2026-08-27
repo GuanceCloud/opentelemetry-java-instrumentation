@@ -29,6 +29,7 @@ import io.opentelemetry.javaagent.tooling.field.VirtualFieldImplementationInstal
 import io.opentelemetry.javaagent.tooling.instrumentation.indy.ForwardIndyAdviceTransformer;
 import io.opentelemetry.javaagent.tooling.instrumentation.indy.IndyModuleRegistry;
 import io.opentelemetry.javaagent.tooling.instrumentation.indy.IndyTypeTransformerImpl;
+import io.opentelemetry.javaagent.tooling.meta.MetaTelemetry;
 import io.opentelemetry.javaagent.tooling.muzzle.AdviceInspector;
 import io.opentelemetry.javaagent.tooling.muzzle.HelperResourceBuilderImpl;
 import io.opentelemetry.javaagent.tooling.muzzle.InstrumentationModuleMuzzle;
@@ -209,6 +210,8 @@ public final class InstrumentationModuleInstaller {
       typeInstrumentation.transform(typeTransformer);
       extendableAgentBuilder = typeTransformer.getAgentBuilder();
       extendableAgentBuilder = contextProvider.injectFields(extendableAgentBuilder);
+      extendableAgentBuilder =
+          addMetaTransformationMarker(extendableAgentBuilder, instrumentationModule);
 
       agentBuilder = extendableAgentBuilder;
     }
@@ -278,11 +281,27 @@ public final class InstrumentationModuleInstaller {
       typeInstrumentation.transform(typeTransformer);
       extendableAgentBuilder = typeTransformer.getAgentBuilder();
       extendableAgentBuilder = contextProvider.injectFields(extendableAgentBuilder);
+      extendableAgentBuilder =
+          addMetaTransformationMarker(extendableAgentBuilder, instrumentationModule);
 
       agentBuilder = extendableAgentBuilder;
     }
 
     return agentBuilder;
+  }
+
+  private static AgentBuilder.Identified.Extendable addMetaTransformationMarker(
+      AgentBuilder.Identified.Extendable agentBuilder,
+      InstrumentationModule instrumentationModule) {
+    if (!MetaTelemetry.isIntegrationCollectionEnabled()) {
+      return agentBuilder;
+    }
+    return agentBuilder.transform(
+        (builder, typeDescription, classLoader, module, protectionDomain) -> {
+          MetaTelemetry.integrationMatched(
+              typeDescription.getName(), instrumentationModule.instrumentationName());
+          return builder;
+        });
   }
 
   private static AgentBuilder.Identified.Narrowable setTypeMatcher(
