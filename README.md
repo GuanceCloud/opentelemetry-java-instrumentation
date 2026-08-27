@@ -74,6 +74,9 @@ For a detailed list of agent configuration options, see the [agent configuration
 For a detailed list of additional SDK configuration environment variables and system properties,
 see the [SDK configuration docs][config-sdk].
 
+The Guance distribution also provides a dedicated [Meta exporter](docs/meta-exporter.md) for agent
+and application runtime metadata.
+
 _Note: Config parameter names are very likely to change over time, so please check
 back here when trying out a new version!
 Please [report any bugs](https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues)

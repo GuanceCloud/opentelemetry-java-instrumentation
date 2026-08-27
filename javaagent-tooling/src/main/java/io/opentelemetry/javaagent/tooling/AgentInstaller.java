@@ -46,6 +46,8 @@ import io.opentelemetry.javaagent.tooling.ignore.IgnoreAllow;
 import io.opentelemetry.javaagent.tooling.ignore.IgnoredClassLoadersMatcher;
 import io.opentelemetry.javaagent.tooling.ignore.IgnoredTypesBuilderImpl;
 import io.opentelemetry.javaagent.tooling.ignore.IgnoredTypesMatcher;
+import io.opentelemetry.javaagent.tooling.meta.MetaTelemetry;
+import io.opentelemetry.javaagent.tooling.meta.MetaTransformationListener;
 import io.opentelemetry.javaagent.tooling.muzzle.AgentTooling;
 import io.opentelemetry.javaagent.tooling.util.Trie;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
@@ -162,6 +164,9 @@ public class AgentInstaller {
     for (BeforeAgentListener agentListener :
         loadOrdered(BeforeAgentListener.class, extensionClassLoader)) {
       agentListener.beforeAgent(autoConfiguredSdk);
+    }
+    if (MetaTelemetry.isIntegrationCollectionEnabled()) {
+      agentBuilder = agentBuilder.with(new MetaTransformationListener());
     }
 
     agentBuilder = agentBuilder.with(new ClassLoadListener());
